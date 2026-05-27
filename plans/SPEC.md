@@ -537,9 +537,26 @@ Each phase has deliberate stretch zones designed to grow Geoff toward senior-lev
 
 The following are intentionally **out of scope for v1** but worth flagging:
 
-1. **iCloud sync for multi-device.** v1 is single-watch + single-phone. CloudKit-backed SwiftData would be a natural v2.
-2. **Caregiver mode.** Sharing regimen visibility with a partner (Freedom?) — out of scope; would require a real backend.
-3. **Pill image recognition.** Snap a photo of a pill bottle → autofill medication. Heavy lift; defer.
+1. **Pill imagery (v1.1 — high-priority follow-up).** Display a thumbnail of the actual pill on each watch tap-through screen. Recognition before recall: faster, less mental work, fewer mix-ups across a dozen-pill regimen. Deferred to v1.1 so the core tap-through can be dogfooded first to validate whether the confusion problem is real at the moment of taking. If yes, build out as described below; if no, defer indefinitely.
+
+   **Source:** the NIH National Library of Medicine **RxImage API** (`https://rximage.nlm.nih.gov/api/rximage/1/rxnav`). Free, public, no-auth REST endpoint. JPEGs photographed under lab lighting with metadata (color, shape, imprint, NDC). Government data, attribution-only license. This is the dataset that drugs.com, WebMD, and GoodRx all built on top of — going direct to the source avoids ToS issues and brittle scraping.
+
+   **Known limitation:** The underlying C3PI project was discontinued in 2018. The API and data remain available, but no new pills have been added since. Established generics (lithium, gabapentin) are well-covered; newer manufacturers, supplements, and many OTCs may not be in the dataset. The architecture below treats this as a graceful-degradation problem, not a blocker.
+
+   **Architecture (lookup at add-time, cache forever, photo fallback):**
+   - At medication add-time on iPhone, query RxImage by name and surface 0–5 candidate thumbnails. User taps the right one.
+   - If RxImage has no hit, offer "Take a photo" — snap pill on iPhone camera.
+   - If user declines both, name-only is always allowed (preserves the v1 zero-friction add flow).
+   - Chosen image stored locally on iPhone as a small asset (~200×200, ~50KB) referenced by a new field on `Medication`, e.g. `imageAssetID: UUID?`.
+   - Synced to watch via `WCSession.transferFile` once per medication; cached as a local asset on the watch.
+   - Watch never hits the network for images. Tap-through ritual stays offline.
+
+   **UI integration:** the watch tap-through screen becomes image-first when an asset is available; falls back to text-only when not. PDF export embeds thumbnails for psychiatrist conversations.
+
+   **Schema impact (v1.1 migration):** one nullable field on `Medication`. Trivial migration.
+
+2. **iCloud sync for multi-device.** v1 is single-watch + single-phone. CloudKit-backed SwiftData would be a natural v2.
+3. **Caregiver mode.** Sharing regimen visibility with a partner (Freedom?) — out of scope; would require a real backend.
 4. **Health dose readback enrichment.** If Health logs a dose via its own UI, detect via `HKAnchoredObjectQuery` and avoid double-prompting on the watch. Nice-to-have for v1.1.
 5. **Apple Watch Ultra Action Button binding.** "Log next pill" on a press. Deferred.
 6. **Negotiating with Apple for write access.** Worth filing a feedback request asking for `HKMedicationDoseEvent` write capability for the user's own data. Long shot, but a single API change would dramatically simplify v2.
