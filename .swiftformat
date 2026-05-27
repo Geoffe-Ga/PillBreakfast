@@ -1,0 +1,7 @@
+--indent 2
+--wrap-arguments before-first
+--wrap-collections before-first
+--ifdef no-indent
+--strip-unused-args closure-only
+--self init-only
+--swiftversion 6.0

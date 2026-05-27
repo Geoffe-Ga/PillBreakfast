@@ -1,0 +1,44 @@
+minimum_pre_commit_version: "3.7.1"
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude: '^\.github/workflows/(claude-code-review\.yml|claude\.yml)$'
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        exclude: '^\.github/workflows/(claude-code-review\.yml|claude\.yml)$'
+      - id: check-added-large-files
+        args: ["--maxkb=250"]
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+  - repo: local
+    hooks:
+      - id: swiftformat
+        name: SwiftFormat
+        entry: scripts/swiftformat_lint.sh
+        language: script
+        files: '\.swift$'
+      # TODO: enable once Phase 0 lands the Xcode project + a test runner script.
+      # - id: swift-tests
+      #   name: Swift tests (on push)
+      #   entry: bash
+      #   language: system
+      #   pass_filenames: false
+      #   files: '\.swift$'
+      #   stages: [pre-push]
+      #   args:
+      #     - -lc
+      #     - |
+      #       set -euo pipefail
+      #       ./scripts/run-swift-tests.sh

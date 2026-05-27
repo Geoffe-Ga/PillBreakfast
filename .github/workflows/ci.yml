@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    name: Pre-commit (lint, format, secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pre-commit-
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit
+
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  swift:
+    name: Swift (watchOS + iOS) - format & build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # PillBreakfast targets watchOS 26 / iOS 26 (Liquid Glass + HealthKit
+          # Medications), so prefer Xcode 26.x. Fall back to Xcode 16.x only if
+          # 26.x is unavailable on the runner image.
+          XCODE_26=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          XCODE_16=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XCODE_26" ]; then
+            echo "Selected: $XCODE_26"
+            sudo xcode-select -s "$XCODE_26/Contents/Developer"
+          elif [ -n "$XCODE_16" ]; then
+            echo "Falling back to: $XCODE_16"
+            sudo xcode-select -s "$XCODE_16/Contents/Developer"
+          else
+            echo "No Xcode 26.x or 16.x found. Available installations:"
+            ls /Applications/Xcode*.app 2>/dev/null || echo "  (none)"
+            exit 1
+          fi
+
+      - name: Install SwiftFormat
+        run: brew install swiftformat
+
+      - name: SwiftFormat check
+        run: swiftformat --lint .
+
+      # TODO: enable once Phase 0 lands the Xcode project. Replace
+      # <SCHEME> with the watchOS scheme name and adjust the project path.
+      # - name: Build and test
+      #   timeout-minutes: 25
+      #   run: |
+      #     xcrun simctl shutdown all || true
+      #     xcrun simctl erase all || true
+      #     xcodebuild test \
+      #       -project PillBreakfast.xcodeproj \
+      #       -scheme "<SCHEME>" \
+      #       -destination "platform=watchOS Simulator,name=Apple Watch Series 10 (46mm),OS=latest"
