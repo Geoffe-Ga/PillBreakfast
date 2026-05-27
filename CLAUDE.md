@@ -67,6 +67,75 @@ No build system exists yet. Once Phase 0 lands, this section should be updated w
 
 Until then, there are no commands to run.
 
+## The Ralph Loop
+
+PillBreakfast is built by a **caffeinated, local-session Ralph Wiggum loop**. The implementation backlog is filed as GitHub issues; each issue body is a self-contained 6-component prompt. The loop runs in a long-lived Claude Code session on a Mac, kept awake by `caffeinate -d -i`, and woken on every relevant PR event by an MCP subscription. The cloud is a participant, not the engine.
+
+### Topology
+
+1. **Local engine**: a `/loop /ralph-tick` session in a `caffeinate`d terminal. The model self-paces via `ScheduleWakeup` and is woken early by `mcp__github__subscribe_pr_activity` events. `/ralph-tick` is re-entrant — each tick reads `scripts/ralph/state.json` and the open-PR state, then does one atomic action.
+2. **Inner loop in the cloud** stays in place:
+   - `ci.yml` runs on each push (pre-commit + Swift format/build once Phase 0 lands).
+   - `claude-code-review.yml` leaves a `Verdict:` comment (LGTM / CHANGES_REQUESTED / COMMENTS) on each PR.
+   - `iteration-trigger.yml` watches for CI completion + the verdict comment. It posts a marker comment that **wakes the local session via PR-activity subscription**. If `LGTM` + fully green, it also squash-merges (using `GEOFFE_GA_PAT` so the merge fires downstream events).
+3. **Local session's reaction to each wake**:
+   - **PR merged** → record completion, increment `state.completed_since_groom`, pick next issue, open PR, subscribe, end turn.
+   - **`CHANGES_REQUESTED` / `COMMENTS`** → run the `address-feedback` skill, push fixes, re-subscribe, end turn.
+   - **CI failed** → run the `ci-debugging` skill, fix, push, re-subscribe, end turn.
+   - **In-flight, no verdict yet** → re-subscribe via `await-claude-review`, end turn.
+4. **Groom gate**: every `state.groom_interval` (default **10**) merged issues, the next tick invokes the `/backlog-grooming` skill before picking the next issue. The counter resets on completion.
+5. **Termination**: when `scripts/ralph/pick-next.sh` returns nothing and no PR is in flight, the tick announces "Backlog drained" and stops `/loop`.
+
+### Starting and stopping
+
+```bash
+# Start the loop (will run until backlog drained or Ctrl-C).
+caffeinate -d -i claude --add-dir "$(pwd)"
+# Inside the session:
+/loop /ralph-tick
+```
+
+To stop: Ctrl-C in the terminal, or send `/loop --stop` from within the session.
+
+### Controls
+
+| What | How |
+| --- | --- |
+| Pause new picks | Touch `scripts/ralph/.paused` (the tick treats it as "do nothing this tick"). Remove to resume. |
+| Pause auto-merge only | Set repo variable `RALPH_AUTO_MERGE_DISABLED=true` (inner loop still cycles, you merge by hand). |
+| Skip auto-merge for one PR | Add label `do-not-auto-merge` to the PR. |
+| Reset the groom counter | Edit `scripts/ralph/state.json` → `"completed_since_groom": 0`. |
+| Force a groom this tick | Edit `state.json` → set `"completed_since_groom"` ≥ `"groom_interval"`. |
+| Skip a specific issue | Add label `needs-spec` to it; the picker will pass it over. |
+| Use the cloud as a backup | `Actions → "Ralph (next issue) [manual fallback]" → Run workflow`. Only do this when the local session is offline; running both at once will race. |
+| Stop the inner loop on a hot PR | Close the PR, or add the `do-not-auto-merge` label. |
+| Cap on inner-loop runaway | `iteration-trigger.yml` self-caps at 10 nudges per PR. |
+
+### Files
+
+- `.claude/commands/ralph-tick.md` — the per-tick orchestrator (the `/ralph-tick` slash command).
+- `scripts/ralph/PROMPT.md` — the per-issue worker contract referenced by `/ralph-tick`.
+- `scripts/ralph/pick-next.sh` — picker (lowest-numbered open child issue, skips `epic` / `future-work` / `needs-spec` / issues already in-flight).
+- `scripts/ralph/state.json` — Ralph's notebook: counter, last-completed issue, last-groom timestamp.
+- `.github/workflows/iteration-trigger.yml` — inner-loop cadence + auto-merge gate (also the wake source).
+- `.github/workflows/ralph-next.yml` — manual cloud fallback only (triggers reduced to `workflow_dispatch`).
+
+### Required secrets and variables
+
+- Secret `CLAUDE_CODE_OAUTH_TOKEN` — used by the inner-loop reviewer and the cloud fallback.
+- Secret `GEOFFE_GA_PAT` — PAT with `repo` scope; lets the iteration-trigger's comments and merges fire downstream events and wake the local subscription.
+- Variable `RALPH_AUTO_MERGE_DISABLED` (optional; `true` keeps inner loop running but disables auto-merge).
+
+### Bootstrap
+
+Issue **#12** (the paired Xcode project skeleton) is **not** Ralph's job — pbxproj binary plists, signing, capabilities, and the App Group are easier to set up by hand once than to debug through several Ralph ticks. Land #12 manually, merge it, then start the loop. Ralph picks up at #13.
+
+### Known caveats
+
+- **SwiftFormat in the local environment**: `pre-commit run --all-files` invokes `scripts/swiftformat_lint.sh`. SwiftFormat is already installed via Homebrew on this Mac (`/opt/homebrew/bin/swiftformat`), so the hook runs. If you ever move the loop to a different machine, install SwiftFormat first or the Swift hook will block every tick.
+- **MCP GitHub server** must be configured for the local session for `mcp__github__subscribe_pr_activity` to work; otherwise the loop falls back to scheduled wakeups (`ScheduleWakeup` ~30 min) and runs slower but still terminates.
+- **Context drift in long sessions**: `/loop /ralph-tick` runs in one long session. The harness compacts as needed, but `/ralph-tick` is deliberately re-entrant — it never trusts in-memory state. If you suspect drift, Ctrl-C and restart; state lives entirely on disk.
+
 ## Conventions Worth Preserving
 
 - **Watch never gets logging UI on the iPhone.** Resist the temptation to add "quick log" buttons to the phone app — it dilutes the product thesis.

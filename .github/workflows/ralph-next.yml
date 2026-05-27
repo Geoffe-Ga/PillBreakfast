@@ -1,0 +1,128 @@
+name: Ralph (next issue) [manual fallback]
+
+# Cloud-runner Ralph. **Demoted to manual-only** because Ralph now lives in a
+# caffeinated local Claude Code session driven by `/loop /ralph-tick`
+# (see CLAUDE.md → "The Ralph Loop"). This workflow stays as a manual fallback
+# for when the local session is offline — pick an issue and have GitHub run it
+# instead. The auto-trigger on `pull_request: closed` is intentionally removed
+# so this workflow does not race the local session.
+#
+# To use the fallback:
+#   Actions → "Ralph (next issue) [manual fallback]" → Run workflow.
+#   Leave override_issue empty to pick automatically, or fill it to override.
+#
+# Required secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN — same secret claude.yml uses.
+#   GEOFFE_GA_PAT           — same PAT iteration-trigger.yml uses; needed so
+#                             the PR Ralph opens triggers downstream workflows
+#                             (CI, claude-code-review). GITHUB_TOKEN cannot
+#                             trigger workflow_run downstream.
+
+on:
+  workflow_dispatch:
+    inputs:
+      override_issue:
+        description: "Override picker and work this issue number instead. Leave empty to pick automatically."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  pick-and-work:
+    name: Pick next issue and open a PR
+    # Only on merged PRs into main (skip closed-without-merge), or on manual dispatch.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Check pause flag
+        env:
+          PAUSED: ${{ vars.RALPH_PAUSED }}
+        run: |
+          if [ "${PAUSED:-false}" = "true" ]; then
+            echo "RALPH_PAUSED=true — exiting cleanly. Unset the repo variable to resume."
+            exit 0
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Pick next issue
+        id: pick
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERRIDE: ${{ github.event.inputs.override_issue }}
+        run: |
+          set -euo pipefail
+          if [ -n "${OVERRIDE:-}" ]; then
+            echo "Manual override: working issue #$OVERRIDE"
+            echo "issue=$OVERRIDE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          N=$(scripts/ralph/pick-next.sh)
+          if [ -z "$N" ]; then
+            echo "No eligible open issue. Backlog drained or fully in-flight. Exiting cleanly."
+            echo "issue=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Picked #$N"
+          echo "issue=$N" >> "$GITHUB_OUTPUT"
+
+      - name: Build worker prompt
+        id: prompt
+        if: steps.pick.outputs.issue != ''
+        env:
+          RALPH_ISSUE: ${{ steps.pick.outputs.issue }}
+        run: |
+          set -euo pipefail
+          # Substitute the issue number into the template so Claude does not
+          # have to dereference a shell var at read time.
+          TEMPLATE=scripts/ralph/PROMPT.md
+          if [ ! -f "$TEMPLATE" ]; then
+            echo "Missing $TEMPLATE — cannot build prompt." >&2
+            exit 1
+          fi
+          rendered=$(mktemp)
+          {
+            printf '## Ralph Tick Assignment\n\n'
+            printf 'You have been dispatched to work issue **#%s**. The full instructions follow.\n\n' "$RALPH_ISSUE"
+            printf -- '---\n\n'
+            sed "s/\\\$RALPH_ISSUE/$RALPH_ISSUE/g" "$TEMPLATE"
+          } > "$rendered"
+          {
+            echo 'prompt<<RALPH_PROMPT_EOF'
+            cat "$rendered"
+            echo 'RALPH_PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+          rm -f "$rendered"
+
+      - name: Run Claude Code worker
+        if: steps.pick.outputs.issue != ''
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Use the PAT so the PR Ralph opens fires downstream workflow_run events
+          # (CI, claude-code-review). GITHUB_TOKEN-authored events do not chain.
+          GH_TOKEN: ${{ secrets.GEOFFE_GA_PAT }}
+          RALPH_ISSUE: ${{ steps.pick.outputs.issue }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          # Allow exactly what the worker needs. Keep this list tight — every
+          # extra entry widens Ralph's blast radius.
+          claude_args: >-
+            --allowed-tools
+            "Bash(git:*),Bash(gh issue:*),Bash(gh pr:*),Bash(gh label:*),Bash(gh repo:*),Bash(gh search:*),Bash(pre-commit:*),Bash(swiftformat:*),Bash(swiftlint:*),Bash(mkdir:*),Bash(rm:*),Bash(mv:*),Bash(cp:*),Bash(cat:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(scripts/*),Edit,Write,Read,Glob,Grep,Skill"
+          additional_permissions: |
+            actions: read
