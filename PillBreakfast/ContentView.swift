@@ -33,15 +33,21 @@ struct RootView: View {
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 }
 
-/// One editable medication name. Editing mutates the model; committing (return key)
-/// persists and pushes the fresh regimen to the watch.
+/// One editable medication name. Editing mutates the model; the change is persisted
+/// and pushed to the watch on Return *and* on focus loss, so navigating away without
+/// pressing Return can't leave the watch silently diverged from the iPhone.
 private struct MedicationNameRow: View {
   @Bindable var medication: Medication
   let onCommit: () -> Void
+  @FocusState private var isFocused: Bool
 
   var body: some View {
     TextField("Medication name", text: $medication.displayName)
+      .focused($isFocused)
       .onSubmit(onCommit)
+      .onChange(of: isFocused) { _, focused in
+        if !focused { onCommit() }
+      }
   }
 }
 

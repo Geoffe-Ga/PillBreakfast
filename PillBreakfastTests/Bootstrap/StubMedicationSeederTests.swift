@@ -55,5 +55,8 @@ struct StubMedicationSeederTests {
     let meds = try destination.fetch(FetchDescriptor<Medication>())
     #expect(meds.first?.displayName == "Stub Lithium 300mg")
     #expect(meds.first?.components.first?.ingredient?.name == "Lithium Carbonate")
+    // The Lithium safety thesis depends on isHighRisk surviving the sync round-trip.
+    #expect(meds.first?.components.first?.ingredient?.isHighRisk == true)
+    #expect(meds.first?.isHighRisk == true)
   }
 }
