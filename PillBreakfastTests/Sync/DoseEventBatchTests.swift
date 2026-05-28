@@ -98,6 +98,26 @@ struct DoseEventBatchTests {
     #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "with food")
   }
 
+  @Test func mergeUpdatesNotesOnNonNilResend() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    let eventID = UUID()
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: "with food")]),
+      into: context
+    )
+    // A re-send carrying a new note replaces the existing one.
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: "without food")]),
+      into: context
+    )
+
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "without food")
+  }
+
   @Test func mergeSkipsEventWithUnknownMedication() throws {
     let context = try makeInMemoryContext()
     let batch = DoseEventBatch(events: [sampleDTO(id: UUID(), medicationID: UUID())])

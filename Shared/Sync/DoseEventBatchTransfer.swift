@@ -10,7 +10,7 @@ public enum DoseEventBatchTransfer {
   /// Metadata key/value identifying our file transfers. `nonisolated` so the
   /// WCSession delegate (which is nonisolated) can read them without a hop.
   public nonisolated static let metadataKind = "doseEventBatch"
-  nonisolated static let metadataKindKey = "kind"
+  public nonisolated static let metadataKindKey = "kind"
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "ReverseSync")
 
@@ -42,11 +42,20 @@ public enum DoseEventBatchTransfer {
   public static func transfer(_ events: [DoseEvent]) throws {
     let batch = makeBatch(from: events)
     guard !batch.events.isEmpty else { return }
+    guard WCSession.default.activationState == .activated else {
+      logger.warning("WCSession not activated; skipping dose transfer.")
+      return
+    }
 
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent("doseEvents-\(UUID().uuidString).json")
+    // WC copies the file before transferFile returns, so the source can go now.
+    defer {
+      do { try FileManager.default.removeItem(at: url) }
+      catch { logger.debug("Temp dose-event file cleanup failed: \(error.localizedDescription, privacy: .public)") }
+    }
     try JSONEncoder().encode(batch).write(to: url)
-    // transferFile queues until the iPhone is reachable; the OS reaps temp files.
+    // transferFile queues the (already-copied) payload until the iPhone is reachable.
     WCSession.default.transferFile(url, metadata: [metadataKindKey: metadataKind])
   }
 
