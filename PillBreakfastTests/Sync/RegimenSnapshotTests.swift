@@ -156,6 +156,43 @@ struct RegimenSnapshotTests {
     }
   }
 
+  @Test func fromContextThrowsOnOrphanedComponent() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Broken", unitForm: .tablet, kind: .prn)
+    medication.components = [MedicationComponent(dosagePerUnitMg: 10)] // no ingredient → integrity violation
+    context.insert(medication)
+    try context.save()
+
+    #expect(throws: SyncError.self) {
+      try RegimenSnapshot.from(context: context)
+    }
+  }
+
+  @Test func applyUpdatesExistingIngredientFieldsOnUpsert() throws {
+    let context = try makeInMemoryContext()
+    let id = UUID()
+    try RegimenSnapshot(
+      ingredients: [
+        IngredientDTO(id: id, name: "Acetaminophen", aliases: [], isHighRisk: false, dailyCeilingMg: 4000, minIntervalMinutes: 240),
+      ],
+      medications: []
+    ).apply(to: context)
+
+    // Re-apply with the same id but changed thresholds/aliases.
+    try RegimenSnapshot(
+      ingredients: [
+        IngredientDTO(id: id, name: "Acetaminophen", aliases: ["APAP"], isHighRisk: false, dailyCeilingMg: 3000, minIntervalMinutes: 360),
+      ],
+      medications: []
+    ).apply(to: context)
+
+    let stored = try context.fetch(FetchDescriptor<Ingredient>())
+    #expect(stored.count == 1)
+    #expect(stored.first?.dailyCeilingMg == 3000)
+    #expect(stored.first?.minIntervalMinutes == 360)
+    #expect(stored.first?.aliases == ["APAP"])
+  }
+
   @Test func fromContextSkipsArchivedMedications() throws {
     let context = try makeInMemoryContext()
     context.insert(Medication(displayName: "Active", unitForm: .tablet, kind: .maintenance))

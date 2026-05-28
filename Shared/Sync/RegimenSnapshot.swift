@@ -80,7 +80,7 @@ public struct ScheduledDoseDTO: Codable, Sendable, Hashable {
   public let hour: Int
   public let minute: Int
   public let quantity: Int
-  public let daysOfWeek: [Int]
+  public let daysOfWeek: [Int] // ISO weekdays 1...7 (Mon...Sun); empty means every day
 
   public init(id: UUID, hour: Int, minute: Int, quantity: Int, daysOfWeek: [Int]) {
     self.id = id
