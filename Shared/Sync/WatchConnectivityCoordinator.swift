@@ -60,6 +60,10 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     }
   }
 
+  /// `nonisolated` is required: WatchConnectivity delivers this on a background
+  /// queue, so the method must satisfy the nonisolated WCSessionDelegate
+  /// requirement and hop to the main actor (via the Task below) before touching
+  /// any @MainActor state. The watch applies the inbound regimen snapshot here.
   public nonisolated func session(
     _ session: WCSession,
     didReceiveApplicationContext applicationContext: [String: Any]
