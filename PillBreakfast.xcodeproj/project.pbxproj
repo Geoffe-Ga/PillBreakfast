@@ -1,0 +1,1093 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		67915EA62FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		67915E802FC770C80014D1E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 67915E712FC770C70014D1E0;
+			remoteInfo = PillBreakfast;
+		};
+		67915E8A2FC770C80014D1E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 67915E712FC770C70014D1E0;
+			remoteInfo = PillBreakfast;
+		};
+		67915EA72FC771CD0014D1E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 67915EA42FC771CD0014D1E0;
+			remoteInfo = "PillBreakfast Watch App Watch App";
+		};
+		67915EB52FC771CF0014D1E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 67915EA42FC771CD0014D1E0;
+			remoteInfo = "PillBreakfast Watch App Watch App";
+		};
+		67915EBF2FC771CF0014D1E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 67915EA42FC771CD0014D1E0;
+			remoteInfo = "PillBreakfast Watch App Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		67915EC92FC771CF0014D1E0 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				67915EA62FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		67915E722FC770C70014D1E0 /* PillBreakfast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PillBreakfast.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915E7F2FC770C80014D1E0 /* PillBreakfastTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PillBreakfastTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915E892FC770C80014D1E0 /* PillBreakfastUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PillBreakfastUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915EA02FC771CD0014D1E0 /* PillBreakfast Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PillBreakfast Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PillBreakfast Watch App Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915EB42FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PillBreakfast Watch App Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		67915EBE2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PillBreakfast Watch App Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6750FDFA2FC78B6B00F706A2 /* Exceptions for "PillBreakfast" folder in "PillBreakfast" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 67915E712FC770C70014D1E0 /* PillBreakfast */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		67915E742FC770C70014D1E0 /* PillBreakfast */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6750FDFA2FC78B6B00F706A2 /* Exceptions for "PillBreakfast" folder in "PillBreakfast" target */,
+			);
+			path = PillBreakfast;
+			sourceTree = "<group>";
+		};
+		67915E822FC770C80014D1E0 /* PillBreakfastTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PillBreakfastTests;
+			sourceTree = "<group>";
+		};
+		67915E8C2FC770C80014D1E0 /* PillBreakfastUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PillBreakfastUITests;
+			sourceTree = "<group>";
+		};
+		67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "PillBreakfast Watch App Watch App";
+			sourceTree = "<group>";
+		};
+		67915EB72FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "PillBreakfast Watch App Watch AppTests";
+			sourceTree = "<group>";
+		};
+		67915EC12FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "PillBreakfast Watch App Watch AppUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		67915E6F2FC770C70014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E7C2FC770C80014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E862FC770C80014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EA22FC771CD0014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EB12FC771CF0014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EBB2FC771CF0014D1E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		67915E692FC770C70014D1E0 = {
+			isa = PBXGroup;
+			children = (
+				67915E742FC770C70014D1E0 /* PillBreakfast */,
+				67915E822FC770C80014D1E0 /* PillBreakfastTests */,
+				67915E8C2FC770C80014D1E0 /* PillBreakfastUITests */,
+				67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
+				67915EB72FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */,
+				67915EC12FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */,
+				67915E732FC770C70014D1E0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		67915E732FC770C70014D1E0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				67915E722FC770C70014D1E0 /* PillBreakfast.app */,
+				67915E7F2FC770C80014D1E0 /* PillBreakfastTests.xctest */,
+				67915E892FC770C80014D1E0 /* PillBreakfastUITests.xctest */,
+				67915EA02FC771CD0014D1E0 /* PillBreakfast Watch App.app */,
+				67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */,
+				67915EB42FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests.xctest */,
+				67915EBE2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		67915E712FC770C70014D1E0 /* PillBreakfast */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915E932FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast" */;
+			buildPhases = (
+				67915E6E2FC770C70014D1E0 /* Sources */,
+				67915E6F2FC770C70014D1E0 /* Frameworks */,
+				67915E702FC770C70014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				67915E742FC770C70014D1E0 /* PillBreakfast */,
+			);
+			name = PillBreakfast;
+			packageProductDependencies = (
+			);
+			productName = PillBreakfast;
+			productReference = 67915E722FC770C70014D1E0 /* PillBreakfast.app */;
+			productType = "com.apple.product-type.application";
+		};
+		67915E7E2FC770C80014D1E0 /* PillBreakfastTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915E962FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfastTests" */;
+			buildPhases = (
+				67915E7B2FC770C80014D1E0 /* Sources */,
+				67915E7C2FC770C80014D1E0 /* Frameworks */,
+				67915E7D2FC770C80014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67915E812FC770C80014D1E0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				67915E822FC770C80014D1E0 /* PillBreakfastTests */,
+			);
+			name = PillBreakfastTests;
+			packageProductDependencies = (
+			);
+			productName = PillBreakfastTests;
+			productReference = 67915E7F2FC770C80014D1E0 /* PillBreakfastTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		67915E882FC770C80014D1E0 /* PillBreakfastUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915E992FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfastUITests" */;
+			buildPhases = (
+				67915E852FC770C80014D1E0 /* Sources */,
+				67915E862FC770C80014D1E0 /* Frameworks */,
+				67915E872FC770C80014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67915E8B2FC770C80014D1E0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				67915E8C2FC770C80014D1E0 /* PillBreakfastUITests */,
+			);
+			name = PillBreakfastUITests;
+			packageProductDependencies = (
+			);
+			productName = PillBreakfastUITests;
+			productReference = 67915E892FC770C80014D1E0 /* PillBreakfastUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		67915E9F2FC771CD0014D1E0 /* PillBreakfast Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915ECA2FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App" */;
+			buildPhases = (
+				67915E9E2FC771CD0014D1E0 /* Resources */,
+				67915EC92FC771CF0014D1E0 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67915EA82FC771CD0014D1E0 /* PBXTargetDependency */,
+			);
+			name = "PillBreakfast Watch App";
+			packageProductDependencies = (
+			);
+			productName = "PillBreakfast Watch App";
+			productReference = 67915EA02FC771CD0014D1E0 /* PillBreakfast Watch App.app */;
+			productType = "com.apple.product-type.application.watchapp2-container";
+		};
+		67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915EC62FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch App" */;
+			buildPhases = (
+				67915EA12FC771CD0014D1E0 /* Sources */,
+				67915EA22FC771CD0014D1E0 /* Frameworks */,
+				67915EA32FC771CD0014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
+			);
+			name = "PillBreakfast Watch App Watch App";
+			packageProductDependencies = (
+			);
+			productName = "PillBreakfast Watch App Watch App";
+			productReference = 67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		67915EB32FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915ECD2FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch AppTests" */;
+			buildPhases = (
+				67915EB02FC771CF0014D1E0 /* Sources */,
+				67915EB12FC771CF0014D1E0 /* Frameworks */,
+				67915EB22FC771CF0014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67915EB62FC771CF0014D1E0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				67915EB72FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */,
+			);
+			name = "PillBreakfast Watch App Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "PillBreakfast Watch App Watch AppTests";
+			productReference = 67915EB42FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		67915EBD2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67915ED02FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch AppUITests" */;
+			buildPhases = (
+				67915EBA2FC771CF0014D1E0 /* Sources */,
+				67915EBB2FC771CF0014D1E0 /* Frameworks */,
+				67915EBC2FC771CF0014D1E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67915EC02FC771CF0014D1E0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				67915EC12FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */,
+			);
+			name = "PillBreakfast Watch App Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "PillBreakfast Watch App Watch AppUITests";
+			productReference = 67915EBE2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		67915E6A2FC770C70014D1E0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					67915E712FC770C70014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					67915E7E2FC770C80014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 67915E712FC770C70014D1E0;
+					};
+					67915E882FC770C80014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 67915E712FC770C70014D1E0;
+					};
+					67915E9F2FC771CD0014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					67915EA42FC771CD0014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					67915EB32FC771CF0014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 67915EA42FC771CD0014D1E0;
+					};
+					67915EBD2FC771CF0014D1E0 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 67915EA42FC771CD0014D1E0;
+					};
+				};
+			};
+			buildConfigurationList = 67915E6D2FC770C70014D1E0 /* Build configuration list for PBXProject "PillBreakfast" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 67915E692FC770C70014D1E0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 67915E732FC770C70014D1E0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				67915E712FC770C70014D1E0 /* PillBreakfast */,
+				67915E7E2FC770C80014D1E0 /* PillBreakfastTests */,
+				67915E882FC770C80014D1E0 /* PillBreakfastUITests */,
+				67915E9F2FC771CD0014D1E0 /* PillBreakfast Watch App */,
+				67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
+				67915EB32FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */,
+				67915EBD2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		67915E702FC770C70014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E7D2FC770C80014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E872FC770C80014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E9E2FC771CD0014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EA32FC771CD0014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EB22FC771CF0014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EBC2FC771CF0014D1E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		67915E6E2FC770C70014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E7B2FC770C80014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915E852FC770C80014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EA12FC771CD0014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EB02FC771CF0014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		67915EBA2FC771CF0014D1E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		67915E812FC770C80014D1E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 67915E712FC770C70014D1E0 /* PillBreakfast */;
+			targetProxy = 67915E802FC770C80014D1E0 /* PBXContainerItemProxy */;
+		};
+		67915E8B2FC770C80014D1E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 67915E712FC770C70014D1E0 /* PillBreakfast */;
+			targetProxy = 67915E8A2FC770C80014D1E0 /* PBXContainerItemProxy */;
+		};
+		67915EA82FC771CD0014D1E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */;
+			targetProxy = 67915EA72FC771CD0014D1E0 /* PBXContainerItemProxy */;
+		};
+		67915EB62FC771CF0014D1E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */;
+			targetProxy = 67915EB52FC771CF0014D1E0 /* PBXContainerItemProxy */;
+		};
+		67915EC02FC771CF0014D1E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */;
+			targetProxy = 67915EBF2FC771CF0014D1E0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		67915E912FC770C80014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		67915E922FC770C80014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		67915E942FC770C80014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PillBreakfast/PillBreakfast.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PillBreakfast/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfast;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		67915E952FC770C80014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PillBreakfast/PillBreakfast.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PillBreakfast/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfast;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		67915E972FC770C80014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfastTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PillBreakfast.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PillBreakfast";
+			};
+			name = Debug;
+		};
+		67915E982FC770C80014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfastTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PillBreakfast.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PillBreakfast";
+			};
+			name = Release;
+		};
+		67915E9A2FC770C80014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfastUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PillBreakfast;
+			};
+			name = Debug;
+		};
+		67915E9B2FC770C80014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.creekmasons.PillBreakfastUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PillBreakfast;
+			};
+			name = Release;
+		};
+		67915EC72FC771CF0014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "PillBreakfast Watch App Watch App/PillBreakfast Watch App Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PillBreakfast-Watch-App-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PillBreakfast Watch App";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Debug;
+		};
+		67915EC82FC771CF0014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "PillBreakfast Watch App Watch App/PillBreakfast Watch App Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PillBreakfast-Watch-App-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "PillBreakfast Watch App";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Release;
+		};
+		67915ECB2FC771CF0014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				INFOPLIST_KEY_CFBundleDisplayName = "PillBreakfast Watch App";
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		67915ECC2FC771CF0014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				INFOPLIST_KEY_CFBundleDisplayName = "PillBreakfast Watch App";
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		67915ECE2FC771CF0014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PillBreakfast Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PillBreakfast Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Debug;
+		};
+		67915ECF2FC771CF0014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PillBreakfast Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PillBreakfast Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Release;
+		};
+		67915ED12FC771CF0014D1E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "PillBreakfast Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Debug;
+		};
+		67915ED22FC771CF0014D1E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "PillBreakfast Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		67915E6D2FC770C70014D1E0 /* Build configuration list for PBXProject "PillBreakfast" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915E912FC770C80014D1E0 /* Debug */,
+				67915E922FC770C80014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915E932FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915E942FC770C80014D1E0 /* Debug */,
+				67915E952FC770C80014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915E962FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfastTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915E972FC770C80014D1E0 /* Debug */,
+				67915E982FC770C80014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915E992FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfastUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915E9A2FC770C80014D1E0 /* Debug */,
+				67915E9B2FC770C80014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915EC62FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915EC72FC771CF0014D1E0 /* Debug */,
+				67915EC82FC771CF0014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915ECA2FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915ECB2FC771CF0014D1E0 /* Debug */,
+				67915ECC2FC771CF0014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915ECD2FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915ECE2FC771CF0014D1E0 /* Debug */,
+				67915ECF2FC771CF0014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		67915ED02FC771CF0014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast Watch App Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67915ED12FC771CF0014D1E0 /* Debug */,
+				67915ED22FC771CF0014D1E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 67915E6A2FC770C70014D1E0 /* Project object */;
+}
