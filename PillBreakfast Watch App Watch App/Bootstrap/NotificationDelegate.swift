@@ -12,10 +12,11 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
 
   func applicationDidFinishLaunching() {
     UNUserNotificationCenter.current().delegate = self
-    NotificationBootstrap.registerCategory()
-    // Re-arm reminders from the persisted regimen in case the watch launched
-    // without a fresh push (the repeating triggers also survive on their own).
+    // Register the category, then re-arm reminders from the persisted regimen in
+    // case the watch launched without a fresh push (the repeating triggers also
+    // survive on their own).
     Task { @MainActor in
+      await NotificationBootstrap.registerCategory()
       do {
         let snapshot = try RegimenSnapshot.from(context: PersistenceController.shared.container.mainContext)
         await NotificationBootstrap.refresh(from: snapshot)

@@ -1,3 +1,4 @@
+#if os(watchOS)
 import os
 import UserNotifications
 
@@ -7,15 +8,15 @@ import UserNotifications
 ///
 /// Lives in `Shared/` (not the watch target) so the shared
 /// `WatchConnectivityCoordinator` can call `refresh(from:)` right after applying a
-/// snapshot without a Shared → watch-target dependency. Only the watch invokes it;
-/// the iPhone never schedules dose notifications (SPEC §8.1).
+/// snapshot without a Shared → watch-target dependency. Guarded to watchOS — the
+/// iPhone never schedules dose notifications (SPEC §8.1).
 @MainActor
 public enum NotificationBootstrap {
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Notifications")
 
   /// Called at watch app launch.
-  public static func registerCategory() {
-    NotificationCategory.register()
+  public static func registerCategory() async {
+    await NotificationCategory.register()
   }
 
   /// Called after the watch applies an incoming regimen snapshot. Authorization is
@@ -38,3 +39,4 @@ public enum NotificationBootstrap {
     }
   }
 }
+#endif

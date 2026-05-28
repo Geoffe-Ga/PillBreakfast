@@ -1,4 +1,5 @@
 import Foundation
+import os
 import UserNotifications
 
 /// Builds and schedules the watch's dose reminders. The whole pending set is
@@ -7,6 +8,12 @@ import UserNotifications
 public enum NotificationScheduler {
   /// Namespace for our requests so a rebuild never cancels unrelated notifications.
   public static let identifierPrefix = "com.creekmasons.pillbreakfast.dose."
+
+  /// watchOS silently caps pending notifications per app; past this the system
+  /// drops the extras. We warn rather than fail; smarter prioritization is #93.
+  static let systemPendingLimit = 64
+
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Notifications")
 
   /// Pure: turns a snapshot into the request set, with no side effects, so it's
   /// unit-testable without a notification environment. One request per scheduled
@@ -49,10 +56,18 @@ public enum NotificationScheduler {
     let stale = pending.map(\.identifier).filter { $0.hasPrefix(identifierPrefix) }
     center.removePendingNotificationRequests(withIdentifiers: stale)
 
-    for request in makeRequests(from: snapshot) {
-      // Documented anti-bypass exception (third-party SDK behavior; review 2026-09):
-      // one request failing to schedule must not abort the rest of the rebuild.
-      try? await center.add(request)
+    let requests = makeRequests(from: snapshot)
+    if requests.count > systemPendingLimit {
+      logger.warning("Scheduling \(requests.count) reminders exceeds the watchOS pending limit (\(systemPendingLimit)); extras will be dropped by the system.")
+    }
+    for request in requests {
+      do {
+        try await center.add(request)
+      } catch {
+        // One request failing must not abort the rest of the rebuild — but log it
+        // so a silent failure (e.g. hitting the per-app ceiling) is visible.
+        logger.warning("Failed to schedule \(request.identifier, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      }
     }
   }
 
