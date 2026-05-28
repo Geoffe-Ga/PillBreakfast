@@ -1,21 +1,30 @@
+import SwiftData
 import SwiftUI
 
 struct RootView: View {
+  @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
+  private var medications: [Medication]
+
   var body: some View {
-    VStack {
-      Text("Hello PillBreakfast")
-        .font(.title3)
-      Text("Watch app · placeholder")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      Text("WC state: \(WatchConnectivityCoordinator.shared.activationState.displayName)")
-        .font(.caption2)
-        .foregroundStyle(.secondary)
+    NavigationStack {
+      List {
+        if medications.isEmpty {
+          Text("Waiting for regimen…")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else {
+          // Read-only: the watch never edits the regimen (SPEC §6).
+          ForEach(medications) { medication in
+            Text(medication.displayName)
+          }
+        }
+      }
+      .navigationTitle("Pills")
     }
-    .padding()
   }
 }
 
 #Preview {
   RootView()
+    .modelContainer(for: Medication.self, inMemory: true)
 }
