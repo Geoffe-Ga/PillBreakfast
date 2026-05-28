@@ -77,6 +77,27 @@ struct DoseEventWriterTests {
     #expect(event.ingredientAmounts.first?.totalMg == 500)
   }
 
+  @Test func componentWithoutIngredientIsDroppedButRestSnapshot() throws {
+    let context = try makeInMemoryContext()
+    let valid = Ingredient(name: "Acetaminophen")
+    let combo = Medication(displayName: "Broken Combo", unitForm: .tablet, kind: .prn)
+    combo.components = [
+      MedicationComponent(ingredient: valid, dosagePerUnitMg: 250),
+      MedicationComponent(dosagePerUnitMg: 65), // no ingredient — store-integrity violation
+    ]
+    context.insert(combo)
+    try context.save()
+
+    let event = try DoseEventWriter.writeDoseEvent(
+      for: combo, scheduledFor: nil, quantity: 1, status: .taken, loggedOn: .watch, at: .now, in: context
+    )
+
+    // The broken component is dropped; the valid one survives intact.
+    #expect(event.ingredientAmounts.count == 1)
+    #expect(event.ingredientAmounts.first?.ingredientName == "Acetaminophen")
+    #expect(event.ingredientAmounts.first?.totalMg == 250)
+  }
+
   @Test func skipWritesSkippedStatus() throws {
     let context = try makeInMemoryContext()
     let ingredient = Ingredient(name: "Cholecalciferol")

@@ -10,9 +10,13 @@ struct TapThroughQueueView: View {
   let onFinished: () -> Void
 
   @Environment(\.modelContext) private var modelContext
-  @Query private var medications: [Medication]
+  @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
+  private var medications: [Medication]
   @State private var index = 0
   @State private var finished = false
+  /// Guards against a rapid double-tap logging the same dose twice before the
+  /// view advances.
+  @State private var loggedDoses: Set<PendingDose> = []
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "TapThrough")
 
@@ -56,12 +60,14 @@ struct TapThroughQueueView: View {
     // acetaminophen + aspirin mg), so show the per-unit mg only for single-ingredient
     // meds; combos show just the count.
     if medication.components.count == 1, let mgPerUnit = medication.components.first?.dosagePerUnitMg {
-      return "\(Int(mgPerUnit))mg · \(quantity) \(unit)"
+      return "\(Int(mgPerUnit.rounded()))mg · \(quantity) \(unit)"
     }
     return "\(quantity) \(unit)"
   }
 
   private func log(_ dose: PendingDose, _ medication: Medication, status: DoseStatus) {
+    guard !loggedDoses.contains(dose) else { return }
+    loggedDoses.insert(dose)
     do {
       try DoseEventWriter.writeDoseEvent(
         for: medication,

@@ -1,11 +1,16 @@
 import Foundation
+import os
 import SwiftData
 
 /// Writes `DoseEvent`s to the local store. The `ingredientAmounts` snapshot is
 /// built from the medication's components **at log time** and never recomputed,
-/// so later edits to the product can't rewrite history (SPEC §5.3, CLAUDE.md).
+/// so later edits to the product can't rewrite history.
 @MainActor
 public enum DoseEventWriter {
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "DoseLogging")
+
+  /// - Parameter loggedOn: which surface recorded the dose; callers pass `.watch`
+  ///   since the wrist is the only logging surface.
   @discardableResult
   public static func writeDoseEvent(
     for medication: Medication,
@@ -17,7 +22,12 @@ public enum DoseEventWriter {
     in context: ModelContext
   ) throws -> DoseEvent {
     let amounts: [LoggedIngredientAmount] = medication.components.compactMap { component in
-      guard let ingredient = component.ingredient else { return nil }
+      guard let ingredient = component.ingredient else {
+        // A component with no ingredient is a store-integrity violation; dropping
+        // it would undercount the ingredient's running total, so surface it loudly.
+        logger.warning("Component \(component.id, privacy: .public) has no ingredient; omitted from dose snapshot.")
+        return nil
+      }
       return LoggedIngredientAmount(
         ingredientID: ingredient.id,
         ingredientName: ingredient.name,
@@ -32,7 +42,7 @@ public enum DoseEventWriter {
       takenAt: now,
       quantity: quantity,
       status: status,
-      loggedOn: loggedOn, // callers pass .watch — the wrist is the only logging surface (SPEC §6)
+      loggedOn: loggedOn,
       ingredientAmounts: amounts
     )
     context.insert(event)
