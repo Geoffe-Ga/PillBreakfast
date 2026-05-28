@@ -23,8 +23,8 @@ public enum DoseEventWriter {
   ) throws -> DoseEvent {
     let amounts: [LoggedIngredientAmount] = medication.components.compactMap { component in
       guard let ingredient = component.ingredient else {
-        // A component with no ingredient is a store-integrity violation; dropping
-        // it would undercount the ingredient's running total, so surface it loudly.
+        // Store-integrity violation: we can't snapshot an ingredient we don't know.
+        // Log loudly and omit — better to undercount than to attribute mg to nil.
         logger.warning("Component \(component.id, privacy: .public) has no ingredient; omitted from dose snapshot.")
         return nil
       }

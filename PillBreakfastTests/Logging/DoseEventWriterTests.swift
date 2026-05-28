@@ -110,5 +110,7 @@ struct DoseEventWriterTests {
       for: vitaminD, scheduledFor: .now, quantity: 1, status: .skipped, loggedOn: .watch, at: .now, in: context
     )
     #expect(event.status == .skipped)
+    // The ingredient snapshot is written even on a skip (schema expectation).
+    #expect(event.ingredientAmounts.count == 1)
   }
 }

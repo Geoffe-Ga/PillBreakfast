@@ -26,8 +26,9 @@ struct TapThroughQueueView: View {
         QueueSuccessView(onDone: onFinished)
       } else {
         // Default page style per the issue. Swiping past a dose without acting on
-        // it is possible but harmless (each tap logs its own screen's dose); the
-        // gesture flow is reworked in EPIC 04 (press-and-hold) where this is constrained.
+        // it leaves that dose pending — it resurfaces on the next queue open (each
+        // tap still logs its own screen's dose). The gesture flow is reworked in
+        // EPIC 04 (press-and-hold), where swipe-past is constrained.
         TabView(selection: $index) {
           ForEach(Array(pendingDoses.enumerated()), id: \.offset) { offset, dose in
             doseScreen(dose).tag(offset)
@@ -50,7 +51,7 @@ struct TapThroughQueueView: View {
       )
     } else {
       // The synced regimen lost this medication — skip the screen silently.
-      Color.clear.onAppear { advance() }
+      Color.clear.onAppear { advance(after: dose) }
     }
   }
 
@@ -82,12 +83,19 @@ struct TapThroughQueueView: View {
       TapThroughQueueView.logger.error("Failed to log dose: \(error.localizedDescription, privacy: .public)")
       return
     }
-    advance()
+    advance(after: dose)
   }
 
-  private func advance() {
-    if index + 1 < pendingDoses.count {
-      withAnimation { index += 1 }
+  /// Advances to the screen after `dose`'s own position, so a swipe-ahead-then-tap
+  /// can't overshoot. A dose bypassed by swiping simply stays pending and
+  /// resurfaces on the next queue open.
+  private func advance(after dose: PendingDose) {
+    guard let offset = pendingDoses.firstIndex(of: dose) else {
+      finished = true
+      return
+    }
+    if offset + 1 < pendingDoses.count {
+      withAnimation { index = offset + 1 }
     } else {
       finished = true
     }

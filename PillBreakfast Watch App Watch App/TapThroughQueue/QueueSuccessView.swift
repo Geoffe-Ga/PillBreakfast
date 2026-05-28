@@ -13,6 +13,7 @@ struct QueueSuccessView: View {
       Text("All pills logged")
         .font(.headline)
     }
+    .padding()
     .task {
       do {
         try await Task.sleep(for: .seconds(1.5))
