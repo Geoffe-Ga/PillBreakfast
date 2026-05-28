@@ -91,6 +91,30 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
   }
 
   #if os(iOS)
+  /// Receives the watch's queued DoseEvent batch files and merges them. The file
+  /// URL is only valid for the duration of this call, so the data is read here
+  /// (off the main actor) and the decode/merge hops to the main actor.
+  public nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+    guard (file.metadata?[DoseEventBatchTransfer.metadataKindKey] as? String) == DoseEventBatchTransfer.metadataKind else {
+      return
+    }
+    let data: Data
+    do {
+      data = try Data(contentsOf: file.fileURL)
+    } catch {
+      logger.error("Failed to read received dose-event file: \(error.localizedDescription, privacy: .public)")
+      return
+    }
+    Task { @MainActor in
+      do {
+        try DoseEventBatchTransfer.merge(fileData: data, into: PersistenceController.shared.container.mainContext)
+        self.logger.info("Merged a received dose-event batch.")
+      } catch {
+        self.logger.error("Failed to merge received dose-event batch: \(error.localizedDescription, privacy: .public)")
+      }
+    }
+  }
+
   /// Encodes the current regimen and pushes it to the watch via `updateApplicationContext`
   /// ("latest wins"; the payload persists if the watch is offline). iPhone → watch only.
   public func pushRegimen(from context: ModelContext) {
