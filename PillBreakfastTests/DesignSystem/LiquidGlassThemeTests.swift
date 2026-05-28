@@ -1,4 +1,3 @@
-import Foundation
 @testable import PillBreakfast
 import SwiftUI
 import Testing
@@ -35,6 +34,16 @@ struct LiquidGlassThemeTests {
     #expect(
       LiquidGlassTheme.Typography.dosage(figure)
         == Text(figure).font(LiquidGlassTheme.Typography.dosageFont)
+    )
+  }
+
+  @Test func captionBuilderIsFontOnly() {
+    // Caption applies only the font (no embedded foreground style), matching the
+    // other builders.
+    let text = "PRN"
+    #expect(
+      LiquidGlassTheme.Typography.caption(text)
+        == Text(text).font(LiquidGlassTheme.Typography.captionFont)
     )
   }
 }

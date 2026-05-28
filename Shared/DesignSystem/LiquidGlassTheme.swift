@@ -15,6 +15,8 @@ public enum LiquidGlassTheme {
     /// The **only** color in the design system. Reserved for high-risk meds —
     /// the warm amber of the press-and-hold confirmation (SPEC §9, CLAUDE.md).
     /// There is intentionally no `accentColor`; baseline UI stays glass + mono.
+    /// Fixed sRGB (not an adaptive/asset color) — the high-risk cue must be the
+    /// same amber on every device and in both light and dark.
     public static let highRiskAccent = Color(red: 0.96, green: 0.66, blue: 0.27)
   }
 

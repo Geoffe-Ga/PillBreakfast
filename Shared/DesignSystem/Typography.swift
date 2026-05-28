@@ -16,8 +16,10 @@ public extension LiquidGlassTheme.Typography {
     Text(text).font(dosageFont)
   }
 
-  /// Supporting caption text.
+  /// Supporting caption text. Font-only, like the other builders — callers set
+  /// foreground style explicitly so these stay pure typography (a builder that
+  /// also baked in a color would silently override a caller's own style).
   static func caption(_ text: String) -> Text {
-    Text(text).font(captionFont).foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+    Text(text).font(captionFont)
   }
 }

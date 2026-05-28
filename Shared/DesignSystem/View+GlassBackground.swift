@@ -13,8 +13,7 @@ public extension View {
   /// `.background(.ultraThinMaterial)` fallback in the `else`. Review: 2026-11-01.
   func glassBackground() -> some View {
     background {
-      Rectangle()
-        .fill(.clear)
+      Color.clear
         .glassEffect()
         .ignoresSafeArea()
     }
