@@ -17,6 +17,7 @@ struct TapThroughQueueView: View {
   /// Guards against a rapid double-tap logging the same dose twice before the
   /// view advances.
   @State private var loggedDoses: Set<PendingDose> = []
+  @State private var writeFailed = false
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "TapThrough")
 
@@ -36,6 +37,13 @@ struct TapThroughQueueView: View {
         }
         .tabViewStyle(.verticalPage)
       }
+    }
+    .alert("Dose not recorded", isPresented: $writeFailed) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      // A silently-failed log is the most dangerous outcome for a med tracker;
+      // tell the user so they re-tap to retry (the dose stays on screen).
+      Text("Something went wrong saving this dose. Tap Mark Taken again to retry.")
     }
   }
 
@@ -81,6 +89,8 @@ struct TapThroughQueueView: View {
       )
     } catch {
       TapThroughQueueView.logger.error("Failed to log dose: \(error.localizedDescription, privacy: .public)")
+      loggedDoses.remove(dose) // un-guard so the user can retry this dose
+      writeFailed = true
       return
     }
     advance(after: dose)
