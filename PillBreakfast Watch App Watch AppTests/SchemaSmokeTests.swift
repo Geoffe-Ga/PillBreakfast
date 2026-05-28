@@ -14,10 +14,19 @@ struct SchemaSmokeTests {
 
     let ingredient = Ingredient()
     context.insert(ingredient)
+    context.insert(MedicationComponent())
+    context.insert(Medication())
+    context.insert(ScheduledDose())
+    context.insert(DoseEvent())
     try context.save()
 
-    let fetched = try context.fetch(FetchDescriptor<Ingredient>())
-    #expect(fetched.count == 1)
-    #expect(fetched.first?.id == ingredient.id)
+    // Fetch every model type so a missing entry in PersistenceController.schema
+    // surfaces here rather than silently dropping a table.
+    #expect(try context.fetch(FetchDescriptor<Ingredient>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<MedicationComponent>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<Medication>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<ScheduledDose>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<DoseEvent>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<Ingredient>()).first?.id == ingredient.id)
   }
 }
