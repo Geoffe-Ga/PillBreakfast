@@ -80,6 +80,35 @@ struct HoldProgressTests {
     #expect(hold.progress(at: t0) == 0)
   }
 
+  @Test func beginFromCompletedIsNoop() {
+    // Safety invariant: a fresh press must never overwrite a completed hold
+    // (which would re-fire confirmation).
+    let hold = makeHolding()
+    hold.complete()
+    hold.begin(at: t0.addingTimeInterval(10))
+    #expect(hold.state == .completed)
+    #expect(hold.progress(at: t0.addingTimeInterval(10)) == 1)
+  }
+
+  @Test func beginWhileHoldingDoesNotRestartClock() {
+    let hold = makeHolding()
+    // A second begin mid-hold is ignored; the original startedAt stands.
+    hold.begin(at: t0.addingTimeInterval(0.4))
+    #expect(hold.progress(at: t0.addingTimeInterval(0.25)) == 0.5)
+  }
+
+  @Test func resetFromIdleAndCancelledAreSafeNoops() {
+    let idle = HoldProgress(holdDuration: duration)
+    idle.reset()
+    #expect(idle.state == .idle)
+
+    let cancelled = makeHolding()
+    cancelled.release(at: t0.addingTimeInterval(0.1))
+    #expect(cancelled.state == .cancelled)
+    cancelled.reset()
+    #expect(cancelled.state == .idle)
+  }
+
   @Test func beginAfterCancelRestartsClock() {
     let hold = makeHolding()
     hold.release(at: t0.addingTimeInterval(0.1)) // cancelled

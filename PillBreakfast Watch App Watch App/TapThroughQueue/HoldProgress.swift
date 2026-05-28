@@ -28,9 +28,12 @@ final class HoldProgress {
     return false
   }
 
-  /// Begins a hold. Only meaningful from `.idle`/`.cancelled`; a fresh press
-  /// after a cancel resets the clock.
+  /// Begins a hold from rest. Guarded to `.idle`/`.cancelled` so it can never
+  /// overwrite a `.completed` hold (which would re-fire confirmation) or restart
+  /// an in-flight `.holding` clock — the invariant is enforced here, not trusted
+  /// to the caller, because this gates a safety-critical confirmation.
   func begin(at now: Date) {
+    guard state == .idle || state == .cancelled else { return }
     state = .holding(startedAt: now)
   }
 

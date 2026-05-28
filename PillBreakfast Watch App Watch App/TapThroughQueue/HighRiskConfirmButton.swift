@@ -45,6 +45,16 @@ struct HighRiskConfirmButton: View {
     )
     .accessibilityLabel(hint)
     .accessibilityAddTraits(.isButton)
+    // Known gap: VoiceOver can't drive a LongPressGesture, so an assistive-tech
+    // user can't yet confirm a high-risk dose. A proper accessible path (a
+    // confirm-dialog action that can't trivially bypass the safety hold) is
+    // tracked separately for EPIC 04. See follow-up issue.
+    .onDisappear {
+      // Stop the haptic checkpoints if the screen goes away mid-hold, so clicks
+      // don't fire after the view is gone.
+      checkpointTask?.cancel()
+      hold.reset()
+    }
   }
 
   private var ring: some View {
@@ -69,8 +79,9 @@ struct HighRiskConfirmButton: View {
 
   private func beginHoldIfNeeded() {
     guard !hold.isHolding, hold.state != .completed else { return }
-    didConfirm = false
     hold.begin(at: .now)
+    // Reset the one-shot guard only once a fresh hold has actually started.
+    didConfirm = false
     scheduleCheckpointHaptics()
   }
 
@@ -105,11 +116,10 @@ struct HighRiskConfirmButton: View {
   /// Light haptic at 25/50/75% of the hold, cancelled the moment the finger lifts.
   private func scheduleCheckpointHaptics() {
     checkpointTask?.cancel()
-    let duration = holdDuration
     checkpointTask = Task { @MainActor in
       let start = Date.now
       for fraction in [0.25, 0.5, 0.75] {
-        let remaining = duration * fraction - Date.now.timeIntervalSince(start)
+        let remaining = holdDuration * fraction - Date.now.timeIntervalSince(start)
         if remaining > 0 {
           do {
             try await Task.sleep(for: .seconds(remaining))
