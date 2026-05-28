@@ -81,8 +81,9 @@ struct TapThroughQueueView: View {
   private func log(_ dose: PendingDose, _ medication: Medication, status: DoseStatus) {
     guard !loggedDoseIDs.contains(dose.id) else { return }
     loggedDoseIDs.insert(dose.id)
+    let event: DoseEvent
     do {
-      try DoseEventWriter.writeDoseEvent(
+      event = try DoseEventWriter.writeDoseEvent(
         for: medication,
         scheduledFor: dose.scheduledFor,
         quantity: dose.quantity,
@@ -96,6 +97,12 @@ struct TapThroughQueueView: View {
       loggedDoseIDs.remove(dose.id) // un-guard so the user can retry this dose
       writeFailed = true
       return
+    }
+    // Transfer failure is non-fatal — the watch store is authoritative.
+    do {
+      try DoseEventBatchTransfer.transfer([event])
+    } catch {
+      TapThroughQueueView.logger.error("Failed to queue dose transfer: \(error.localizedDescription, privacy: .public)")
     }
     advance(after: dose)
   }
