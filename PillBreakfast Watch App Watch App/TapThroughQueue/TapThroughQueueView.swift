@@ -55,6 +55,7 @@ struct TapThroughQueueView: View {
       MarkTakenView(
         medicationName: medication.displayName,
         detail: detail(for: medication, quantity: dose.quantity),
+        isHighRisk: medication.isHighRisk,
         // Color is reserved for high-risk meds (CLAUDE.md); the baseline UI stays
         // monochromatic, so only pass a swatch when the med is high-risk.
         colorHex: medication.isHighRisk ? medication.colorHex : nil,

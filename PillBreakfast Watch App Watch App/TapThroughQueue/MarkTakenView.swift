@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// One pill per screen. Single-tap "Mark Taken" for now; the high-risk
-/// press-and-hold gesture lands in EPIC 04. A secondary "Skip" logs a skipped
-/// dose. ("Snooze until…" is intentionally omitted here — it arrives in EPIC 06.)
+/// One pill per screen. Non-high-risk meds confirm with a single tap; high-risk
+/// meds require the press-and-hold ring (`HighRiskConfirmButton`) — single-tap on
+/// a high-risk dose is the regression this guards against. A secondary "Skip"
+/// logs a skipped dose. ("Snooze until…" is intentionally omitted — it's EPIC 06.)
 struct MarkTakenView: View {
   let medicationName: String
   let detail: String
+  let isHighRisk: Bool
   let colorHex: String?
   let onMarkTaken: () -> Void
   let onSkip: () -> Void
@@ -25,8 +27,11 @@ struct MarkTakenView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
 
-      Button("Mark Taken", action: onMarkTaken)
-        .buttonStyle(.borderedProminent)
+      if isHighRisk {
+        HighRiskConfirmButton(onConfirmed: onMarkTaken)
+      } else {
+        SingleTapConfirmButton(onConfirmed: onMarkTaken)
+      }
 
       Button("Skip", action: onSkip)
         .buttonStyle(.bordered)
@@ -36,13 +41,23 @@ struct MarkTakenView: View {
   }
 }
 
-#Preview {
-  // High-risk example: the color swatch only appears for high-risk meds, and the
-  // caller (TapThroughQueueView) passes the hex only in that case.
+#Preview("High-risk (hold)") {
   MarkTakenView(
     medicationName: "Lithium 300mg",
     detail: "300mg · 1 tablet",
+    isHighRisk: true,
     colorHex: "#FFAA00",
+    onMarkTaken: {},
+    onSkip: {}
+  )
+}
+
+#Preview("Maintenance (tap)") {
+  MarkTakenView(
+    medicationName: "Vitamin D",
+    detail: "2000 IU · 1 capsule",
+    isHighRisk: false,
+    colorHex: nil,
     onMarkTaken: {},
     onSkip: {}
   )
