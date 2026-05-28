@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 
 /// Shared SwiftData container backed by the App Group store, opened against the PillBreakfast model graph.
@@ -8,7 +9,7 @@ public final class PersistenceController {
 
   public static let appGroupIdentifier = "group.com.creekmasons.pillbreakfast"
 
-  /// The PillBreakfast model graph. Field bodies and relationships land in EPIC 02; these are id-only shells.
+  /// The PillBreakfast model graph (SPEC §5.2).
   public static let schema = Schema([
     Ingredient.self,
     MedicationComponent.self,
@@ -16,6 +17,11 @@ public final class PersistenceController {
     ScheduledDose.self,
     DoseEvent.self,
   ])
+
+  private static let logger = Logger(
+    subsystem: "com.creekmasons.pillbreakfast",
+    category: "Persistence"
+  )
 
   public let container: ModelContainer
 
@@ -29,6 +35,15 @@ public final class PersistenceController {
       )
     } catch {
       fatalError("Failed to open SwiftData container at \(url): \(error)")
+    }
+
+    // Seed the common-ingredient library on each device's local store. Idempotent,
+    // so running it on every launch is fine. A seed failure leaves the library empty
+    // (recoverable — the user can still add meds), so we log rather than crash.
+    do {
+      try IngredientLibrarySeeder.seedIfNeeded(context: container.mainContext)
+    } catch {
+      Self.logger.error("Ingredient library seeding failed: \(error.localizedDescription, privacy: .public)")
     }
   }
 
