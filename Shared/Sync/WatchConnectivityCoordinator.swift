@@ -1,8 +1,9 @@
 import Foundation
 import os
+import SwiftData
 import WatchConnectivity
 
-/// Activates `WCSession` at launch and surfaces the activation state to SwiftUI; no payload is exchanged until EPIC 02.
+/// Activates `WCSession`, pushes the regimen iPhone → watch via `updateApplicationContext`, and applies inbound snapshots on the watch.
 @MainActor
 @Observable
 public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
@@ -49,6 +50,13 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
       self.activationState = activationState
       self.lastError = errorText
       self.logger.info("WCSession activated, state=\(activationState.displayName, privacy: .public)")
+      #if os(iOS)
+      // On the phone, push the current regimen as soon as the session is live, so a
+      // freshly launched (or relaunched) watch converges even without a manual edit.
+      if activationState == .activated {
+        self.pushRegimen(from: PersistenceController.shared.container.mainContext)
+      }
+      #endif
     }
   }
 
@@ -56,9 +64,39 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     _ session: WCSession,
     didReceiveApplicationContext applicationContext: [String: Any]
   ) {
-    // Payload decoding lands in EPIC 02; for now we only confirm the channel delivered something.
-    logger.debug("WCSession received application context.")
+    guard let data = applicationContext["regimen"] as? Data else {
+      logger.warning("Received application context without a regimen payload.")
+      return
+    }
+    Task { @MainActor in
+      do {
+        let snapshot = try JSONDecoder().decode(RegimenSnapshot.self, from: data)
+        try snapshot.apply(to: PersistenceController.shared.container.mainContext)
+        self.logger.info("Applied regimen with \(snapshot.medications.count, privacy: .public) medications.")
+      } catch {
+        self.logger.error("Failed to decode/apply regimen: \(error.localizedDescription, privacy: .public)")
+      }
+    }
   }
+
+  #if os(iOS)
+  /// Encodes the current regimen and pushes it to the watch via `updateApplicationContext`
+  /// ("latest wins"; the payload persists if the watch is offline). iPhone → watch only.
+  public func pushRegimen(from context: ModelContext) {
+    guard WCSession.default.activationState == .activated else {
+      logger.warning("Skipping regimen push; WCSession is not activated.")
+      return
+    }
+    do {
+      let snapshot = try RegimenSnapshot.from(context: context)
+      let data = try JSONEncoder().encode(snapshot)
+      try WCSession.default.updateApplicationContext(["regimen": data])
+      logger.info("Pushed regimen with \(snapshot.medications.count, privacy: .public) medications.")
+    } catch {
+      logger.error("Failed to push regimen: \(error.localizedDescription, privacy: .public)")
+    }
+  }
+  #endif
 
   #if os(iOS)
   public nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
