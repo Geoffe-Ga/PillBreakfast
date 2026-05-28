@@ -12,6 +12,7 @@ struct PillBreakfast_Watch_App_Watch_AppTests {
     _ = MarkTakenView(
       medicationName: "Stub Lithium 300mg",
       detail: "300mg · 1 tablet",
+      isHighRisk: true,
       colorHex: nil,
       onMarkTaken: {},
       onSkip: {}
