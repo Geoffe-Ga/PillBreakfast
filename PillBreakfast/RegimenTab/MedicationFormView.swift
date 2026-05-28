@@ -10,13 +10,9 @@ struct MedicationFormView: View {
   var onIngredientCreated: (UUID) -> Void = { _ in }
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
   @State private var showingNewIngredient = false
-
-  /// Suppress the validation list on a pristine form; show it once the user starts.
-  private var showValidationErrors: Bool {
-    !formState.displayName.isEmpty
-      || formState.componentDraft.ingredientID != nil
-      || !formState.schedules.isEmpty
-  }
+  /// Sticky once the user first touches the form, so errors don't vanish if a
+  /// field (e.g. the name) is later cleared back to empty.
+  @State private var hasInteracted = false
 
   var body: some View {
     Form {
@@ -50,7 +46,7 @@ struct MedicationFormView: View {
         ScheduleRowEditor(schedules: $formState.schedules)
       }
 
-      if showValidationErrors, !formState.validationErrors.isEmpty {
+      if hasInteracted, !formState.validationErrors.isEmpty {
         Section {
           ForEach(formState.validationErrors, id: \.self) { error in
             Text(error)
@@ -74,6 +70,9 @@ struct MedicationFormView: View {
         onIngredientCreated(newID)
       }
     }
+    .onChange(of: formState.displayName) { _, _ in hasInteracted = true }
+    .onChange(of: formState.componentDraft) { _, _ in hasInteracted = true }
+    .onChange(of: formState.schedules) { _, _ in hasInteracted = true }
   }
 }
 

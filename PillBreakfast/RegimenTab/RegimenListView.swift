@@ -9,6 +9,7 @@ struct RegimenListView: View {
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
   @State private var showingAdd = false
+  @State private var archiveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
@@ -41,6 +42,14 @@ struct RegimenListView: View {
     .sheet(isPresented: $showingAdd) {
       AddMedicationView()
     }
+    .alert(
+      "Couldn't archive medication",
+      isPresented: Binding(get: { archiveError != nil }, set: { if !$0 { archiveError = nil } })
+    ) {
+      Button("OK", role: .cancel) { archiveError = nil }
+    } message: {
+      Text(archiveError ?? "")
+    }
   }
 
   @ViewBuilder
@@ -71,6 +80,8 @@ struct RegimenListView: View {
       try modelContext.save()
     } catch {
       RegimenListView.logger.error("Failed to archive medication: \(error.localizedDescription, privacy: .public)")
+      modelContext.rollback()
+      archiveError = "The change couldn't be saved. Please try again."
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)

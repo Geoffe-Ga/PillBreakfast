@@ -41,6 +41,8 @@ struct EditMedicationView: View {
       try modelContext.save()
     } catch {
       EditMedicationView.logger.error("Failed to save medication edit: \(error.localizedDescription, privacy: .public)")
+      // Revert any partial mutations to the existing medication.
+      modelContext.rollback()
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)

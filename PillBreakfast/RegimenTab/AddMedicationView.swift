@@ -41,7 +41,9 @@ struct AddMedicationView: View {
       try modelContext.save()
     } catch {
       AddMedicationView.logger.error("Failed to add medication: \(error.localizedDescription, privacy: .public)")
-      modelContext.delete(medication) // roll back the partial insert
+      // Discard the partially-inserted medication (and any uncommitted inline
+      // ingredients) so autosave can't flush a half-built graph.
+      modelContext.rollback()
       InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
       return
     }
