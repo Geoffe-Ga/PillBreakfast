@@ -34,6 +34,7 @@ struct RightNowView: View {
     NavigationStack {
       content
         .navigationTitle("Right Now")
+        .glassBackground()
     }
     .task(id: scheduleSignature) { reload() }
     // The window is time-relative, so re-evaluate when the app is foregrounded
