@@ -14,9 +14,10 @@ struct TapThroughQueueView: View {
   private var medications: [Medication]
   @State private var index = 0
   @State private var finished = false
-  /// Guards against a rapid double-tap logging the same dose twice before the
-  /// view advances. Keyed on `PendingDose.id`, so two doses with the same
-  /// med/time/quantity stay distinct.
+  /// In-memory only — durable dedup comes from PendingQueueSelector (#26)
+  /// filtering already-logged-today doses. This guard is purely a UX layer
+  /// against rapid re-taps within one view lifetime, keyed on `PendingDose.id`
+  /// so two doses with the same med/time/quantity stay distinct.
   @State private var loggedDoseIDs: Set<UUID> = []
   @State private var writeFailed = false
 
@@ -104,6 +105,9 @@ struct TapThroughQueueView: View {
   /// resurfaces on the next queue open.
   private func advance(after dose: PendingDose) {
     guard let offset = pendingDoses.firstIndex(of: dose) else {
+      // Shouldn't happen — the dose came from this queue — but surface it rather
+      // than ending silently if a future refactor passes a foreign dose.
+      TapThroughQueueView.logger.error("advance(after:) given a dose not in the queue; finishing.")
       finished = true
       return
     }
