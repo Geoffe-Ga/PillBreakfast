@@ -12,12 +12,12 @@ struct SchemaSmokeTests {
     )
     let context = ModelContext(container)
 
-    let ingredient = Ingredient()
+    let ingredient = Ingredient(name: "Smoke Test")
     context.insert(ingredient)
-    context.insert(MedicationComponent())
-    context.insert(Medication())
-    context.insert(ScheduledDose())
-    context.insert(DoseEvent())
+    context.insert(MedicationComponent(dosagePerUnitMg: 1))
+    context.insert(Medication(displayName: "Smoke Test", unitForm: .tablet, kind: .maintenance))
+    context.insert(ScheduledDose(hour: 8, minute: 0, quantity: 1))
+    context.insert(DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch))
     try context.save()
 
     // Fetch every model type so a missing entry in PersistenceController.schema
