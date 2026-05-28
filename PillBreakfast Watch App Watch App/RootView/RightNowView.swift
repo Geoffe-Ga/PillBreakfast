@@ -31,10 +31,14 @@ struct RightNowView: View {
   }
 
   var body: some View {
+    // Glass backs the whole screen (the outer container), nav bar included, so
+    // the entire surface reads as one piece of Liquid Glass rather than a glass
+    // panel under a system-opaque title.
     NavigationStack {
       content
         .navigationTitle("Right Now")
     }
+    .glassBackground()
     .task(id: scheduleSignature) { reload() }
     // The window is time-relative, so re-evaluate when the app is foregrounded
     // (time has passed since the last reload even if no data changed).
