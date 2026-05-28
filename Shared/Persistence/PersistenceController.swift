@@ -1,12 +1,21 @@
 import Foundation
 import SwiftData
 
-/// Shared SwiftData container backed by the App Group store; schema stays empty until EPIC 02.
+/// Shared SwiftData container backed by the App Group store, opened against the PillBreakfast model graph.
 @MainActor
 public final class PersistenceController {
   public static let shared = PersistenceController()
 
   public static let appGroupIdentifier = "group.com.creekmasons.pillbreakfast"
+
+  /// The PillBreakfast model graph. Field bodies and relationships land in EPIC 02; these are id-only shells.
+  public static let schema = Schema([
+    Ingredient.self,
+    MedicationComponent.self,
+    Medication.self,
+    ScheduledDose.self,
+    DoseEvent.self,
+  ])
 
   public let container: ModelContainer
 
@@ -15,7 +24,7 @@ public final class PersistenceController {
     let configuration = ModelConfiguration(url: url)
     do {
       self.container = try ModelContainer(
-        for: Schema([]),
+        for: Self.schema,
         configurations: configuration
       )
     } catch {
