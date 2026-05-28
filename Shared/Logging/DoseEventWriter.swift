@@ -12,6 +12,7 @@ public enum DoseEventWriter {
     scheduledFor: Date?,
     quantity: Int,
     status: DoseStatus,
+    loggedOn: LogSource,
     at now: Date,
     in context: ModelContext
   ) throws -> DoseEvent {
@@ -31,7 +32,7 @@ public enum DoseEventWriter {
       takenAt: now,
       quantity: quantity,
       status: status,
-      loggedOn: .watch, // every dose logged here is from the wrist (SPEC §6)
+      loggedOn: loggedOn, // callers pass .watch — the wrist is the only logging surface (SPEC §6)
       ingredientAmounts: amounts
     )
     context.insert(event)

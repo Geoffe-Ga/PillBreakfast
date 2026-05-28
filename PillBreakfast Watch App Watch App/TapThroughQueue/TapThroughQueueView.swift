@@ -21,6 +21,9 @@ struct TapThroughQueueView: View {
       if finished || pendingDoses.isEmpty {
         QueueSuccessView(onDone: onFinished)
       } else {
+        // Default page style per the issue. Swiping past a dose without acting on
+        // it is possible but harmless (each tap logs its own screen's dose); the
+        // gesture flow is reworked in EPIC 04 (press-and-hold) where this is constrained.
         TabView(selection: $index) {
           ForEach(Array(pendingDoses.enumerated()), id: \.offset) { offset, dose in
             doseScreen(dose).tag(offset)
@@ -42,15 +45,20 @@ struct TapThroughQueueView: View {
         onSkip: { log(dose, medication, status: .skipped) }
       )
     } else {
-      // The synced regimen lost this medication — skip the screen gracefully.
-      ProgressView().onAppear { advance() }
+      // The synced regimen lost this medication — skip the screen silently.
+      Color.clear.onAppear { advance() }
     }
   }
 
   private func detail(for medication: Medication, quantity: Int) -> String {
-    let mgPerUnit = medication.components.first?.dosagePerUnitMg ?? 0
     let unit = quantity == 1 ? "tablet" : "tablets"
-    return "\(Int(mgPerUnit))mg · \(quantity) \(unit)"
+    // A single summed mg figure is meaningless for combo products (you can't add
+    // acetaminophen + aspirin mg), so show the per-unit mg only for single-ingredient
+    // meds; combos show just the count.
+    if medication.components.count == 1, let mgPerUnit = medication.components.first?.dosagePerUnitMg {
+      return "\(Int(mgPerUnit))mg · \(quantity) \(unit)"
+    }
+    return "\(quantity) \(unit)"
   }
 
   private func log(_ dose: PendingDose, _ medication: Medication, status: DoseStatus) {
@@ -60,6 +68,7 @@ struct TapThroughQueueView: View {
         scheduledFor: dose.scheduledFor,
         quantity: dose.quantity,
         status: status,
+        loggedOn: .watch,
         at: .now,
         in: modelContext
       )

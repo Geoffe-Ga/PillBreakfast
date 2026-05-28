@@ -22,7 +22,7 @@ struct DoseEventWriterTests {
     try context.save()
 
     let event = try DoseEventWriter.writeDoseEvent(
-      for: vitaminD, scheduledFor: nil, quantity: 1, status: .taken, at: .now, in: context
+      for: vitaminD, scheduledFor: nil, quantity: 1, status: .taken, loggedOn: .watch, at: .now, in: context
     )
 
     #expect(event.status == .taken)
@@ -48,7 +48,7 @@ struct DoseEventWriterTests {
     try context.save()
 
     let event = try DoseEventWriter.writeDoseEvent(
-      for: excedrin, scheduledFor: nil, quantity: 2, status: .taken, at: .now, in: context
+      for: excedrin, scheduledFor: nil, quantity: 2, status: .taken, loggedOn: .watch, at: .now, in: context
     )
 
     #expect(event.ingredientAmounts.count == 3)
@@ -67,7 +67,7 @@ struct DoseEventWriterTests {
     try context.save()
 
     let event = try DoseEventWriter.writeDoseEvent(
-      for: tylenol, scheduledFor: nil, quantity: 1, status: .taken, at: .now, in: context
+      for: tylenol, scheduledFor: nil, quantity: 1, status: .taken, loggedOn: .watch, at: .now, in: context
     )
 
     // Editing the product afterwards must not rewrite the logged snapshot.
@@ -86,7 +86,7 @@ struct DoseEventWriterTests {
     try context.save()
 
     let event = try DoseEventWriter.writeDoseEvent(
-      for: vitaminD, scheduledFor: .now, quantity: 1, status: .skipped, at: .now, in: context
+      for: vitaminD, scheduledFor: .now, quantity: 1, status: .skipped, loggedOn: .watch, at: .now, in: context
     )
     #expect(event.status == .skipped)
   }
