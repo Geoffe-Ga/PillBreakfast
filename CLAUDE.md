@@ -59,7 +59,7 @@ When asked to start a phase, generate its plan file first and align before writi
 
 ## Build / Test / Run
 
-Requires **Xcode 26+** (ships the iOS 26 / watchOS 26 SDKs). The project is `PillBreakfast.xcodeproj`; there is no workspace and no Swift package manifest.
+Requires **Xcode 26+** (ships the iOS 26 / watchOS 26 SDKs). The project is `PillBreakfast.xcodeproj`; there is no workspace and no Swift package manifest (Phase 0 — likely revisited when `Shared/` is extracted into its own package).
 
 Schemes (exact names — note the watch scheme is doubled):
 

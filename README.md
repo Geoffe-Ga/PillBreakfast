@@ -17,6 +17,12 @@ The product has one job: **make sure the wearer knows what they have and haven't
 - A **watchOS 26 simulator** — e.g. *Apple Watch Series 11 (46mm)*.
 - [`pre-commit`](https://pre-commit.com) and [`SwiftFormat`](https://github.com/nicklockwood/SwiftFormat) (`brew install pre-commit swiftformat`) for the local quality gate.
 
+If you have more than one Xcode installed, point the command line at Xcode 26 first so `OS=latest` resolves to the iOS 26 / watchOS 26 runtimes:
+
+```bash
+sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
+```
+
 ## Quick Start
 
 ```bash
@@ -30,6 +36,8 @@ open PillBreakfast.xcodeproj
 You should see `WC state: activated` on both the iPhone and the watch within ~5 seconds.
 
 ## Build
+
+> These commands mirror CLAUDE.md's *Build / Test / Run* section — keep the two in sync if the scheme names or simulator destinations ever change.
 
 ```bash
 xcodebuild build -project PillBreakfast.xcodeproj \
