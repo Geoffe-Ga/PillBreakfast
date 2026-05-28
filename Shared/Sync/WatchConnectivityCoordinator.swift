@@ -41,7 +41,7 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     Task { @MainActor in
       self.activationState = activationState
       self.lastError = errorText
-      self.logger.info("WCSession activated, state=\(activationState.rawValue, privacy: .public)")
+      self.logger.info("WCSession activated, state=\(activationState.displayName, privacy: .public)")
     }
   }
 
@@ -55,12 +55,19 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
 
   #if os(iOS)
   public nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
-    logger.info("WCSession became inactive.")
+    Task { @MainActor in
+      self.activationState = .inactive
+      self.logger.info("WCSession became inactive.")
+    }
   }
 
   public nonisolated func sessionDidDeactivate(_ session: WCSession) {
+    Task { @MainActor in
+      self.activationState = .notActivated
+      self.logger.info("WCSession deactivated; reactivating.")
+    }
     // The phone can pair with a new watch; reactivate so the next device can hand off.
-    logger.info("WCSession deactivated; reactivating.")
+    // Safe to call from any thread, so it stays outside the main-actor hop.
     WCSession.default.activate()
   }
   #endif
