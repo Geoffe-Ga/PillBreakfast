@@ -11,9 +11,9 @@ import SwiftData
 public struct RegimenSnapshot: Codable, Sendable, Hashable {
   public static let currentSchemaVersion = 1
 
-  public var schemaVersion: Int
-  public var ingredients: [IngredientDTO]
-  public var medications: [MedicationDTO]
+  public let schemaVersion: Int
+  public let ingredients: [IngredientDTO]
+  public let medications: [MedicationDTO]
 
   public init(
     schemaVersion: Int = RegimenSnapshot.currentSchemaVersion,
@@ -24,6 +24,16 @@ public struct RegimenSnapshot: Codable, Sendable, Hashable {
     self.ingredients = ingredients
     self.medications = medications
   }
+}
+
+/// Errors raised while converting between the SwiftData store and a ``RegimenSnapshot``.
+public enum SyncError: Error, Equatable, Sendable {
+  /// A snapshot was produced by a newer app version than this device understands.
+  case unsupportedSchemaVersion(Int)
+  /// The store holds a component with no ingredient — an integrity violation, not a valid sync state.
+  case orphanedComponent(componentID: UUID)
+  /// A snapshot component references an ingredient that is in neither the snapshot nor the store.
+  case danglingIngredientReference(componentID: UUID, ingredientID: UUID)
 }
 
 public struct IngredientDTO: Codable, Sendable, Hashable {
@@ -53,10 +63,12 @@ public struct IngredientDTO: Codable, Sendable, Hashable {
 
 public struct ComponentDTO: Codable, Sendable, Hashable {
   public let id: UUID
-  public let ingredientID: UUID? // references an IngredientDTO in the snapshot
+  // Non-optional: every component must reference an ingredient, since PRN ceiling
+  // math depends on it. A missing reference is an integrity error, surfaced eagerly.
+  public let ingredientID: UUID
   public let dosagePerUnitMg: Double
 
-  public init(id: UUID, ingredientID: UUID?, dosagePerUnitMg: Double) {
+  public init(id: UUID, ingredientID: UUID, dosagePerUnitMg: Double) {
     self.id = id
     self.ingredientID = ingredientID
     self.dosagePerUnitMg = dosagePerUnitMg
@@ -141,8 +153,13 @@ public extension RegimenSnapshot {
       )
     }
 
-    let medications = try context.fetch(FetchDescriptor<Medication>()).map { medication in
-      MedicationDTO(
+    // Only active meds sync to the watch — it logs against the live regimen, and
+    // including archived history would bloat every WCSession payload over time.
+    var activeMeds = FetchDescriptor<Medication>()
+    activeMeds.predicate = #Predicate { !$0.isArchived }
+
+    let medications = try context.fetch(activeMeds).map { medication in
+      try MedicationDTO(
         id: medication.id,
         displayName: medication.displayName,
         fullName: medication.fullName,
@@ -154,8 +171,11 @@ public extension RegimenSnapshot {
         createdAt: medication.createdAt,
         healthKitConceptID: medication.healthKitConceptID,
         prnAvailableQuantities: medication.prnAvailableQuantities,
-        components: medication.components.map {
-          ComponentDTO(id: $0.id, ingredientID: $0.ingredient?.id, dosagePerUnitMg: $0.dosagePerUnitMg)
+        components: medication.components.map { component in
+          guard let ingredientID = component.ingredient?.id else {
+            throw SyncError.orphanedComponent(componentID: component.id)
+          }
+          return ComponentDTO(id: component.id, ingredientID: ingredientID, dosagePerUnitMg: component.dosagePerUnitMg)
         },
         schedule: medication.schedule.map {
           ScheduledDoseDTO(id: $0.id, hour: $0.hour, minute: $0.minute, quantity: $0.quantity, daysOfWeek: $0.daysOfWeek)
@@ -171,6 +191,12 @@ public extension RegimenSnapshot {
   /// (`isArchived = true`), never deleted, so a partial/garbled push can't destroy history.
   @MainActor
   func apply(to context: ModelContext) throws {
+    // Reject snapshots from a future app version rather than risk corrupting the
+    // store in a mixed-version pairing (e.g. iPhone updated, watch not yet).
+    guard schemaVersion <= RegimenSnapshot.currentSchemaVersion else {
+      throw SyncError.unsupportedSchemaVersion(schemaVersion)
+    }
+
     var ingredientByID = try Dictionary(
       context.fetch(FetchDescriptor<Ingredient>()).map { ($0.id, $0) },
       uniquingKeysWith: { first, _ in first }
@@ -222,12 +248,14 @@ public extension RegimenSnapshot {
       for old in medication.schedule {
         context.delete(old)
       }
-      medication.components = dto.components.map { component in
-        MedicationComponent(
-          id: component.id,
-          ingredient: component.ingredientID.flatMap { ingredientByID[$0] },
-          dosagePerUnitMg: component.dosagePerUnitMg
-        )
+      medication.components = try dto.components.map { component in
+        guard let ingredient = ingredientByID[component.ingredientID] else {
+          throw SyncError.danglingIngredientReference(
+            componentID: component.id,
+            ingredientID: component.ingredientID
+          )
+        }
+        return MedicationComponent(id: component.id, ingredient: ingredient, dosagePerUnitMg: component.dosagePerUnitMg)
       }
       medication.schedule = dto.schedule.map { dose in
         ScheduledDose(id: dose.id, hour: dose.hour, minute: dose.minute, quantity: dose.quantity, daysOfWeek: dose.daysOfWeek)
@@ -238,6 +266,11 @@ public extension RegimenSnapshot {
     for medication in existingMeds where !snapshotMedIDs.contains(medication.id) {
       medication.isArchived = true
     }
+
+    // Ingredients are intentionally left in place: they are a shared library keyed
+    // by stable ID, so a med dropping out of the snapshot must not orphan-delete an
+    // ingredient another med (or a future med) still references. Ingredient
+    // lifecycle/dedup is tracked separately (issue #82).
 
     try context.save()
   }

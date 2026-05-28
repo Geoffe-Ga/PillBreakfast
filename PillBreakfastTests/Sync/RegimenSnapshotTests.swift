@@ -113,5 +113,59 @@ struct RegimenSnapshotTests {
 
     #expect(try destination.fetch(FetchDescriptor<Medication>()).count == 1)
     #expect(try destination.fetch(FetchDescriptor<MedicationComponent>()).count == 1)
+    #expect(try destination.fetch(FetchDescriptor<Ingredient>()).count == 1)
+  }
+
+  @Test func applyThrowsOnDanglingIngredientReference() throws {
+    let orphanComponentID = UUID()
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        MedicationDTO(
+          id: UUID(),
+          displayName: "Mystery",
+          fullName: nil,
+          unitForm: .tablet,
+          kind: .prn,
+          colorHex: nil,
+          notes: nil,
+          isArchived: false,
+          createdAt: .now,
+          healthKitConceptID: nil,
+          prnAvailableQuantities: [],
+          components: [ComponentDTO(id: orphanComponentID, ingredientID: UUID(), dosagePerUnitMg: 1)],
+          schedule: []
+        ),
+      ]
+    )
+    let context = try makeInMemoryContext()
+    #expect(throws: SyncError.self) {
+      try snapshot.apply(to: context)
+    }
+  }
+
+  @Test func applyRejectsFutureSchemaVersion() throws {
+    let snapshot = RegimenSnapshot(
+      schemaVersion: RegimenSnapshot.currentSchemaVersion + 1,
+      ingredients: [],
+      medications: []
+    )
+    let context = try makeInMemoryContext()
+    #expect(throws: SyncError.unsupportedSchemaVersion(RegimenSnapshot.currentSchemaVersion + 1)) {
+      try snapshot.apply(to: context)
+    }
+  }
+
+  @Test func fromContextSkipsArchivedMedications() throws {
+    let context = try makeInMemoryContext()
+    context.insert(Medication(displayName: "Active", unitForm: .tablet, kind: .maintenance))
+    let archived = Medication(displayName: "Archived", unitForm: .tablet, kind: .maintenance)
+    archived.isArchived = true
+    context.insert(archived)
+    try context.save()
+
+    let snapshot = try RegimenSnapshot.from(context: context)
+    #expect(snapshot.medications.count == 1)
+    #expect(snapshot.medications.first?.displayName == "Active")
   }
 }
