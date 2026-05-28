@@ -2,9 +2,10 @@ import os
 import SwiftData
 import SwiftUI
 
-/// Watch root. Shows the next pending dose as a `MarkTakenView`, or "All caught
-/// up" when nothing is due. The pending set comes from `PendingQueueSelector`,
-/// which is a `[]`-returning skeleton until EPIC_03_ISSUE_06.
+/// Watch root. Routes to the tap-through queue when doses are pending, else
+/// "All caught up". The pending set comes from `PendingQueueSelector`, a
+/// `[]`-returning skeleton until EPIC_03_ISSUE_06 — so the queue is wired but
+/// not reachable end-to-end until that lands.
 struct RightNowView: View {
   @Environment(\.modelContext) private var modelContext
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
@@ -23,12 +24,7 @@ struct RightNowView: View {
 
   @ViewBuilder
   private var content: some View {
-    if
-      let dose = pendingDoses.first,
-      let medication = medications.first(where: { $0.id == dose.medicationID })
-    {
-      MarkTakenView(medicationName: medication.displayName)
-    } else {
+    if pendingDoses.isEmpty {
       VStack(spacing: 8) {
         Image(systemName: "checkmark.circle")
           .font(.title2)
@@ -36,6 +32,8 @@ struct RightNowView: View {
           .font(.headline)
       }
       .foregroundStyle(.secondary)
+    } else {
+      TapThroughQueueView(pendingDoses: pendingDoses, onFinished: reload)
     }
   }
 

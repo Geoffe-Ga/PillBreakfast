@@ -3,12 +3,16 @@ import SwiftData
 
 /// A dose the watch should prompt for right now: a scheduled dose within the
 /// active window that hasn't been logged yet today.
-public struct PendingDose: Sendable, Hashable {
+public struct PendingDose: Sendable, Hashable, Identifiable {
+  /// Per-instance identity so two doses for the same med at the same time/quantity
+  /// stay distinct in queues and dedup sets (the selector assigns one per dose).
+  public let id: UUID
   public let medicationID: UUID
   public let scheduledFor: Date
   public let quantity: Int
 
-  public init(medicationID: UUID, scheduledFor: Date, quantity: Int) {
+  public init(id: UUID = UUID(), medicationID: UUID, scheduledFor: Date, quantity: Int) {
+    self.id = id
     self.medicationID = medicationID
     self.scheduledFor = scheduledFor
     self.quantity = quantity
