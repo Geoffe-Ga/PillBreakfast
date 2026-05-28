@@ -79,6 +79,11 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
         let snapshot = try JSONDecoder().decode(RegimenSnapshot.self, from: data)
         try snapshot.apply(to: PersistenceController.shared.container.mainContext)
         self.logger.info("Applied regimen with \(snapshot.medications.count, privacy: .public) medications.")
+        #if os(watchOS)
+        // Notifications fire on the watch directly (SPEC §8.1); rebuild from the
+        // freshly-applied regimen.
+        await NotificationBootstrap.refresh(from: snapshot)
+        #endif
       } catch {
         self.logger.error("Failed to decode/apply regimen: \(error.localizedDescription, privacy: .public)")
       }
