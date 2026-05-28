@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct PersistenceControllerTests {
   @Test func containerOpensAgainstAppGroupStoreURL() {
-    let storeURL = PersistenceController.appGroupStoreURL()
+    let storeURL = PersistenceController.appGroupStoreURL
     #expect(storeURL.lastPathComponent == "PillBreakfast.store")
     // Touch the singleton — if the App Group entitlement is missing the
     // initializer traps, so reaching this line means the container is live.
