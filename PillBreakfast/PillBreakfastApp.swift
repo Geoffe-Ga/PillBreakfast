@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 @main
@@ -6,5 +7,6 @@ struct PillBreakfastApp: App {
     WindowGroup {
       RootView()
     }
+    .modelContainer(PersistenceController.shared.container)
   }
 }

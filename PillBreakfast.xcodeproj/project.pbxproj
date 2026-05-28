@@ -116,6 +116,11 @@
 			path = "PillBreakfast Watch App Watch AppUITests";
 			sourceTree = "<group>";
 		};
+		86F1A24DA7A7F601513B6A45 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,6 +172,7 @@
 		67915E692FC770C70014D1E0 = {
 			isa = PBXGroup;
 			children = (
+				86F1A24DA7A7F601513B6A45 /* Shared */,
 				67915E742FC770C70014D1E0 /* PillBreakfast */,
 				67915E822FC770C80014D1E0 /* PillBreakfastTests */,
 				67915E8C2FC770C80014D1E0 /* PillBreakfastUITests */,
@@ -208,6 +214,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				67915E742FC770C70014D1E0 /* PillBreakfast */,
+				86F1A24DA7A7F601513B6A45 /* Shared */,
 			);
 			name = PillBreakfast;
 			packageProductDependencies = (
@@ -295,6 +302,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
+				86F1A24DA7A7F601513B6A45 /* Shared */,
 			);
 			name = "PillBreakfast Watch App Watch App";
 			packageProductDependencies = (
