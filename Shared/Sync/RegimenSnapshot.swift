@@ -34,6 +34,8 @@ public enum SyncError: Error, Equatable, Sendable {
   case orphanedComponent(componentID: UUID)
   /// A snapshot component references an ingredient that is in neither the snapshot nor the store.
   case danglingIngredientReference(componentID: UUID, ingredientID: UUID)
+  /// A scheduled dose carries an out-of-range hour/minute/weekday that would silently break notification scheduling.
+  case invalidSchedule(doseID: UUID)
 }
 
 public struct IngredientDTO: Codable, Sendable, Hashable {
@@ -88,6 +90,14 @@ public struct ScheduledDoseDTO: Codable, Sendable, Hashable {
     self.minute = minute
     self.quantity = quantity
     self.daysOfWeek = daysOfWeek
+  }
+
+  /// True when the wall-clock fields and ISO weekdays are in range. `apply(to:)`
+  /// rejects snapshots carrying an invalid dose before it touches the store.
+  public var isValid: Bool {
+    (0 ... 23).contains(hour)
+      && (0 ... 59).contains(minute)
+      && daysOfWeek.allSatisfy((1 ... 7).contains)
   }
 }
 
@@ -166,6 +176,8 @@ public extension RegimenSnapshot {
         kind: medication.kind,
         colorHex: medication.colorHex,
         notes: medication.notes,
+        // Always false given the active-meds predicate above; preserved for manual
+        // snapshot construction and forward compatibility.
         isArchived: medication.isArchived,
         createdAt: medication.createdAt,
         healthKitConceptID: medication.healthKitConceptID,
@@ -197,6 +209,9 @@ public extension RegimenSnapshot {
   func apply(to context: ModelContext) throws {
     // Reject snapshots from a future app version rather than risk corrupting the
     // store in a mixed-version pairing (e.g. iPhone updated, watch not yet).
+    // Deliberate `<=`: accept this version or an older one (older snapshots stay
+    // readable as the schema grows additively) but reject a newer one. When a v2
+    // schema lands this becomes a floor check plus a migration table.
     guard schemaVersion <= RegimenSnapshot.currentSchemaVersion else {
       throw SyncError.unsupportedSchemaVersion(schemaVersion)
     }
@@ -207,8 +222,9 @@ public extension RegimenSnapshot {
     )
 
     // Validate-before-mutate: every component must resolve to an ingredient that
-    // already exists or is being inserted by this snapshot. Checking up front means
-    // a dangling reference can't leave the context half-rebuilt.
+    // already exists or is being inserted by this snapshot, and every scheduled
+    // dose must be in range. Checking up front means a rejected snapshot can't
+    // leave the context half-rebuilt.
     let resolvableIngredientIDs = Set(ingredientByID.keys).union(ingredients.map(\.id))
     for medication in medications {
       for component in medication.components where !resolvableIngredientIDs.contains(component.ingredientID) {
@@ -216,6 +232,11 @@ public extension RegimenSnapshot {
           componentID: component.id,
           ingredientID: component.ingredientID
         )
+      }
+      for dose in medication.schedule where !dose.isValid {
+        // The notification scheduler is the primary enforcement point, but apply()
+        // is the last boundary before bad data enters the store.
+        throw SyncError.invalidSchedule(doseID: dose.id)
       }
     }
 
@@ -268,11 +289,12 @@ public extension RegimenSnapshot {
         context.delete(old)
       }
       medication.components = dto.components.map { component in
-        MedicationComponent(
-          id: component.id,
-          ingredient: ingredientByID[component.ingredientID],
-          dosagePerUnitMg: component.dosagePerUnitMg
-        )
+        let ingredient = ingredientByID[component.ingredientID]
+        // Guaranteed non-nil by the validation pass above; assert so a future
+        // divergence between validation and mutation is caught in tests/debug
+        // rather than silently producing an ingredient-less component.
+        assert(ingredient != nil, "component \(component.id) references unresolved ingredient \(component.ingredientID)")
+        return MedicationComponent(id: component.id, ingredient: ingredient, dosagePerUnitMg: component.dosagePerUnitMg)
       }
       medication.schedule = dto.schedule.map { dose in
         ScheduledDose(id: dose.id, hour: dose.hour, minute: dose.minute, quantity: dose.quantity, daysOfWeek: dose.daysOfWeek)

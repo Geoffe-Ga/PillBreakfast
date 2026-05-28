@@ -255,6 +255,74 @@ struct RegimenSnapshotTests {
     #expect(stored.first?.aliases == ["APAP"])
   }
 
+  @Test func applyRejectsOutOfRangeSchedule() throws {
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        MedicationDTO(
+          id: UUID(),
+          displayName: "Bad Schedule",
+          fullName: nil,
+          unitForm: .tablet,
+          kind: .maintenance,
+          colorHex: nil,
+          notes: nil,
+          isArchived: false,
+          createdAt: .now,
+          healthKitConceptID: nil,
+          prnAvailableQuantities: [],
+          components: [],
+          schedule: [ScheduledDoseDTO(id: UUID(), hour: 99, minute: 0, quantity: 1, daysOfWeek: [0, 8])]
+        ),
+      ]
+    )
+    let context = try makeInMemoryContext()
+    #expect(throws: SyncError.self) {
+      try snapshot.apply(to: context)
+    }
+    // Rejected before mutation — nothing inserted.
+    #expect(try context.fetch(FetchDescriptor<Medication>()).isEmpty)
+  }
+
+  @Test func reApplyReflectsChangedComponentDosage() throws {
+    let context = try makeInMemoryContext()
+    let ingredientID = UUID()
+    let medID = UUID()
+    let componentID = UUID()
+
+    func snapshot(dosage: Double) -> RegimenSnapshot {
+      RegimenSnapshot(
+        ingredients: [
+          IngredientDTO(id: ingredientID, name: "Acetaminophen", aliases: [], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
+        ],
+        medications: [
+          MedicationDTO(
+            id: medID,
+            displayName: "Tylenol",
+            fullName: nil,
+            unitForm: .tablet,
+            kind: .prn,
+            colorHex: nil,
+            notes: nil,
+            isArchived: false,
+            createdAt: .now,
+            healthKitConceptID: nil,
+            prnAvailableQuantities: [],
+            components: [ComponentDTO(id: componentID, ingredientID: ingredientID, dosagePerUnitMg: dosage)],
+            schedule: []
+          ),
+        ]
+      )
+    }
+
+    try snapshot(dosage: 500).apply(to: context)
+    try snapshot(dosage: 650).apply(to: context)
+
+    let components = try context.fetch(FetchDescriptor<MedicationComponent>())
+    #expect(components.count == 1)
+    #expect(components.first?.dosagePerUnitMg == 650)
+  }
+
   @Test func fromContextSkipsArchivedMedications() throws {
     let context = try makeInMemoryContext()
     context.insert(Medication(displayName: "Active", unitForm: .tablet, kind: .maintenance))
