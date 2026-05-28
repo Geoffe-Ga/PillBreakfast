@@ -3,6 +3,10 @@ import SwiftData
 
 @Model
 public final class DoseEvent {
+  // PRN running totals fetch recent events by date on every watch app open,
+  // so takenAt is indexed to keep that query off a full-table scan.
+  #Index<DoseEvent>([\.takenAt])
+
   @Attribute(.unique) public var id: UUID
   public var medication: Medication?
   public var scheduledFor: Date? // nil for PRN

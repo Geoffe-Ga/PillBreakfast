@@ -81,4 +81,40 @@ struct ModelGraphTests {
     context.insert(vitaminMed)
     #expect(!vitaminMed.isHighRisk)
   }
+
+  @Test func ingredientAmountsSnapshotIsNotRewrittenByLaterComponentEdits() throws {
+    let context = try makeInMemoryContext()
+
+    let ingredient = Ingredient(name: "Acetaminophen")
+    let component = MedicationComponent(ingredient: ingredient, dosagePerUnitMg: 500)
+    let medication = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    medication.components = [component]
+
+    // The logging layer (EPIC 02) snapshots amounts at log time; emulate that here.
+    let snapshot = LoggedIngredientAmount(
+      ingredientID: ingredient.id,
+      ingredientName: ingredient.name,
+      totalMg: 500
+    )
+    let event = DoseEvent(
+      medication: medication,
+      takenAt: .now,
+      quantity: 1,
+      status: .taken,
+      loggedOn: .watch,
+      ingredientAmounts: [snapshot]
+    )
+    context.insert(event)
+    try context.save()
+
+    // Later edits to the product's component list must NOT rewrite history.
+    component.dosagePerUnitMg = 650
+    medication.components = []
+    try context.save()
+
+    let stored = try #require(try context.fetch(FetchDescriptor<DoseEvent>()).first)
+    #expect(stored.ingredientAmounts.count == 1)
+    #expect(stored.ingredientAmounts.first?.totalMg == 500)
+    #expect(stored.ingredientAmounts.first?.ingredientName == "Acetaminophen")
+  }
 }

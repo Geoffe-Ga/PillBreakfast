@@ -41,7 +41,7 @@ Additionally, the HealthKit Medications API is **iOS/iPadOS/visionOS only — no
 
 The SwiftData schema is defined in SPEC §5. Two non-obvious conventions to preserve:
 
-- **`DoseEvent.totalMg` is deliberately denormalized** (= `quantity * medication.dosagePerUnitMg`). PRN running totals are queried on every watch app open; computing it through a relationship traversal causes cascading fetches on a constrained device. Keep the precomputed value.
+- **`DoseEvent.ingredientAmounts` is a deliberately denormalized snapshot** (an `[LoggedIngredientAmount]`, each carrying `ingredientID` / `ingredientName` / `totalMg = quantity × component.dosagePerUnitMg`). PRN running totals are queried on every watch app open; computing them through a relationship traversal causes cascading fetches on a constrained device. The snapshot is filled at log time and is **never** recomputed from the live `medication.components` — editing a product's components later must not rewrite history. (SPEC §5.2/§5.3 supersede the earlier single-scalar `DoseEvent.totalMg` sketch; the per-ingredient array is the source of truth because safety ceilings are per-ingredient.)
 - **`Medication.healthKitConceptID`** is populated *only* when a med was imported from Health. It's a link for future readback enrichment, not a write channel.
 
 ## Plan Files & Tracer-Code Workflow

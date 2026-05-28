@@ -3,12 +3,16 @@ import SwiftData
 
 @Model
 public final class Medication {
+  // Regimen loads filter out archived meds on every fetch, so isArchived is
+  // indexed to avoid scanning archived rows.
+  #Index<Medication>([\.isArchived])
+
   @Attribute(.unique) public var id: UUID
   public var displayName: String // "Tylenol Extra Strength"
   public var fullName: String? // "Acetaminophen 500mg"
   public var unitForm: MedicationForm // .tablet | .capsule | .liquid | .other
   public var kind: MedicationKind // .maintenance | .prn
-  public var colorHex: String?
+  public var colorHex: String? // "#RRGGBB" format; validated by the SwiftUI color layer, not here
   public var notes: String?
   public var isArchived: Bool
   public var createdAt: Date
@@ -16,7 +20,7 @@ public final class Medication {
   /// Optional Health link, populated only if imported
   public var healthKitConceptID: String?
 
-  /// PRN UX config (per-product, not per-ingredient)
+  /// PRN UX config (per-product, not per-ingredient). Only meaningful when `kind == .prn`.
   public var prnAvailableQuantities: [Int] // [1, 2] for Tylenol Extra Strength
 
   @Relationship(deleteRule: .cascade, inverse: \MedicationComponent.medication)
