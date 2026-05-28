@@ -29,6 +29,24 @@ struct IngredientLibrarySeederTests {
     #expect(try context.fetch(FetchDescriptor<Ingredient>()).count == 6)
   }
 
+  @Test func partialLibraryFillsOnlyTheMissingIngredients() throws {
+    let context = try makeInMemoryContext()
+    // Pre-insert two seeds by their canonical IDs, then seed the rest.
+    for name in ["Aspirin", "Caffeine"] {
+      context.insert(Ingredient(id: IngredientLibrarySeeder.stableUUID(for: name), name: name))
+    }
+    try context.save()
+
+    try IngredientLibrarySeeder.seedIfNeeded(context: context)
+    #expect(try context.fetch(FetchDescriptor<Ingredient>()).count == 6)
+  }
+
+  @Test func canonicalUUIDForAcetaminophenNeverChanges() throws {
+    // Pins the v5 derivation: a broken namespace/encoding would change this.
+    let expected = try #require(UUID(uuidString: "832901A0-2C5A-5216-A85C-9D7544BB4928"))
+    #expect(IngredientLibrarySeeder.stableUUID(for: "Acetaminophen") == expected)
+  }
+
   @Test func deterministicUUIDsAreStableAndCaseInsensitive() {
     #expect(
       IngredientLibrarySeeder.stableUUID(for: "Acetaminophen")

@@ -83,6 +83,7 @@ public enum IngredientLibrarySeeder {
   @MainActor
   public static func seedIfNeeded(context: ModelContext) throws {
     let existing = try Set(context.fetch(FetchDescriptor<Ingredient>()).map(\.id))
+    var inserted = false
     for spec in seeds {
       let id = stableUUID(for: spec.name)
       guard !existing.contains(id) else { continue }
@@ -96,8 +97,12 @@ public enum IngredientLibrarySeeder {
           minIntervalMinutes: spec.minIntervalMinutes
         )
       )
+      inserted = true
     }
-    try context.save()
+    // Avoid a no-op write round-trip on launches where the library is already seeded.
+    if inserted {
+      try context.save()
+    }
   }
 
   /// Fixed namespace for PillBreakfast ingredient identifiers. Built from raw
