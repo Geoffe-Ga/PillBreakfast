@@ -9,6 +9,7 @@ struct EditMedicationView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
   @State private var formState: MedicationFormState
+  @State private var createdIngredientIDs: [UUID] = []
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
@@ -18,13 +19,19 @@ struct EditMedicationView: View {
   }
 
   var body: some View {
-    MedicationFormView(formState: formState)
-      .navigationTitle("Edit Medication")
+    MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
+      .navigationTitle(medication.displayName)
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
           Button("Save") { save() }
             .disabled(!formState.isValid)
         }
+      }
+      // Covers backing out without saving: any inline-created ingredient that the
+      // edit didn't end up referencing gets cleaned up.
+      .onDisappear {
+        InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
       }
   }
 

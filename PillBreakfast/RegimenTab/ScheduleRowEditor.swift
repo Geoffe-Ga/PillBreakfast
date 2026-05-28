@@ -17,12 +17,12 @@ struct ScheduleRowEditor: View {
 
         Spacer()
 
-        Stepper(
-          "Qty \(schedule.quantity)",
-          value: $schedule.quantity,
-          in: 1 ... 20
-        )
-        .fixedSize()
+        Text("Qty \(schedule.quantity)")
+          .monospacedDigit()
+        Stepper(value: $schedule.quantity, in: 1 ... 20) {
+          Text("Quantity")
+        }
+        .labelsHidden()
       }
     }
     .onDelete { schedules.remove(atOffsets: $0) }
@@ -38,10 +38,13 @@ struct ScheduleRowEditor: View {
   private func timeBinding(for schedule: Binding<ScheduleDraft>) -> Binding<Date> {
     Binding<Date>(
       get: {
-        var components = DateComponents()
-        components.hour = schedule.wrappedValue.hour
-        components.minute = schedule.wrappedValue.minute
-        return Calendar.current.date(from: components) ?? Date()
+        let midnight = Calendar.current.startOfDay(for: Date())
+        return Calendar.current.date(
+          bySettingHour: schedule.wrappedValue.hour,
+          minute: schedule.wrappedValue.minute,
+          second: 0,
+          of: midnight
+        ) ?? midnight
       },
       set: { newDate in
         let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)

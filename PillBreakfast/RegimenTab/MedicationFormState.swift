@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 
 /// Editable draft of a medication's single ingredient component.
@@ -36,6 +37,7 @@ final class MedicationFormState {
     self.displayName = medication.displayName
     self.unitForm = medication.unitForm
     self.kind = medication.kind
+    // SPEC §5: maintenance products are single-component, so the first component is the one.
     if let component = medication.components.first {
       self.componentDraft = ComponentDraft(
         ingredientID: component.ingredient?.id,
@@ -102,4 +104,34 @@ final class MedicationFormState {
 
 enum MedicationFormError: Error, Equatable {
   case ingredientNotFound
+}
+
+/// Cleans up ingredients created inline via the "New Ingredient…" sub-form that
+/// no medication ended up referencing — e.g. the user added one, then cancelled.
+/// Because the main context autosaves, an orphan would otherwise be flushed.
+@MainActor
+enum InlineIngredientCleanup {
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
+
+  static func discardUnreferenced(_ createdIDs: [UUID], in context: ModelContext) {
+    guard !createdIDs.isEmpty else { return }
+    do {
+      let referenced = try Set(
+        context.fetch(FetchDescriptor<MedicationComponent>()).compactMap { $0.ingredient?.id }
+      )
+      var deletedAny = false
+      for id in createdIDs where !referenced.contains(id) {
+        let descriptor = FetchDescriptor<Ingredient>(predicate: #Predicate { $0.id == id })
+        if let ingredient = try context.fetch(descriptor).first {
+          context.delete(ingredient)
+          deletedAny = true
+        }
+      }
+      if deletedAny {
+        try context.save()
+      }
+    } catch {
+      logger.error("Failed to clean up inline-created ingredients: \(error.localizedDescription, privacy: .public)")
+    }
+  }
 }

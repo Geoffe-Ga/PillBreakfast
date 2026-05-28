@@ -33,6 +33,13 @@ struct MedicationFormStateTests {
     #expect(state.validationErrors.contains("Dosage per unit must be greater than zero."))
   }
 
+  @Test func negativeDosageIsInvalid() {
+    let state = validForm()
+    state.componentDraft.dosagePerUnitMg = -1
+    #expect(!state.isValid)
+    #expect(state.validationErrors.contains("Dosage per unit must be greater than zero."))
+  }
+
   @Test func maintenanceWithoutScheduleIsInvalid() {
     let state = validForm()
     state.kind = .maintenance
@@ -77,5 +84,45 @@ struct MedicationFormStateTests {
     #expect(medication.components.first?.dosagePerUnitMg == 2000)
     #expect(medication.schedule.count == 1)
     #expect(medication.schedule.first?.hour == 8)
+  }
+
+  @Test func initFromMedicationPrefillsTheForm() throws {
+    let container = try ModelContainer(
+      for: PersistenceController.schema,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let context = ModelContext(container)
+    let ingredient = Ingredient(name: "Cholecalciferol")
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    medication.components = [MedicationComponent(ingredient: ingredient, dosagePerUnitMg: 2000)]
+    medication.schedule = [ScheduledDose(hour: 8, minute: 0, quantity: 1)]
+    context.insert(medication)
+    try context.save()
+
+    let state = MedicationFormState(medication: medication)
+    #expect(state.displayName == "Vitamin D")
+    #expect(state.unitForm == .capsule)
+    #expect(state.componentDraft.ingredientID == ingredient.id)
+    #expect(state.componentDraft.dosagePerUnitMg == 2000)
+    #expect(state.schedules.count == 1)
+    #expect(state.isValid)
+  }
+
+  @Test func applyThrowsWhenIngredientNotInStore() throws {
+    let container = try ModelContainer(
+      for: PersistenceController.schema,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let context = ModelContext(container)
+    let state = MedicationFormState()
+    state.displayName = "Mystery"
+    state.componentDraft = ComponentDraft(ingredientID: UUID(), dosagePerUnitMg: 100)
+    state.schedules = [ScheduleDraft(hour: 8, minute: 0, quantity: 1)]
+
+    let medication = Medication(displayName: "", unitForm: .tablet, kind: .maintenance)
+    context.insert(medication)
+    #expect(throws: MedicationFormError.ingredientNotFound) {
+      try state.apply(to: medication, in: context)
+    }
   }
 }

@@ -5,8 +5,18 @@ import SwiftUI
 /// configuration is intentionally stubbed here (EPIC 05).
 struct MedicationFormView: View {
   @Bindable var formState: MedicationFormState
+  /// Called with the id of an ingredient created inline, so the host can clean it
+  /// up if the medication is never saved.
+  var onIngredientCreated: (UUID) -> Void = { _ in }
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
   @State private var showingNewIngredient = false
+
+  /// Suppress the validation list on a pristine form; show it once the user starts.
+  private var showValidationErrors: Bool {
+    !formState.displayName.isEmpty
+      || formState.componentDraft.ingredientID != nil
+      || !formState.schedules.isEmpty
+  }
 
   var body: some View {
     Form {
@@ -40,7 +50,7 @@ struct MedicationFormView: View {
         ScheduleRowEditor(schedules: $formState.schedules)
       }
 
-      if !formState.validationErrors.isEmpty {
+      if showValidationErrors, !formState.validationErrors.isEmpty {
         Section {
           ForEach(formState.validationErrors, id: \.self) { error in
             Text(error)
@@ -50,14 +60,19 @@ struct MedicationFormView: View {
         }
       }
 
-      Section {
-        Text("PRN configuration arrives in a later phase.")
-          .font(.footnote)
-          .foregroundStyle(.secondary)
+      if formState.kind == .prn {
+        Section {
+          Text("PRN configuration arrives in a later phase.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
       }
     }
     .sheet(isPresented: $showingNewIngredient) {
-      NewIngredientView { newID in formState.componentDraft.ingredientID = newID }
+      NewIngredientView { newID in
+        formState.componentDraft.ingredientID = newID
+        onIngredientCreated(newID)
+      }
     }
   }
 }

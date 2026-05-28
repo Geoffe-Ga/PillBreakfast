@@ -8,16 +8,17 @@ struct AddMedicationView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
   @State private var formState = MedicationFormState()
+  @State private var createdIngredientIDs: [UUID] = []
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
   var body: some View {
     NavigationStack {
-      MedicationFormView(formState: formState)
+      MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
         .navigationTitle("New Medication")
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { dismiss() }
+            Button("Cancel") { cancel() }
           }
           ToolbarItem(placement: .confirmationAction) {
             Button("Save") { save() }
@@ -25,6 +26,11 @@ struct AddMedicationView: View {
           }
         }
     }
+  }
+
+  private func cancel() {
+    InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
+    dismiss()
   }
 
   private func save() {
@@ -36,8 +42,10 @@ struct AddMedicationView: View {
     } catch {
       AddMedicationView.logger.error("Failed to add medication: \(error.localizedDescription, privacy: .public)")
       modelContext.delete(medication) // roll back the partial insert
+      InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
       return
     }
+    InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
     dismiss()
   }
