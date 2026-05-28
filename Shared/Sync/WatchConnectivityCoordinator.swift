@@ -65,6 +65,8 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     didReceiveApplicationContext applicationContext: [String: Any]
   ) {
     guard let data = applicationContext["regimen"] as? Data else {
+      // Logging off the main actor is fine here: `logger` is a Sendable `let`, so
+      // this nonisolated read needs no hop (unlike the state mutations below).
       logger.warning("Received application context without a regimen payload.")
       return
     }

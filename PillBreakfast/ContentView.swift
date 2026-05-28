@@ -44,7 +44,9 @@ private struct MedicationNameRow: View {
   var body: some View {
     TextField("Medication name", text: $medication.displayName)
       .focused($isFocused)
-      .onSubmit(onCommit)
+      // Return just resigns focus; the focus-loss handler below is the single
+      // commit point, so Return and navigate-away both push exactly once.
+      .onSubmit { isFocused = false }
       .onChange(of: isFocused) { _, focused in
         if !focused { onCommit() }
       }
