@@ -98,9 +98,7 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
       logger.error("Failed to push regimen: \(error.localizedDescription, privacy: .public)")
     }
   }
-  #endif
 
-  #if os(iOS)
   public nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
     Task { @MainActor in
       self.activationState = .inactive
