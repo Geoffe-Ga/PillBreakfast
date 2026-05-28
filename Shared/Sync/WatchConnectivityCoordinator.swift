@@ -20,14 +20,17 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     super.init()
   }
 
-  /// Requests activation of the default session. Safe to call repeatedly — a second call is a no-op once activation is in flight.
+  /// Requests activation of the default session. Re-entrant: once the session has activated the call is skipped; a rapid double-call before the delegate fires is collapsed by WCSession itself.
   public func activate() {
     guard WCSession.isSupported() else {
       logger.warning("WCSession is not supported on this device.")
       return
     }
+    // The guard only blocks re-activation after activation has completed (state
+    // has left .notActivated). An in-flight double-call still passes here, but
+    // WCSession collapses the second activate() request gracefully.
     guard activationState == .notActivated else {
-      logger.debug("WCSession already activating or activated; skipping.")
+      logger.debug("WCSession already activated; skipping re-activation.")
       return
     }
     let session = WCSession.default
@@ -68,11 +71,11 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
   public nonisolated func sessionDidDeactivate(_ session: WCSession) {
     Task { @MainActor in
       self.activationState = .notActivated
-      self.logger.info("WCSession deactivated; reactivating.")
-      // Reactivate only after .notActivated is observed, so the state machine
-      // never skips straight to .activated. The phone can pair with a new
-      // watch; this hands off to the next device.
-      WCSession.default.activate()
+      self.logger.info("WCSession deactivated.")
+      // Reactivate through self.activate() so the delegate is re-set explicitly
+      // rather than assuming it stays sticky. State is .notActivated above, so
+      // the guard passes; the phone hands the session off to the next watch.
+      self.activate()
     }
   }
   #endif
