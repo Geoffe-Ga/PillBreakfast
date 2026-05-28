@@ -68,8 +68,8 @@ jobs:
       - name: SwiftFormat check
         run: swiftformat --lint .
 
-      # TODO: enable once Phase 0 lands the Xcode project. Replace
-      # <SCHEME> with the watchOS scheme name and adjust the project path.
+      # TODO: enable once Phase 0's test runner is wired up. Destination and
+      # scheme below match the commands documented in README.md / CLAUDE.md.
       # - name: Build and test
       #   timeout-minutes: 25
       #   run: |
@@ -77,5 +77,5 @@ jobs:
       #     xcrun simctl erase all || true
       #     xcodebuild test \
       #       -project PillBreakfast.xcodeproj \
-      #       -scheme "<SCHEME>" \
-      #       -destination "platform=watchOS Simulator,name=Apple Watch Series 10 (46mm),OS=latest"
+      #       -scheme "PillBreakfast Watch App Watch App" \
+      #       -destination "platform=watchOS Simulator,name=Apple Watch Series 11 (46mm),OS=latest"

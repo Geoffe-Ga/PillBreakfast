@@ -59,13 +59,53 @@ When asked to start a phase, generate its plan file first and align before writi
 
 ## Build / Test / Run
 
-No build system exists yet. Once Phase 0 lands, this section should be updated with:
+Requires **Xcode 26+** (ships the iOS 26 / watchOS 26 SDKs). The project is `PillBreakfast.xcodeproj`; there is no workspace and no Swift package manifest (Phase 0 — likely revisited when `Shared/` is extracted into its own package).
 
-- The exact Xcode scheme names for the iOS and watchOS targets
-- How to run tests (single test, full suite)
-- How to launch the paired simulator pair
+Schemes (exact names — note the watch scheme is doubled):
 
-Until then, there are no commands to run.
+- `PillBreakfast` — iOS companion target (+ `PillBreakfastTests`, `PillBreakfastUITests`).
+- `PillBreakfast Watch App Watch App` — watchOS target (+ its `…Tests` / `…UITests`).
+
+Build both targets:
+
+```bash
+xcodebuild build -project PillBreakfast.xcodeproj \
+  -scheme 'PillBreakfast' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'
+
+xcodebuild build -project PillBreakfast.xcodeproj \
+  -scheme 'PillBreakfast Watch App Watch App' \
+  -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm),OS=latest'
+```
+
+Run the full test suite (swap `build` for `test`):
+
+```bash
+xcodebuild test -project PillBreakfast.xcodeproj \
+  -scheme 'PillBreakfast' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'
+
+xcodebuild test -project PillBreakfast.xcodeproj \
+  -scheme 'PillBreakfast Watch App Watch App' \
+  -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm),OS=latest'
+```
+
+Run a single test or suite (Swift Testing — filter by suite or test name, no `test` prefix):
+
+```bash
+xcodebuild test -project PillBreakfast.xcodeproj \
+  -scheme 'PillBreakfast' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+  -only-testing:'PillBreakfastTests/PersistenceControllerTests'
+```
+
+Lint / format / secret-scan gate (must be clean before every commit):
+
+```bash
+pre-commit run --all-files
+```
+
+Launch the paired simulator pair from Xcode's toolbar device picker: pick any **iPhone 17** paired with any **Apple Watch Series 11 (46mm)**, then ⌘R. Both apps should show `WC state: activated` within ~5 seconds.
 
 ## The Ralph Loop
 
