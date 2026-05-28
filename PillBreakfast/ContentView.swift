@@ -8,6 +8,9 @@ struct RootView: View {
       Text("iPhone companion · placeholder")
         .font(.subheadline)
         .foregroundStyle(.secondary)
+      Text("WC state: \(WatchConnectivityCoordinator.shared.activationState.displayName)")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
     }
     .padding()
   }
