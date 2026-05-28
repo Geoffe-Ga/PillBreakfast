@@ -1,11 +1,17 @@
+import os
 import SwiftData
 import SwiftUI
 
-/// Read-only grouped list of the regimen, split into Maintenance and PRN
-/// sections. Add/edit/archive affordances land in EPIC_03_ISSUE_02.
+/// Grouped regimen list (Maintenance / PRN) with add, edit, and swipe-to-archive.
+/// Editing pushes the updated regimen to the watch via `WatchConnectivityCoordinator`.
 struct RegimenListView: View {
+  @Environment(\.modelContext) private var modelContext
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
+  @State private var showingAdd = false
+  @State private var archiveError: String?
+
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
   private var maintenance: [Medication] {
     medications.filter { $0.kind == .maintenance }
@@ -24,6 +30,26 @@ struct RegimenListView: View {
         section("PRN", medications: prn)
       }
     }
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          showingAdd = true
+        } label: {
+          Label("Add medication", systemImage: "plus")
+        }
+      }
+    }
+    .sheet(isPresented: $showingAdd) {
+      AddMedicationView()
+    }
+    .alert(
+      "Couldn't archive medication",
+      isPresented: Binding(get: { archiveError != nil }, set: { if !$0 { archiveError = nil } })
+    ) {
+      Button("OK", role: .cancel) { archiveError = nil }
+    } message: {
+      Text(archiveError ?? "")
+    }
   }
 
   @ViewBuilder
@@ -31,14 +57,40 @@ struct RegimenListView: View {
     if !medications.isEmpty {
       Section(title) {
         ForEach(medications) { medication in
-          Text(medication.displayName)
+          NavigationLink {
+            EditMedicationView(medication: medication)
+          } label: {
+            Text(medication.displayName)
+          }
+          .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+              archive(medication)
+            } label: {
+              Label("Archive", systemImage: "archivebox")
+            }
+          }
         }
       }
     }
   }
+
+  private func archive(_ medication: Medication) {
+    medication.isArchived = true
+    do {
+      try modelContext.save()
+    } catch {
+      RegimenListView.logger.error("Failed to archive medication: \(error.localizedDescription, privacy: .public)")
+      modelContext.rollback()
+      archiveError = "The change couldn't be saved. Please try again."
+      return
+    }
+    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+  }
 }
 
 #Preview {
-  RegimenListView()
-    .modelContainer(for: Medication.self, inMemory: true)
+  NavigationStack {
+    RegimenListView()
+  }
+  .modelContainer(for: Medication.self, inMemory: true)
 }
