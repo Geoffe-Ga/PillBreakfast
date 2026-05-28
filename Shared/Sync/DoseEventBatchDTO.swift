@@ -38,7 +38,7 @@ public struct DoseEventDTO: Codable, Sendable, Hashable {
 }
 
 public struct DoseEventBatch: Codable, Sendable, Hashable {
-  public var events: [DoseEventDTO]
+  public let events: [DoseEventDTO]
 
   public init(events: [DoseEventDTO]) {
     self.events = events

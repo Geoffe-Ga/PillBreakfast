@@ -107,8 +107,8 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     }
     Task { @MainActor in
       do {
-        try DoseEventBatchTransfer.merge(fileData: data, into: PersistenceController.shared.container.mainContext)
-        self.logger.info("Merged a received dose-event batch.")
+        let result = try DoseEventBatchTransfer.merge(fileData: data, into: PersistenceController.shared.container.mainContext)
+        self.logger.info("Merged dose-event batch: \(result.inserted, privacy: .public) inserted, \(result.updated, privacy: .public) updated.")
       } catch {
         self.logger.error("Failed to merge received dose-event batch: \(error.localizedDescription, privacy: .public)")
       }

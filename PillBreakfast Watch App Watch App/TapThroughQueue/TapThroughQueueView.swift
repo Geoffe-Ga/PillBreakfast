@@ -98,8 +98,7 @@ struct TapThroughQueueView: View {
       writeFailed = true
       return
     }
-    // Reverse-sync the logged dose to the iPhone (queued; survives the phone asleep).
-    // A transfer failure doesn't undo the local log — the watch store is authoritative.
+    // Transfer failure is non-fatal — the watch store is authoritative.
     do {
       try DoseEventBatchTransfer.transfer([event])
     } catch {

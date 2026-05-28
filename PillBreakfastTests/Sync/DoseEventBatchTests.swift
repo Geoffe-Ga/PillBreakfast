@@ -13,7 +13,7 @@ struct DoseEventBatchTests {
     return ModelContext(container)
   }
 
-  private func sampleDTO(id: UUID, medicationID: UUID) -> DoseEventDTO {
+  private func sampleDTO(id: UUID, medicationID: UUID, notes: String? = nil) -> DoseEventDTO {
     DoseEventDTO(
       id: id,
       medicationID: medicationID,
@@ -22,7 +22,7 @@ struct DoseEventBatchTests {
       quantity: 1,
       status: .taken,
       loggedOn: .watch,
-      notes: nil,
+      notes: notes,
       ingredientAmounts: [LoggedIngredientAmount(ingredientID: UUID(), ingredientName: "Cholecalciferol", totalMg: 2000)]
     )
   }
@@ -64,6 +64,38 @@ struct DoseEventBatchTests {
     #expect(second.inserted == 0)
     #expect(second.updated == 1)
     #expect(try context.fetch(FetchDescriptor<DoseEvent>()).count == 1) // no duplicate
+  }
+
+  @Test func mergePreservesNotesOnInsert() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    let batch = DoseEventBatch(events: [sampleDTO(id: UUID(), medicationID: medication.id, notes: "with food")])
+    _ = try DoseEventBatchMerger.merge(batch, into: context)
+
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "with food")
+  }
+
+  @Test func mergeDoesNotClobberNotesOnNilResend() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    let eventID = UUID()
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: "with food")]),
+      into: context
+    )
+    // A re-send carrying no note must not erase the existing one.
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: nil)]),
+      into: context
+    )
+
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "with food")
   }
 
   @Test func mergeSkipsEventWithUnknownMedication() throws {

@@ -52,9 +52,10 @@ public enum DoseEventBatchTransfer {
 
   /// Decodes a received batch file and merges it into the local store.
   @MainActor
-  public static func merge(fileData: Data, into context: ModelContext) throws {
+  @discardableResult
+  public static func merge(fileData: Data, into context: ModelContext) throws -> (inserted: Int, updated: Int) {
     let batch = try JSONDecoder().decode(DoseEventBatch.self, from: fileData)
-    try DoseEventBatchMerger.merge(batch, into: context)
+    return try DoseEventBatchMerger.merge(batch, into: context)
   }
 }
 
@@ -68,6 +69,9 @@ public enum DoseEventBatchMerger {
   ) throws -> (inserted: Int, updated: Int) {
     var inserted = 0
     var updated = 0
+    // One or two fetches per event. Fine for the 1-at-a-time live transfer; if a
+    // bulk replay (e.g. new-phone backfill) ever sends large batches, fetch the
+    // existing events and medications in bulk first rather than per-event.
     for dto in batch.events {
       let eventID = dto.id
       let existing = try context.fetch(
@@ -75,8 +79,9 @@ public enum DoseEventBatchMerger {
       ).first
 
       if let existing {
-        // A re-sent event is essentially immutable history; only notes may change.
-        existing.notes = dto.notes
+        // A re-sent event is immutable history except notes. Don't clobber an
+        // existing note with nil — a re-send carrying no note shouldn't erase one.
+        existing.notes = dto.notes ?? existing.notes
         updated += 1
       } else {
         let medicationID = dto.medicationID
@@ -94,6 +99,7 @@ public enum DoseEventBatchMerger {
             quantity: dto.quantity,
             status: dto.status,
             loggedOn: dto.loggedOn,
+            notes: dto.notes,
             ingredientAmounts: dto.ingredientAmounts
           )
         )
