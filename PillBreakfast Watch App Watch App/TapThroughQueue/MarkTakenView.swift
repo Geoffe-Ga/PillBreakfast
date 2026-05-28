@@ -37,9 +37,11 @@ struct MarkTakenView: View {
 }
 
 #Preview {
+  // High-risk example: the color swatch only appears for high-risk meds, and the
+  // caller (TapThroughQueueView) passes the hex only in that case.
   MarkTakenView(
-    medicationName: "Vitamin D",
-    detail: "2000mg · 1 tablet",
+    medicationName: "Lithium 300mg",
+    detail: "300mg · 1 tablet",
     colorHex: "#FFAA00",
     onMarkTaken: {},
     onSkip: {}

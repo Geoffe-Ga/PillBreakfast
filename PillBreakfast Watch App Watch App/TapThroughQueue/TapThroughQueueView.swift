@@ -15,8 +15,9 @@ struct TapThroughQueueView: View {
   @State private var index = 0
   @State private var finished = false
   /// Guards against a rapid double-tap logging the same dose twice before the
-  /// view advances.
-  @State private var loggedDoses: Set<PendingDose> = []
+  /// view advances. Keyed on `PendingDose.id`, so two doses with the same
+  /// med/time/quantity stay distinct.
+  @State private var loggedDoseIDs: Set<UUID> = []
   @State private var writeFailed = false
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "TapThrough")
@@ -53,7 +54,9 @@ struct TapThroughQueueView: View {
       MarkTakenView(
         medicationName: medication.displayName,
         detail: detail(for: medication, quantity: dose.quantity),
-        colorHex: medication.colorHex,
+        // Color is reserved for high-risk meds (CLAUDE.md); the baseline UI stays
+        // monochromatic, so only pass a swatch when the med is high-risk.
+        colorHex: medication.isHighRisk ? medication.colorHex : nil,
         onMarkTaken: { log(dose, medication, status: .taken) },
         onSkip: { log(dose, medication, status: .skipped) }
       )
@@ -75,8 +78,8 @@ struct TapThroughQueueView: View {
   }
 
   private func log(_ dose: PendingDose, _ medication: Medication, status: DoseStatus) {
-    guard !loggedDoses.contains(dose) else { return }
-    loggedDoses.insert(dose)
+    guard !loggedDoseIDs.contains(dose.id) else { return }
+    loggedDoseIDs.insert(dose.id)
     do {
       try DoseEventWriter.writeDoseEvent(
         for: medication,
@@ -89,7 +92,7 @@ struct TapThroughQueueView: View {
       )
     } catch {
       TapThroughQueueView.logger.error("Failed to log dose: \(error.localizedDescription, privacy: .public)")
-      loggedDoses.remove(dose) // un-guard so the user can retry this dose
+      loggedDoseIDs.remove(dose.id) // un-guard so the user can retry this dose
       writeFailed = true
       return
     }

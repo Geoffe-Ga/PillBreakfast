@@ -9,7 +9,9 @@ struct QueueSuccessView: View {
     VStack(spacing: 8) {
       Image(systemName: "checkmark.circle.fill")
         .font(.largeTitle)
-        .foregroundStyle(.green)
+        // Monochrome per the design convention (color is reserved for high-risk);
+        // the Liquid Glass success shimmer lands in EPIC 04.
+        .foregroundStyle(.primary)
       Text("All pills logged")
         .font(.headline)
     }
