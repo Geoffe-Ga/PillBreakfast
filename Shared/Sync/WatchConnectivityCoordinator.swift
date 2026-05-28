@@ -26,6 +26,10 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
       logger.warning("WCSession is not supported on this device.")
       return
     }
+    guard activationState == .notActivated else {
+      logger.debug("WCSession already activating or activated; skipping.")
+      return
+    }
     let session = WCSession.default
     session.delegate = self
     session.activate()
@@ -65,10 +69,11 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     Task { @MainActor in
       self.activationState = .notActivated
       self.logger.info("WCSession deactivated; reactivating.")
+      // Reactivate only after .notActivated is observed, so the state machine
+      // never skips straight to .activated. The phone can pair with a new
+      // watch; this hands off to the next device.
+      WCSession.default.activate()
     }
-    // The phone can pair with a new watch; reactivate so the next device can hand off.
-    // Safe to call from any thread, so it stays outside the main-actor hop.
-    WCSession.default.activate()
   }
   #endif
 }

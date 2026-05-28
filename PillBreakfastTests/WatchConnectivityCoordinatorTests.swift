@@ -9,7 +9,8 @@ struct WatchConnectivityCoordinatorTests {
     let coordinator = WatchConnectivityCoordinator.shared
     coordinator.activate()
     coordinator.activate()
-    #expect(WatchConnectivityCoordinator.shared === coordinator)
+    // Double activation must not record an error or leave the state machine wedged.
+    #expect(coordinator.lastError == nil)
   }
 
   @Test func activationStateDisplayNamesAreStable() {
