@@ -155,8 +155,7 @@ public extension RegimenSnapshot {
 
     // Only active meds sync to the watch — it logs against the live regimen, and
     // including archived history would bloat every WCSession payload over time.
-    var activeMeds = FetchDescriptor<Medication>()
-    activeMeds.predicate = #Predicate { !$0.isArchived }
+    let activeMeds = FetchDescriptor<Medication>(predicate: #Predicate { !$0.isArchived })
 
     let medications = try context.fetch(activeMeds).map { medication in
       try MedicationDTO(
@@ -189,6 +188,11 @@ public extension RegimenSnapshot {
   /// Writes the snapshot into a target store with upsert-by-`id` semantics.
   /// Medications present in the store but absent from the snapshot are archived
   /// (`isArchived = true`), never deleted, so a partial/garbled push can't destroy history.
+  ///
+  /// Validation runs fully before any mutation: if the snapshot is rejected
+  /// (unsupported schema version, or a component referencing an unknown
+  /// ingredient) the call throws without touching `context`, so the caller may
+  /// safely reuse the same `ModelContext`.
   @MainActor
   func apply(to context: ModelContext) throws {
     // Reject snapshots from a future app version rather than risk corrupting the
@@ -201,6 +205,20 @@ public extension RegimenSnapshot {
       context.fetch(FetchDescriptor<Ingredient>()).map { ($0.id, $0) },
       uniquingKeysWith: { first, _ in first }
     )
+
+    // Validate-before-mutate: every component must resolve to an ingredient that
+    // already exists or is being inserted by this snapshot. Checking up front means
+    // a dangling reference can't leave the context half-rebuilt.
+    let resolvableIngredientIDs = Set(ingredientByID.keys).union(ingredients.map(\.id))
+    for medication in medications {
+      for component in medication.components where !resolvableIngredientIDs.contains(component.ingredientID) {
+        throw SyncError.danglingIngredientReference(
+          componentID: component.id,
+          ingredientID: component.ingredientID
+        )
+      }
+    }
+
     for dto in ingredients {
       let ingredient: Ingredient
       if let existing = ingredientByID[dto.id] {
@@ -242,20 +260,19 @@ public extension RegimenSnapshot {
       medication.prnAvailableQuantities = dto.prnAvailableQuantities
 
       // Rebuild owned children, deleting the old rows so reassignment can't orphan them.
+      // Ingredient references were validated above, so the lookup is non-nil here.
       for old in medication.components {
         context.delete(old)
       }
       for old in medication.schedule {
         context.delete(old)
       }
-      medication.components = try dto.components.map { component in
-        guard let ingredient = ingredientByID[component.ingredientID] else {
-          throw SyncError.danglingIngredientReference(
-            componentID: component.id,
-            ingredientID: component.ingredientID
-          )
-        }
-        return MedicationComponent(id: component.id, ingredient: ingredient, dosagePerUnitMg: component.dosagePerUnitMg)
+      medication.components = dto.components.map { component in
+        MedicationComponent(
+          id: component.id,
+          ingredient: ingredientByID[component.ingredientID],
+          dosagePerUnitMg: component.dosagePerUnitMg
+        )
       }
       medication.schedule = dto.schedule.map { dose in
         ScheduledDose(id: dose.id, hour: dose.hour, minute: dose.minute, quantity: dose.quantity, daysOfWeek: dose.daysOfWeek)

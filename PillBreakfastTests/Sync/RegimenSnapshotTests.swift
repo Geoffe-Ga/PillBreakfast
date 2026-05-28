@@ -144,6 +144,68 @@ struct RegimenSnapshotTests {
     }
   }
 
+  @Test func failedApplyLeavesExistingStoreUnmutated() throws {
+    let context = try makeInMemoryContext()
+    let ingredient = Ingredient(name: "Acetaminophen")
+    let existing = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    existing.components = [MedicationComponent(ingredient: ingredient, dosagePerUnitMg: 500)]
+    context.insert(existing)
+    try context.save()
+
+    // A snapshot that re-uses the existing med id (so the old flow would delete its
+    // components first) but carries a dangling ingredient reference.
+    let badSnapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        MedicationDTO(
+          id: existing.id,
+          displayName: "Tylenol",
+          fullName: nil,
+          unitForm: .tablet,
+          kind: .prn,
+          colorHex: nil,
+          notes: nil,
+          isArchived: false,
+          createdAt: .now,
+          healthKitConceptID: nil,
+          prnAvailableQuantities: [],
+          components: [ComponentDTO(id: UUID(), ingredientID: UUID(), dosagePerUnitMg: 1)],
+          schedule: []
+        ),
+      ]
+    )
+
+    #expect(throws: SyncError.self) {
+      try badSnapshot.apply(to: context)
+    }
+    // Validation runs before mutation, so the existing component survives.
+    #expect(try context.fetch(FetchDescriptor<MedicationComponent>()).count == 1)
+    #expect(try context.fetch(FetchDescriptor<Medication>()).count == 1)
+  }
+
+  @Test func codableRoundTripPreservesNonNilThresholds() throws {
+    let snapshot = RegimenSnapshot(
+      ingredients: [
+        IngredientDTO(
+          id: UUID(),
+          name: "Acetaminophen",
+          aliases: ["APAP"],
+          isHighRisk: false,
+          dailyCeilingMg: 4000,
+          minIntervalMinutes: 240
+        ),
+      ],
+      medications: []
+    )
+    let decoded = try JSONDecoder().decode(
+      RegimenSnapshot.self,
+      from: JSONEncoder().encode(snapshot)
+    )
+    #expect(decoded == snapshot)
+    #expect(decoded.ingredients.first?.minIntervalMinutes == 240)
+    #expect(decoded.ingredients.first?.dailyCeilingMg == 4000)
+  }
+
   @Test func applyRejectsFutureSchemaVersion() throws {
     let snapshot = RegimenSnapshot(
       schemaVersion: RegimenSnapshot.currentSchemaVersion + 1,
