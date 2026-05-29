@@ -64,6 +64,16 @@ struct MedicationFormView: View {
       if formState.kind == .prn {
         PRNFormSection(formState: formState)
       }
+
+      Section {
+        NavigationLink {
+          IngredientsListView()
+        } label: {
+          Label("Manage ingredients", systemImage: "list.bullet.rectangle")
+        }
+      } footer: {
+        Text("Edit safety ceilings, spacing, and high-risk flags for ingredients.")
+      }
     }
     .scrollContentBackground(.hidden)
     .glassBackground()

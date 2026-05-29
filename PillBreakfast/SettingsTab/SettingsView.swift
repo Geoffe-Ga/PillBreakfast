@@ -41,6 +41,16 @@ struct SettingsView: View {
             pushPreferences()
           }
         }
+
+        Section {
+          NavigationLink {
+            IngredientsListView()
+          } label: {
+            Label("Ingredients", systemImage: "list.bullet.rectangle")
+          }
+        } footer: {
+          Text("Edit ingredient ceilings, spacing, and high-risk flags.")
+        }
       }
       .navigationTitle("Settings")
     }

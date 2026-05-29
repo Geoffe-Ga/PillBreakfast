@@ -30,6 +30,15 @@ public enum IngredientLibrarySeeder {
   PillBreakfast warns; it does not lock you out.
   """
 
+  /// IDs of the seeded library entries (derived from their canonical names). The
+  /// Ingredients screen uses this to block deletion of seeded ingredients.
+  /// `static let` so the SHA-1 derivation runs once, not per deletion check.
+  public static let seededIDs: Set<UUID> = Set(seeds.map { stableUUID(for: $0.name) })
+
+  // NB: a seed's `name` is its identity — `stableUUID(for:)` and `seededIDs`
+  // derive from it. Renaming an existing seed is a breaking migration: existing
+  // installs keep the old baked-in UUID, so the new derived ID wouldn't match
+  // (re-seeds a duplicate, and `seededIDs` would stop protecting the old row).
   public static let seeds: [SeedSpec] = [
     SeedSpec(
       name: "Acetaminophen",
