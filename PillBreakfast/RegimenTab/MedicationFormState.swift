@@ -29,6 +29,10 @@ final class MedicationFormState {
   var kind: MedicationKind = .maintenance
   var componentDraft: ComponentDraft = .empty
   var schedules: [ScheduleDraft] = []
+  /// PRN "take N at a time" options. Edited by `PRNFormSection`; persisting it is
+  /// deliberately deferred to EPIC_05_ISSUE_06 (PRN save semantics), so `apply`
+  /// doesn't write it yet — this skeleton only ships the field + editor.
+  var prnAvailableQuantities: [Int] = []
 
   init() {}
 
@@ -37,6 +41,7 @@ final class MedicationFormState {
     self.displayName = medication.displayName
     self.unitForm = medication.unitForm
     self.kind = medication.kind
+    self.prnAvailableQuantities = medication.prnAvailableQuantities
     // SPEC §5: maintenance products are single-component, so the first component is the one.
     if let component = medication.components.first {
       self.componentDraft = ComponentDraft(
