@@ -141,7 +141,11 @@ struct HealthKitImportTests {
     let a = draft("Lithium")
     let b = draft("Vitamin D")
     let c = draft("Gabapentin", scheduled: true)
-    let result = HealthKitImportSheet.medicationDrafts(from: [a, b, c], selectedIDs: [a.id, c.id])
+    let result = HealthKitImportSheet.medicationDrafts(
+      from: [a, b, c],
+      selectedIDs: [a.id, c.id],
+      existingConceptIDs: []
+    )
     #expect(result.count == 2)
     #expect(result.map(\.displayName) == ["Lithium", "Gabapentin"])
     #expect(result.map(\.healthKitConceptID) == [a.healthKitConceptID, c.healthKitConceptID])
@@ -149,7 +153,11 @@ struct HealthKitImportTests {
 
   @Test func medicationDraftsEmptyWhenNothingSelected() {
     let a = draft("Lithium")
-    #expect(HealthKitImportSheet.medicationDrafts(from: [a], selectedIDs: []).isEmpty)
+    #expect(HealthKitImportSheet.medicationDrafts(
+      from: [a],
+      selectedIDs: [],
+      existingConceptIDs: []
+    ).isEmpty)
   }
 
   // MARK: - Idempotent re-import (SPEC §10 Phase 6 gate)

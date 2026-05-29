@@ -84,10 +84,7 @@ struct HealthKitImportSheet: View {
   @State private var importer: any HealthKitImporting
   @State private var state: HealthKitImportViewState = .checking
   @State private var selectedIDs: Set<UUID> = []
-  /// Health concept tokens already on a local `Medication`. Loaded once when
-  /// the sheet appears so re-running the import flow against the same Health
-  /// authorization shows those rows as "Already imported" and skips them at
-  /// projection time (SPEC §10 Phase 6 gate).
+  /// Health concept tokens already on a local `Medication`; loaded at task time (SPEC §10 Phase 6).
   @State private var existingConceptIDs: Set<String> = []
   @State private var path = NavigationPath()
 
@@ -95,16 +92,11 @@ struct HealthKitImportSheet: View {
     _importer = State(initialValue: importer)
   }
 
-  /// Pure mapping used by the Import button: pick the selected entries from the
-  /// loaded drafts and project them into `MedicationDraft`s. Drafts whose
-  /// `healthKitConceptID` already lives on a local `Medication` are dropped
-  /// here as well as visually disabled in the row — belt-and-suspenders against
-  /// a bug-introduced selection ever reaching persistence. Exposed `static` so
-  /// tests can verify the selection→draft transform without the view layer.
+  /// Project the selected, not-already-imported Health drafts into `MedicationDraft`s.
   static func medicationDrafts(
     from loaded: [HealthMedicationDraft],
     selectedIDs: Set<UUID>,
-    existingConceptIDs: Set<String> = []
+    existingConceptIDs: Set<String>
   ) -> [MedicationDraft] {
     loaded
       .filter { selectedIDs.contains($0.id) }
@@ -112,20 +104,7 @@ struct HealthKitImportSheet: View {
       .map(HealthMedicationMapper.toDraft)
   }
 
-  /// One-shot read of the Health concept tokens already linked to local
-  /// `Medication`s. The predicate filters in the store so manual (non-Health)
-  /// meds are never materialized. Returns an empty set on a thrown fetch so
-  /// the sheet still presents the import list rather than going dark — note
-  /// that with an empty set the mapper's `isAlreadyImported` is `false` for
-  /// every draft, so a disk-full or schema-mismatch error restores pre-PR
-  /// behavior (duplicates possible) rather than silently blocking import. The
-  /// failure is logged via OSLog so it still leaves a trace.
-  ///
-  /// Pinned to `@MainActor` because `ModelContext` is not `Sendable` and its
-  /// fetch must stay on the actor that owns it; the call site
-  /// (`.task { … }` on the sheet) already inherits MainActor, but the
-  /// annotation lets the compiler enforce the constraint statically if the
-  /// helper is ever called from elsewhere.
+  /// Health concept tokens already linked to a local `Medication`; empty on fetch failure.
   @MainActor
   static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
     let descriptor = FetchDescriptor<Medication>(
@@ -135,10 +114,8 @@ struct HealthKitImportSheet: View {
       let medications = try context.fetch(descriptor)
       return Set(medications.compactMap(\.healthKitConceptID))
     } catch {
-      // Explicit `.private` — SwiftData error descriptions can embed model
-      // summaries that include medication names (PHI). String interpolation
-      // defaults to `.auto`, which redacts in release but is implicit; pin it
-      // so the intent survives future refactors.
+      // SwiftData errors can embed PHI from model summaries; `.auto` redacts in
+      // release but pin `.private` so the intent survives refactors.
       logger.error(
         "Health import dedupe fetch failed: \(error.localizedDescription, privacy: .private)"
       )
@@ -209,7 +186,11 @@ struct HealthKitImportSheet: View {
           .foregroundStyle(.secondary)
       }
       Spacer()
-      if !alreadyImported {
+      if alreadyImported {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(.secondary)
+          .accessibilityHidden(true)
+      } else {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
           .foregroundStyle(isSelected ? .primary : .secondary)
           .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
