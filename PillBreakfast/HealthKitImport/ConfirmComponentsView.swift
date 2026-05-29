@@ -5,7 +5,10 @@ import SwiftUI
 /// NavigationStack route from the import sheet's selection list to the
 /// per-medication ingredient confirmation step. Defined here (next to the
 /// destination view) so the navigation contract is collocated with its target.
-struct ConfirmComponentsRoute: Hashable {
+///
+/// `nonisolated` + explicit `Sendable` for the same reason as `MedicationDraft`
+/// (see that type's note).
+nonisolated struct ConfirmComponentsRoute: Hashable {
   let drafts: [MedicationDraft]
 }
 
@@ -32,6 +35,9 @@ struct ConfirmComponentsView: View {
   @State private var newNames: [UUID: String] = [:]
   /// UUIDs of ingredients created inline in this session, for cancel cleanup.
   @State private var createdIngredientIDs: [UUID] = []
+  /// Surfaces a "save failed, try again" alert so a thrown `modelContext.save()`
+  /// isn't an invisible no-op for the user.
+  @State private var showSaveError = false
 
   private static let logger = Logger(
     subsystem: "com.creekmasons.pillbreakfast",
@@ -61,9 +67,23 @@ struct ConfirmComponentsView: View {
       }
       ToolbarItem(placement: .confirmationAction) {
         Button("Import") { performImport() }
+          .disabled(!Self.canImport(drafts: drafts, selections: selections))
       }
     }
+    .alert("Import failed", isPresented: $showSaveError) {
+      Button("OK", role: .cancel) { showSaveError = false }
+    } message: {
+      Text("Couldn't save the imported medications. Please try again.")
+    }
     .onAppear(perform: applyAutoSuggestions)
+  }
+
+  /// Gates the Import button: every draft must have at least one ingredient
+  /// selected. Without this guard a user can persist a `Medication` with zero
+  /// `MedicationComponent`s, which leaves the PRN-ceiling logic with nothing to
+  /// aggregate and the watch UI with an untappable row.
+  static func canImport(drafts: [MedicationDraft], selections: [UUID: Set<UUID>]) -> Bool {
+    !drafts.isEmpty && drafts.allSatisfy { !(selections[$0.id]?.isEmpty ?? true) }
   }
 
   private func row(draft: MedicationDraft, ingredient: Ingredient) -> some View {
@@ -146,21 +166,24 @@ struct ConfirmComponentsView: View {
 
   private func performImport() {
     for draft in drafts {
-      // Two safety-relevant gaps the user must close in the regimen UI after
-      // import — neither is derivable from the Health side:
+      // Three safety-relevant gaps the user must close in the regimen UI after
+      // import — none is derivable from the Health side:
       //
       //   - `unitForm: .tablet` is a placeholder. HealthKit's
       //     `HKMedicationGeneralForm` exposes capsules / liquids / patches /
       //     etc., but mapping it cleanly is out of scope here; the user picks
       //     the correct form on `EditMedicationView`.
+      //   - `kind: .maintenance` is a placeholder. An imported PRN med
+      //     silently becomes maintenance until the user corrects it — relevant
+      //     for products like gabapentin that ship with PRN UX.
       //   - High-risk medications (lithium is the SPEC example) require
       //     press-and-hold confirmation on the watch. `Medication.isHighRisk`
       //     is computed from the ingredients' `isHighRisk` flag, and the
       //     seeded library is OTC-only (no flagged ingredients), so a newly
       //     imported lithium product comes through low-risk and gets the
       //     single-tap gesture until the user marks its ingredient as
-      //     high-risk in the Ingredients screen. EPIC_05_ISSUE_NN should add
-      //     a post-import safety-flag prompt; until then this is documented.
+      //     high-risk in the Ingredients screen. A post-import safety-flag
+      //     prompt is a follow-up issue; until then this is documented.
       let medication = Medication(
         displayName: draft.displayName,
         unitForm: .tablet,
@@ -187,6 +210,9 @@ struct ConfirmComponentsView: View {
       Self.logger.error("Health import save failed: \(error.localizedDescription)")
       modelContext.rollback()
       InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
+      // Surface the failure rather than leaving the user staring at an
+      // unchanged screen wondering whether Import did anything.
+      showSaveError = true
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)

@@ -54,6 +54,32 @@ struct HealthMedicationMapperTests {
     #expect(HealthMedicationMapper.suggestedIngredient(for: draft, in: library) == nil)
   }
 
+  // MARK: - ConfirmComponentsView gating
+
+  @Test func canImportRequiresAtLeastOneIngredientPerDraft() {
+    let a = MedicationDraft(displayName: "A", healthKitConceptID: "a")
+    let b = MedicationDraft(displayName: "B", healthKitConceptID: "b")
+    let ing1 = UUID()
+    let ing2 = UUID()
+    // Both drafts have a selection → enabled.
+    #expect(ConfirmComponentsView.canImport(
+      drafts: [a, b],
+      selections: [a.id: [ing1], b.id: [ing2]]
+    ))
+    // Only one of the two has a selection → disabled.
+    #expect(!ConfirmComponentsView.canImport(
+      drafts: [a, b],
+      selections: [a.id: [ing1]]
+    ))
+    // Selection set exists but is empty → disabled.
+    #expect(!ConfirmComponentsView.canImport(
+      drafts: [a],
+      selections: [a.id: []]
+    ))
+    // No drafts at all → disabled (no-op import would otherwise be allowed).
+    #expect(!ConfirmComponentsView.canImport(drafts: [], selections: [:]))
+  }
+
   // MARK: - Fixtures
 
   /// Builds an in-memory seeded library so the suggestion logic runs against the
