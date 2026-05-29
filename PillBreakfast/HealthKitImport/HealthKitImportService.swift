@@ -17,7 +17,6 @@ actor HealthKitImportService {
     case comingSoon
   }
 
-  /// Placeholder for the real import. Returns the stub outcome until EPIC_07_ISSUE_02.
   func importMedications() async -> ImportOutcome {
     .comingSoon
   }

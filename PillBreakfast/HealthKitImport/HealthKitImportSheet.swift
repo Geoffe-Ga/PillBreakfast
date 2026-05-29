@@ -7,7 +7,10 @@ import SwiftUI
 struct HealthKitImportSheet: View {
   @Environment(\.dismiss) private var dismiss
 
-  private let service = HealthKitImportService()
+  // @State (not let) so SwiftUI owns the actor's lifetime across redraws — once
+  // ISSUE_02 adds real state (authorization status), a plain let would reset it on
+  // every re-render.
+  @State private var service = HealthKitImportService()
   @State private var message = "Checking Apple Health…"
 
   var body: some View {
