@@ -49,12 +49,21 @@ struct RightNowView: View {
   @ViewBuilder
   private var content: some View {
     if pendingDoses.isEmpty {
-      VStack(spacing: LiquidGlassTheme.Spacing.compact) {
-        Image(systemName: "checkmark.circle")
-          .font(.title2)
-        LiquidGlassTheme.Typography.title("All caught up")
+      VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+        VStack(spacing: LiquidGlassTheme.Spacing.compact) {
+          Image(systemName: "checkmark.circle")
+            .font(.title2)
+          LiquidGlassTheme.Typography.title("All caught up")
+        }
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+
+        // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
+        NavigationLink {
+          PRNListView()
+        } label: {
+          Label("Take as-needed", systemImage: "pills")
+        }
       }
-      .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .glassBackground()
     } else {

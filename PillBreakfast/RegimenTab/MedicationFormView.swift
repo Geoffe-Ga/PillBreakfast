@@ -42,8 +42,10 @@ struct MedicationFormView: View {
         }
       }
 
-      Section("Schedule") {
-        ScheduleRowEditor(schedules: $formState.schedules)
+      if formState.kind == .maintenance {
+        Section("Schedule") {
+          ScheduleRowEditor(schedules: $formState.schedules)
+        }
       }
 
       if hasInteracted, !formState.validationErrors.isEmpty {
@@ -60,11 +62,7 @@ struct MedicationFormView: View {
       }
 
       if formState.kind == .prn {
-        Section {
-          Text("PRN configuration arrives in a later phase.")
-            .font(LiquidGlassTheme.Typography.captionFont)
-            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-        }
+        PRNFormSection(formState: formState)
       }
     }
     .scrollContentBackground(.hidden)

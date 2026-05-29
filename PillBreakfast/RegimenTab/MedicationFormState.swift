@@ -29,6 +29,10 @@ final class MedicationFormState {
   var kind: MedicationKind = .maintenance
   var componentDraft: ComponentDraft = .empty
   var schedules: [ScheduleDraft] = []
+  /// PRN "take N at a time" options. Edited by `PRNFormSection`; persisting it is
+  /// deliberately deferred to EPIC_05_ISSUE_06 (PRN save semantics), so `apply`
+  /// doesn't write it yet — this skeleton only ships the field + editor.
+  var prnAvailableQuantities: [Int] = []
 
   init() {}
 
@@ -37,6 +41,7 @@ final class MedicationFormState {
     self.displayName = medication.displayName
     self.unitForm = medication.unitForm
     self.kind = medication.kind
+    self.prnAvailableQuantities = medication.prnAvailableQuantities
     // SPEC §5: maintenance products are single-component, so the first component is the one.
     if let component = medication.components.first {
       self.componentDraft = ComponentDraft(
@@ -70,6 +75,14 @@ final class MedicationFormState {
     validationErrors.isEmpty
   }
 
+  /// Adds a PRN "take N" option, de-duplicated and kept sorted. No-op if already
+  /// present — callers should disable their add affordance in that case.
+  func addPRNQuantity(_ quantity: Int) {
+    guard !prnAvailableQuantities.contains(quantity) else { return }
+    prnAvailableQuantities.append(quantity)
+    prnAvailableQuantities.sort()
+  }
+
   /// Writes the validated draft into `medication`, rebuilding its component and
   /// schedule. Throws if the chosen ingredient can't be resolved in the store.
   func apply(to medication: Medication, in context: ModelContext) throws {
@@ -85,6 +98,9 @@ final class MedicationFormState {
     medication.displayName = displayName.trimmingCharacters(in: .whitespaces)
     medication.unitForm = unitForm
     medication.kind = kind
+    // TODO(EPIC_05_ISSUE_06): persist prnAvailableQuantities (and multi-ingredient
+    // combo components) here. The skeleton edits the field in form state but does
+    // not yet write it back to the model.
 
     for old in medication.components {
       context.delete(old)
