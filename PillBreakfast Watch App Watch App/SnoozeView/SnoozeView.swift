@@ -7,17 +7,15 @@ import WatchKit
 /// Opened when the "Snooze until…" notification action fires (SPEC §2.2, §8.3).
 /// Pick a wall-clock time; Done reschedules the dose via `SnoozeRescheduler` and
 /// dismisses. The live label shows the resolved fire time, flagging a roll into
-/// tomorrow. Default is 30 minutes out (promoted to a user preference in
-/// EPIC_06_ISSUE_05).
+/// tomorrow. The picker opens at the user's default snooze offset (set on the
+/// iPhone in Settings, synced via `RegimenSnapshot.preferences`; SPEC §6.3).
 struct SnoozeView: View {
   let context: SnoozeContext
 
-  /// Default snooze offset; becomes a `UserPreferences` value in EPIC_06_ISSUE_05.
-  static let defaultOffset: TimeInterval = 30 * 60
-
   @Environment(\.dismiss) private var dismiss
   @Environment(\.modelContext) private var modelContext
-  @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
+  @Environment(UserPreferencesStore.self) private var preferencesStore
+  @State private var snoozeTime: Date = .now.addingTimeInterval(TimeInterval(UserPreferences.defaultSnoozeOffsetMinutes * 60))
   @State private var rescheduleFailed = false
   @State private var route: SnoozeRoute = .picker
   @State private var snoozeCount = 0
@@ -39,10 +37,19 @@ struct SnoozeView: View {
       }
     }
     .onAppear {
+      // @State can't read the environment at init, so seat the picker on the synced
+      // preference here (offset from the moment the sheet opens).
+      snoozeTime = Self.initialSnoozeTime(now: .now, offsetMinutes: preferencesStore.preferences.defaultSnoozeOffsetMinutes)
       let count = currentSnoozeCount()
       snoozeCount = count
       route = SnoozeViewRouter.routeForCount(count)
     }
+  }
+
+  /// The picker's opening time: `now` plus the user's default offset. Pure, so the
+  /// offset→time mapping is unit-testable without a SwiftUI host.
+  static func initialSnoozeTime(now: Date, offsetMinutes: Int) -> Date {
+    now.addingTimeInterval(TimeInterval(offsetMinutes * 60))
   }
 
   private var picker: some View {
@@ -126,4 +133,5 @@ struct SnoozeView: View {
     originalScheduledFor: .now,
     medicationName: "Vitamin D"
   ))
+  .environment(UserPreferencesStore())
 }

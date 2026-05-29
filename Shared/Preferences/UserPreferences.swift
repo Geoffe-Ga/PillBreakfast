@@ -8,6 +8,11 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   public static let defaultHoldDuration: TimeInterval = 0.5
   public static let holdDurationRange: ClosedRange<TimeInterval> = 0.3 ... 2.0
 
+  /// Allowed snooze offsets (minutes) for the watch picker's initial position
+  /// (SPEC §6.3). A discrete set, not a range — invalid values snap to the default.
+  public static let allowedSnoozeOffsets: [Int] = [15, 30, 45, 60, 90]
+  public static let defaultSnoozeOffsetMinutes = 30
+
   /// Always kept within `holdDurationRange` — clamped on construction, decode,
   /// and every assignment (`didSet`), so an out-of-range value can never reach
   /// the gesture regardless of how it arrived (UI, old snapshot, garbled wire).
@@ -18,15 +23,36 @@ public struct UserPreferences: Codable, Sendable, Hashable {
     }
   }
 
-  public init(highRiskHoldDurationSeconds: TimeInterval = Self.defaultHoldDuration) {
-    // didSet doesn't fire during init, so clamp explicitly here.
+  /// Initial position of the watch snooze picker. Snapped to an allowed value on
+  /// construction, decode, and assignment, mirroring the hold-duration guard so a
+  /// garbled wire value or stale snapshot can't seat the picker on an off-menu offset.
+  public var defaultSnoozeOffsetMinutes: Int {
+    didSet {
+      if !Self.allowedSnoozeOffsets.contains(defaultSnoozeOffsetMinutes) {
+        defaultSnoozeOffsetMinutes = Self.defaultSnoozeOffsetMinutes
+      }
+    }
+  }
+
+  public init(
+    highRiskHoldDurationSeconds: TimeInterval = Self.defaultHoldDuration,
+    defaultSnoozeOffsetMinutes: Int = Self.defaultSnoozeOffsetMinutes
+  ) {
+    // didSet doesn't fire during init, so validate explicitly here.
     self.highRiskHoldDurationSeconds = highRiskHoldDurationSeconds.clamped(to: Self.holdDurationRange)
+    self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(defaultSnoozeOffsetMinutes)
+      ? defaultSnoozeOffsetMinutes
+      : Self.defaultSnoozeOffsetMinutes
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let raw = try container.decode(TimeInterval.self, forKey: .highRiskHoldDurationSeconds)
     self.highRiskHoldDurationSeconds = raw.clamped(to: Self.holdDurationRange)
+    // v2 snapshots have no `defaultSnoozeOffsetMinutes` key — default to 30 (SPEC §6.3).
+    let offset = try container.decodeIfPresent(Int.self, forKey: .defaultSnoozeOffsetMinutes)
+      ?? Self.defaultSnoozeOffsetMinutes
+    self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(offset) ? offset : Self.defaultSnoozeOffsetMinutes
   }
 }
 

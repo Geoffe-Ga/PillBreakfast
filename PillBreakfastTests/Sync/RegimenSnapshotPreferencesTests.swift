@@ -4,18 +4,19 @@ import Testing
 
 @MainActor
 struct RegimenSnapshotPreferencesTests {
-  @Test func currentSchemaVersionIsTwo() {
-    #expect(RegimenSnapshot.currentSchemaVersion == 2)
+  @Test func currentSchemaVersionIsThree() {
+    #expect(RegimenSnapshot.currentSchemaVersion == 3)
   }
 
   @Test func roundTripCarriesPreferences() throws {
     let snapshot = RegimenSnapshot(
       ingredients: [],
       medications: [],
-      preferences: UserPreferences(highRiskHoldDurationSeconds: 1.3)
+      preferences: UserPreferences(highRiskHoldDurationSeconds: 1.3, defaultSnoozeOffsetMinutes: 60)
     )
     let decoded = try JSONDecoder().decode(RegimenSnapshot.self, from: JSONEncoder().encode(snapshot))
     #expect(decoded.preferences.highRiskHoldDurationSeconds == 1.3)
+    #expect(decoded.preferences.defaultSnoozeOffsetMinutes == 60)
     #expect(decoded == snapshot)
   }
 
@@ -27,5 +28,17 @@ struct RegimenSnapshotPreferencesTests {
     #expect(decoded.schemaVersion == 1)
     #expect(decoded.preferences == UserPreferences())
     #expect(decoded.preferences.highRiskHoldDurationSeconds == UserPreferences.defaultHoldDuration)
+  }
+
+  @Test func decodesLegacyV2SnapshotWithDefaultSnoozeOffset() throws {
+    // A v2 payload carries `preferences` but no snooze offset (added in v3); the
+    // offset must default to 30 without dropping the hold duration it does carry.
+    let json = Data(#"""
+    {"schemaVersion":2,"ingredients":[],"medications":[],"preferences":{"highRiskHoldDurationSeconds":0.8}}
+    """#.utf8)
+    let decoded = try JSONDecoder().decode(RegimenSnapshot.self, from: json)
+    #expect(decoded.schemaVersion == 2)
+    #expect(decoded.preferences.highRiskHoldDurationSeconds == 0.8)
+    #expect(decoded.preferences.defaultSnoozeOffsetMinutes == UserPreferences.defaultSnoozeOffsetMinutes)
   }
 }
