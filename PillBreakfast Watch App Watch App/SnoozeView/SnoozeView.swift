@@ -1,4 +1,5 @@
 import os
+import SwiftData
 import SwiftUI
 import UserNotifications
 import WatchKit
@@ -15,12 +16,31 @@ struct SnoozeView: View {
   static let defaultOffset: TimeInterval = 30 * 60
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.modelContext) private var modelContext
   @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
   @State private var rescheduleFailed = false
+  /// Set on appear from the occurrence's snooze count; `.warning` on the fourth.
+  @State private var route: SnoozeRoute = .picker
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
   var body: some View {
+    Group {
+      switch route {
+      case .warning:
+        SnoozeWarningView(
+          context: context,
+          onSnoozeAgain: { route = .picker },
+          onResolved: { dismiss() }
+        )
+      case .picker:
+        picker
+      }
+    }
+    .onAppear { route = SnoozeViewRouter.routeForCount(currentSnoozeCount()) }
+  }
+
+  private var picker: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
       DatePicker("Snooze until", selection: $snoozeTime, displayedComponents: .hourAndMinute)
         .labelsHidden()
@@ -46,6 +66,10 @@ struct SnoozeView: View {
     }
   }
 
+  private func currentSnoozeCount() -> Int {
+    (try? SnoozeRecordStore.currentCount(scheduledDoseID: context.scheduledDoseID, on: .now, in: modelContext)) ?? 0
+  }
+
   private func confirm() async {
     let components = Calendar.current.dateComponents([.hour, .minute], from: snoozeTime)
     do {
@@ -55,7 +79,8 @@ struct SnoozeView: View {
         medicationName: context.medicationName,
         snoozeUntil: components,
         now: .now,
-        center: UNUserNotificationCenter.current()
+        center: UNUserNotificationCenter.current(),
+        context: modelContext
       )
       dismiss()
     } catch {
