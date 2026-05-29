@@ -1,20 +1,26 @@
 import os
 import SwiftData
 import SwiftUI
+import WatchKit
 
-/// Picks how many units of a PRN product to log, then writes the dose. Quantities
-/// come from `prnAvailableQuantities`; if that's empty the user picks a freeform
-/// count (with a warning that the product isn't configured). High-risk PRN meds
-/// confirm with the EPIC 04 press-and-hold; everything else is a single tap.
-///
-/// This issue logs without the soft-warning interstitial — EPIC_05_ISSUE_05 wires
-/// `SafetyEvaluator` in ahead of the write.
+/// Picks how many units of a PRN product to log, then logs the dose — gating the
+/// write on `SafetyEvaluator`. If the dose would cross an ingredient ceiling or
+/// minimum interval, it routes to the `SafetyWarningView` interstitial first
+/// (SPEC §2.3); otherwise it writes directly. Quantities come from
+/// `prnAvailableQuantities` (freeform + warning if unset). High-risk meds confirm
+/// — and override — with the EPIC 04 press-and-hold; everything else single-taps.
 struct PRNQuantityPickerView: View {
   let medication: Medication
+  /// Called after a successful write so the host can refresh (e.g. reload totals).
+  /// It must **not** navigate — this view owns its own dismissal via `dismiss()`,
+  /// so a host that also popped would double-pop.
   let onLogged: () -> Void
 
   @Environment(\.modelContext) private var modelContext
+  @Environment(\.dismiss) private var dismiss
   @State private var quantity: Int
+  /// Non-nil while the safety interstitial is showing for these violations.
+  @State private var pendingViolations: [Violation]?
   @State private var writeFailed = false
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "PRNLogging")
@@ -26,6 +32,26 @@ struct PRNQuantityPickerView: View {
   }
 
   var body: some View {
+    Group {
+      if let pendingViolations {
+        SafetyWarningView(
+          violations: pendingViolations,
+          isHighRisk: medication.isHighRisk,
+          onOverride: write,
+          onCancel: { dismiss() } // back to the PRN list, no write
+        )
+      } else {
+        picker
+      }
+    }
+    .alert("Dose not recorded", isPresented: $writeFailed) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text("Something went wrong saving this dose. Try again.")
+    }
+  }
+
+  private var picker: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
       LiquidGlassTheme.Typography.medicationName(medication.displayName)
         .multilineTextAlignment(.center)
@@ -50,23 +76,37 @@ struct PRNQuantityPickerView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .glassBackground()
     .navigationTitle("As-Needed")
-    .alert("Dose not recorded", isPresented: $writeFailed) {
-      Button("OK", role: .cancel) {}
-    } message: {
-      Text("Something went wrong saving this dose. Try again.")
-    }
   }
 
   @ViewBuilder
   private var confirmButton: some View {
     if medication.isHighRisk {
-      HighRiskConfirmButton(onConfirmed: log)
+      HighRiskConfirmButton(onConfirmed: attemptLog)
     } else {
-      SingleTapConfirmButton(onConfirmed: log)
+      SingleTapConfirmButton(onConfirmed: attemptLog)
     }
   }
 
-  private func log() {
+  /// Runs the safety check first: clean → write; violations → show the interstitial.
+  private func attemptLog() {
+    do {
+      let violations = try SafetyEvaluator.violationsIfTaken(medication, quantity: quantity, at: .now, in: modelContext)
+      if violations.isEmpty {
+        write()
+      } else {
+        // Signal "something unusual" on the wrist as the warning appears, so the
+        // user notices before reading.
+        WKInterfaceDevice.current().play(.notification)
+        pendingViolations = violations
+      }
+    } catch {
+      PRNQuantityPickerView.logger.error("Safety check failed: \(error.localizedDescription, privacy: .public)")
+      writeFailed = true
+    }
+  }
+
+  /// Writes the dose (direct or after override) and returns to the list.
+  private func write() {
     do {
       // PRN doses have no scheduled time. DoseEventWriter snapshots ingredientAmounts.
       let event = try DoseEventWriter.writeDoseEvent(
@@ -86,7 +126,11 @@ struct PRNQuantityPickerView: View {
         PRNQuantityPickerView.logger.error("Failed to queue PRN dose transfer: \(error.localizedDescription, privacy: .public)")
       }
       onLogged()
+      dismiss()
     } catch {
+      // Keep the interstitial up (if it was showing) so an override that fails to
+      // write keeps its context; the alert appears over it and the user can retry
+      // or cancel from there.
       PRNQuantityPickerView.logger.error("Failed to log PRN dose: \(error.localizedDescription, privacy: .public)")
       writeFailed = true
     }
