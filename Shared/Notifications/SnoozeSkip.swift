@@ -34,6 +34,13 @@ public enum SnoozeSkip {
       at: now,
       in: context
     )
-    try SnoozeRecordStore.reset(scheduledDoseID: scheduledDoseID, on: now, in: context, calendar: calendar)
+    // Reset on the dose's scheduled day — the same key `increment` wrote under — so a
+    // skip the next morning still clears a count snoozed late the night before.
+    try SnoozeRecordStore.reset(
+      scheduledDoseID: scheduledDoseID,
+      on: originalScheduledFor,
+      in: context,
+      calendar: calendar
+    )
   }
 }

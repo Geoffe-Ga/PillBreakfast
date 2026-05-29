@@ -35,8 +35,8 @@ struct SnoozeRecordStoreTests {
     let b = UUID()
     let day = Date(timeIntervalSince1970: 1_700_000_000)
 
-    try SnoozeRecordStore.increment(scheduledDoseID: a, on: day, at: day, in: context)
-    try SnoozeRecordStore.increment(scheduledDoseID: a, on: day, at: day, in: context)
+    #expect(try SnoozeRecordStore.increment(scheduledDoseID: a, on: day, at: day, in: context) == 1)
+    #expect(try SnoozeRecordStore.increment(scheduledDoseID: a, on: day, at: day, in: context) == 2)
 
     #expect(try SnoozeRecordStore.currentCount(scheduledDoseID: a, on: day, in: context) == 2)
     #expect(try SnoozeRecordStore.currentCount(scheduledDoseID: b, on: day, in: context) == 0)
@@ -46,8 +46,8 @@ struct SnoozeRecordStoreTests {
     let context = try makeContext()
     let doseID = UUID()
     let day = Date(timeIntervalSince1970: 1_700_000_000)
-    try SnoozeRecordStore.increment(scheduledDoseID: doseID, on: day, at: day, in: context)
-    try SnoozeRecordStore.increment(scheduledDoseID: doseID, on: day, at: day, in: context)
+    #expect(try SnoozeRecordStore.increment(scheduledDoseID: doseID, on: day, at: day, in: context) == 1)
+    #expect(try SnoozeRecordStore.increment(scheduledDoseID: doseID, on: day, at: day, in: context) == 2)
 
     try SnoozeRecordStore.reset(scheduledDoseID: doseID, on: day, in: context)
     #expect(try SnoozeRecordStore.currentCount(scheduledDoseID: doseID, on: day, in: context) == 0)
