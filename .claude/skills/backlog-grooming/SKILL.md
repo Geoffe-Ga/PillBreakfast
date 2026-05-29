@@ -15,15 +15,26 @@ metadata:
 
 Systematically review recent work, close resolved issues, identify gaps, and maintain a clean issue backlog.
 
+> **Command hygiene — this skill runs unattended inside the Ralph loop.** Pull
+> issue/PR state in **one** `gh … --json … --jq …` call per question. Do **not**
+> wrap `gh` queries in a shell `for`/`while` loop, and do **not** chain them with
+> `echo` section-banners or `;` / `&&` / `||`. Those compound commands cross the
+> loop's permission boundary and stall the whole loop on an approval prompt. One
+> structured query, filtered and formatted in `--jq`. (e.g. to check many issues at
+> once, `gh issue list … --jq 'map(select(.number | IN(38,39,40)))'`, never a loop
+> of `gh issue view 38; gh issue view 39; …`.)
+
 ## Instructions
 
 ### Step 1: Initialize Progress Tracking
 
-Create a dated progress file:
+Create a dated progress file (the repo's plan directory is `plans/`, not `plan/`):
 ```bash
 DATE=$(date +%Y-%m-%d)
-PROGRESS_FILE="plan/${DATE}_BACKLOG_GROOMING.md"
+PROGRESS_FILE="plans/${DATE}_BACKLOG_GROOMING.md"
 ```
+Skip the file when the pass is a clean no-op (nothing to close or create) — the
+issue actions and the counter reset are the real output; don't add a doc with no findings.
 
 ### Step 2: Fetch and Analyze Recent PRs
 
@@ -38,10 +49,15 @@ For each PR, extract:
 
 ### Step 3: Verify Issue Resolution
 
-For each issue referenced in PRs:
+Look up all referenced issues in a **single** call — never a per-issue loop:
 ```bash
-gh issue view 123 --json state,title,labels
+gh issue list --state all --limit 300 --json number,state,title,labels \
+  --jq 'map(select(.number | IN(38,39,40,41,42,43))) | sort_by(.number) | .[]
+        | "#\(.number) \(.state) \(.title)"'
 ```
+PRs merged with `Closes #N` / `Fixes #N` auto-close their issue, so most will
+already read `CLOSED`. Step 4 is only for the stragglers: issues referenced
+loosely (no auto-close keyword), partially resolved, or that spawned follow-up work.
 
 Decision matrix:
 - **Fully resolved** -> Close with comment referencing PR
