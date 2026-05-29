@@ -30,7 +30,10 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   }
 }
 
-extension Comparable {
+/// Scoped to this file: a module-wide `Comparable.clamped` would land on every
+/// Comparable for all of Shared's consumers and risk shadowing/ambiguity if the
+/// stdlib ever adds its own. `UserPreferences` is the only caller.
+private extension Comparable {
   /// Confines a value to `range`, returning the nearest bound when outside it.
   func clamped(to range: ClosedRange<Self>) -> Self {
     min(max(self, range.lowerBound), range.upperBound)
