@@ -76,21 +76,39 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
     }
     Task { @MainActor in
       do {
-        let snapshot = try JSONDecoder().decode(RegimenSnapshot.self, from: data)
-        try snapshot.apply(to: PersistenceController.shared.container.mainContext)
-        self.logger.info("Applied regimen with \(snapshot.medications.count, privacy: .public) medications.")
+        let snapshot = try self.applyRegimen(data: data, into: PersistenceController.shared.container.mainContext)
         #if os(watchOS)
-        // Preferences ride on the snapshot but live in UserDefaults, not SwiftData,
-        // so apply() doesn't touch them — store them here so the gesture reads them.
-        UserPreferencesStore.shared.preferences = snapshot.preferences
         // Notifications fire on the watch directly (SPEC §8.1); rebuild from the
-        // freshly-applied regimen.
+        // freshly-applied regimen. Kept out of `applyRegimen` so the decode/apply/
+        // preferences logic stays unit-testable without a notification environment.
         await NotificationBootstrap.refresh(from: snapshot)
         #endif
       } catch {
         self.logger.error("Failed to decode/apply regimen: \(error.localizedDescription, privacy: .public)")
       }
     }
+  }
+
+  /// Decodes an inbound regimen payload, applies it to `context`, and (on the
+  /// watch) mirrors the snapshot's preferences into the store. `@MainActor` (the
+  /// whole coordinator is) and dependency-injected, so the receive path is
+  /// testable without a live `WCSession`. Returns the decoded snapshot so the
+  /// caller can drive watch-only side effects (notification rebuild).
+  @discardableResult
+  func applyRegimen(
+    data: Data,
+    into context: ModelContext,
+    preferencesStore: UserPreferencesStore = .shared
+  ) throws -> RegimenSnapshot {
+    let snapshot = try JSONDecoder().decode(RegimenSnapshot.self, from: data)
+    try snapshot.apply(to: context)
+    logger.info("Applied regimen with \(snapshot.medications.count, privacy: .public) medications.")
+    #if os(watchOS)
+    // Preferences ride on the snapshot but live in UserDefaults, not SwiftData,
+    // so apply() doesn't touch them — store them here so the gesture reads them.
+    preferencesStore.preferences = snapshot.preferences
+    #endif
+    return snapshot
   }
 
   #if os(iOS)
