@@ -32,9 +32,8 @@ public enum IngredientLibrarySeeder {
 
   /// IDs of the seeded library entries (derived from their canonical names). The
   /// Ingredients screen uses this to block deletion of seeded ingredients.
-  public static var seededIDs: Set<UUID> {
-    Set(seeds.map { stableUUID(for: $0.name) })
-  }
+  /// `static let` so the SHA-1 derivation runs once, not per deletion check.
+  public static let seededIDs: Set<UUID> = Set(seeds.map { stableUUID(for: $0.name) })
 
   public static let seeds: [SeedSpec] = [
     SeedSpec(

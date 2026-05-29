@@ -14,6 +14,7 @@ struct IngredientEditorView: View {
   @State private var ceilingText: String
   @State private var intervalText: String
   @State private var isHighRisk: Bool
+  @State private var saveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
@@ -70,6 +71,14 @@ struct IngredientEditorView: View {
         Button("Save", action: save)
       }
     }
+    .alert(
+      "Couldn't save",
+      isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })
+    ) {
+      Button("OK", role: .cancel) { saveError = nil }
+    } message: {
+      Text(saveError ?? "")
+    }
   }
 
   private func save() {
@@ -85,6 +94,7 @@ struct IngredientEditorView: View {
     } catch {
       IngredientEditorView.logger.error("Failed to save ingredient edit: \(error.localizedDescription, privacy: .public)")
       modelContext.rollback()
+      saveError = "The change couldn't be saved. Please try again."
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
