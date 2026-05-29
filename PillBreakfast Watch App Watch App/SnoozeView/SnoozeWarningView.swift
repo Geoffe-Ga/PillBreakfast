@@ -1,5 +1,4 @@
 import os
-import SwiftData
 import SwiftUI
 
 /// Soft warning shown on the fourth consecutive snooze of one occurrence (SPEC
@@ -11,7 +10,7 @@ struct SnoozeWarningView: View {
   let onResolved: () -> Void
 
   @Environment(\.modelContext) private var modelContext
-  @Query(filter: #Predicate<Medication> { !$0.isArchived }) private var medications: [Medication]
+  @State private var skipFailed = false
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
@@ -32,38 +31,27 @@ struct SnoozeWarningView: View {
     .padding()
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .glassBackground()
+    .alert("Couldn't skip", isPresented: $skipFailed) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text("The dose couldn't be skipped. Try again.")
+    }
   }
 
-  /// Logs a skipped dose for this occurrence and clears its snooze count, then
-  /// dismisses. "Take now" routes back to the queue (where the dose is confirmed
-  /// through the usual tap-through, including any high-risk press-and-hold).
+  /// "Take now" routes back to the queue (where the dose is confirmed through the
+  /// usual tap-through, including any high-risk press-and-hold), so it just resolves.
   private func skip() {
-    guard let scheduledDose = scheduledDose(),
-          let medication = scheduledDose.medication
-    else {
-      SnoozeWarningView.logger.error("Skip: couldn't resolve dose \(context.scheduledDoseID, privacy: .public).")
-      onResolved()
-      return
-    }
     do {
-      try DoseEventWriter.writeDoseEvent(
-        for: medication,
-        scheduledFor: context.originalScheduledFor,
-        quantity: scheduledDose.quantity,
-        status: .skipped,
-        loggedOn: .watch,
-        at: .now,
+      try SnoozeSkip.skip(
+        scheduledDoseID: context.scheduledDoseID,
+        originalScheduledFor: context.originalScheduledFor,
         in: modelContext
       )
-      try SnoozeRecordStore.reset(scheduledDoseID: context.scheduledDoseID, on: .now, in: modelContext)
+      onResolved()
     } catch {
-      SnoozeWarningView.logger.error("Skip from snooze warning failed: \(error.localizedDescription, privacy: .public)")
+      // Stay visible on failure so a silently-not-skipped dose can't slip through.
+      SnoozeWarningView.logger.error("Skip from snooze warning failed: \(error.localizedDescription, privacy: .private)")
+      skipFailed = true
     }
-    onResolved()
-  }
-
-  private func scheduledDose() -> ScheduledDose? {
-    let id = context.scheduledDoseID
-    return try? modelContext.fetch(FetchDescriptor<ScheduledDose>(predicate: #Predicate { $0.id == id })).first
   }
 }

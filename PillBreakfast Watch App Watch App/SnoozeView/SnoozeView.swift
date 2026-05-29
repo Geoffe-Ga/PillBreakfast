@@ -19,7 +19,6 @@ struct SnoozeView: View {
   @Environment(\.modelContext) private var modelContext
   @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
   @State private var rescheduleFailed = false
-  /// Set on appear from the occurrence's snooze count; `.warning` on the fourth.
   @State private var route: SnoozeRoute = .picker
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")

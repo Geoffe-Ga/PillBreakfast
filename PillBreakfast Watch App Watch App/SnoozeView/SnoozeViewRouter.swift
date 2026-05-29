@@ -1,6 +1,4 @@
-/// Decides whether the snooze flow shows the time picker or the
-/// fourth-consecutive-snooze warning (SPEC §8.3: warn on the fourth — i.e. once
-/// the occurrence has already been snoozed three times).
+/// Picker vs. the fourth-consecutive-snooze warning (SPEC §8.3).
 enum SnoozeRoute: Equatable {
   case picker
   case warning
