@@ -30,6 +30,12 @@ public enum IngredientLibrarySeeder {
   PillBreakfast warns; it does not lock you out.
   """
 
+  /// IDs of the seeded library entries (derived from their canonical names). The
+  /// Ingredients screen uses this to block deletion of seeded ingredients.
+  public static var seededIDs: Set<UUID> {
+    Set(seeds.map { stableUUID(for: $0.name) })
+  }
+
   public static let seeds: [SeedSpec] = [
     SeedSpec(
       name: "Acetaminophen",
