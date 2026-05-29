@@ -1,45 +1,45 @@
 import SwiftUI
 import UIKit
 
-/// What the import sheet shows once the authorization prompt resolves.
+/// What the import sheet shows once authorization resolves and (when granted) the
+/// one-shot medication query returns.
 ///
-/// A top-level (nonisolated) type on purpose: nesting it inside the `@MainActor`
+/// A top-level (nonisolated-intent) type: nesting it inside the `@MainActor`
 /// `HealthKitImportSheet` would make its synthesized `Equatable` conformance
-/// MainActor-isolated, which Swift 6 then refuses to use from the nonisolated
-/// async code (and tests) that drive the mapping.
+/// MainActor-isolated, which the codebase's default-MainActor isolation tolerates
+/// for main-actor use but the tests pin via `@MainActor`.
 enum HealthKitImportViewState: Equatable {
   case checking
-  case authorized
+  case loaded([HealthMedicationDraft])
   case denied
   case notAvailable
   case failed(String)
 
-  /// Pure mapping from the typed authorization result to display state.
-  static func mapped(from result: HealthKitImportAuthorizationResult) -> Self {
-    switch result {
-    case .authorized: .authorized
-    case .denied: .denied
-    case .notAvailable: .notAvailable
-    }
-  }
-
-  /// Runs the request through the (possibly faked) importer and folds both the
-  /// typed result and any thrown error into a single display state. A genuine
-  /// error becomes `.failed` and is surfaced to the user — never swallowed.
+  /// Drives the full flow: request per-medication read scope, and on success run
+  /// the one-shot query. Any thrown error (auth or fetch) folds into `.failed`
+  /// and is surfaced to the user — never swallowed.
   static func resolve(using importer: any HealthKitImporting) async -> Self {
     do {
-      return try await mapped(from: importer.requestPerMedicationReadAuthorization())
+      switch try await importer.requestPerMedicationReadAuthorization() {
+      case .authorized: return try await .loaded(importer.fetchUserAnnotatedMedications())
+      case .denied: return .denied
+      case .notAvailable: return .notAvailable
+      }
     } catch {
       return .failed(error.localizedDescription)
     }
   }
 
+  /// Message for the states rendered as a centered prompt (everything except a
+  /// non-empty `.loaded`, which renders the selection list instead).
   var message: String {
     switch self {
     case .checking:
       "Checking Apple Health…"
-    case .authorized:
-      "Access granted. PillBreakfast can read the medications you shared — importing them lands in a coming update. PillBreakfast only reads from Apple Health; it never writes."
+    case let .loaded(drafts):
+      drafts.isEmpty
+        ? "No medications found in Apple Health. Add them in the Health app first, or add medications to PillBreakfast by hand."
+        : ""
     case .denied:
       "PillBreakfast can't see any Health medications yet. To choose which to share, open Settings ▸ Privacy & Security ▸ Health ▸ PillBreakfast."
     case .notAvailable:
@@ -51,16 +51,22 @@ enum HealthKitImportViewState: Equatable {
 
   var symbolName: String {
     switch self {
-    case .checking, .authorized: "heart.text.square"
+    case .checking: "heart.text.square"
+    case let .loaded(drafts): drafts.isEmpty ? "tray" : "heart.text.square"
     case .denied, .notAvailable, .failed: "heart.slash"
     }
   }
 }
 
-/// "Import from Apple Health" sheet (SPEC §6.1). Drives the per-medication read
-/// authorization flow and branches on the outcome. Querying the granted
-/// medications lands in the next issue (EPIC 07 ISSUE 03).
+/// "Import from Apple Health" sheet (SPEC §6.1). Requests per-medication read
+/// scope, lists the granted medications with per-row selection, and hands the
+/// chosen drafts to `onImport`. Mapping the drafts to `Medication`s is the next
+/// issue (EPIC 07 ISSUE 04), so the default `onImport` is a no-op.
 struct HealthKitImportSheet: View {
+  /// Shown as the read-only assurance footer; also asserted in tests so the trust
+  /// signal can't be silently deleted.
+  static let readOnlyDisclaimer = "PillBreakfast only reads from Apple Health; it never writes."
+
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
 
@@ -68,44 +74,111 @@ struct HealthKitImportSheet: View {
   // default is the live service, tests inject a fake via the initializer.
   @State private var importer: any HealthKitImporting
   @State private var state: HealthKitImportViewState = .checking
+  @State private var selectedIDs: Set<UUID> = []
 
-  init(importer: any HealthKitImporting = HealthKitImportService()) {
+  private let onImport: ([HealthMedicationDraft]) -> Void
+
+  init(
+    importer: any HealthKitImporting = HealthKitImportService(),
+    onImport: @escaping ([HealthMedicationDraft]) -> Void = { _ in }
+  ) {
     _importer = State(initialValue: importer)
+    self.onImport = onImport
   }
 
   var body: some View {
     NavigationStack {
-      VStack(spacing: 16) {
-        Image(systemName: state.symbolName)
-          .font(.largeTitle)
-          .foregroundStyle(.secondary)
-        Text("Import from Apple Health")
-          .font(.headline)
-        Text(state.message)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-        if state == .denied {
-          Button("Open Settings") {
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-              openURL(url)
+      content
+        .navigationTitle("Apple Health")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Done") { dismiss() }
+          }
+          if case let .loaded(drafts) = state, !drafts.isEmpty {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Import") { confirm(drafts) }
+                .disabled(selectedIDs.isEmpty)
             }
           }
-          .buttonStyle(.borderedProminent)
         }
-      }
-      .padding()
-      .navigationTitle("Apple Health")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
+        .task { state = await HealthKitImportViewState.resolve(using: importer) }
+    }
+  }
+
+  @ViewBuilder private var content: some View {
+    switch state {
+    case let .loaded(drafts) where !drafts.isEmpty:
+      medicationList(drafts)
+    default:
+      messageView
+    }
+  }
+
+  private func medicationList(_ drafts: [HealthMedicationDraft]) -> some View {
+    List {
+      Section {
+        ForEach(drafts) { draft in
+          Button { toggle(draft.id) } label: { row(draft) }
+            .buttonStyle(.plain)
         }
-      }
-      .task {
-        state = await HealthKitImportViewState.resolve(using: importer)
+      } footer: {
+        Text(Self.readOnlyDisclaimer)
       }
     }
+  }
+
+  private func row(_ draft: HealthMedicationDraft) -> some View {
+    let isSelected = selectedIDs.contains(draft.id)
+    return HStack {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(draft.displayName)
+        Text(draft.hasSchedule ? "Scheduled" : "As needed")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Spacer()
+      Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+        .foregroundStyle(isSelected ? .primary : .secondary)
+        .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
+    }
+    .contentShape(.rect)
+  }
+
+  private var messageView: some View {
+    VStack(spacing: 16) {
+      Image(systemName: state.symbolName)
+        .font(.largeTitle)
+        .foregroundStyle(.secondary)
+      Text("Import from Apple Health")
+        .font(.headline)
+      Text(state.message)
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+      if state == .denied {
+        Button("Open Settings") {
+          if let url = URL(string: UIApplication.openSettingsURLString) {
+            openURL(url)
+          }
+        }
+        .buttonStyle(.borderedProminent)
+      }
+    }
+    .padding()
+  }
+
+  private func toggle(_ id: UUID) {
+    if selectedIDs.contains(id) {
+      selectedIDs.remove(id)
+    } else {
+      selectedIDs.insert(id)
+    }
+  }
+
+  private func confirm(_ drafts: [HealthMedicationDraft]) {
+    onImport(drafts.filter { selectedIDs.contains($0.id) })
+    dismiss()
   }
 }
 
