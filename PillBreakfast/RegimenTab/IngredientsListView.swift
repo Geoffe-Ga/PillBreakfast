@@ -61,11 +61,15 @@ struct IngredientsListView: View {
     for index in offsets {
       let ingredient = ingredients[index]
       do {
-        guard try IngredientDeletion.isDeletable(ingredient, in: modelContext) else {
-          deleteError = IngredientLibrarySeeder.seededIDs.contains(ingredient.id)
-            ? "Seeded library ingredients can't be deleted."
-            : "\(ingredient.name) is used by a medication — remove it there first."
+        switch try IngredientDeletion.check(ingredient, in: modelContext) {
+        case .seeded:
+          deleteError = "Seeded library ingredients can't be deleted."
           continue
+        case .referenced:
+          deleteError = "\(ingredient.name) is used by a medication — remove it there first."
+          continue
+        case .allowed:
+          break
         }
         modelContext.delete(ingredient)
         try modelContext.save()

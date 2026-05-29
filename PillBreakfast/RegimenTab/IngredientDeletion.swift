@@ -1,13 +1,19 @@
 import SwiftData
 
-/// Decides whether an ingredient may be deleted from the library. Seeded entries
-/// are permanent; user-added ones can go only if no `MedicationComponent` still
-/// references them (deleting a referenced ingredient would orphan a product's
-/// safety math).
+/// Whether an ingredient may be deleted from the library, and if not, why — so the
+/// caller's error message stays co-located with the rule rather than re-deriving it.
+enum IngredientDeletionCheck: Equatable {
+  case allowed
+  /// A seeded library entry; never deletable.
+  case seeded
+  /// A user-added ingredient still referenced by a `MedicationComponent`.
+  case referenced
+}
+
 @MainActor
 enum IngredientDeletion {
-  static func isDeletable(_ ingredient: Ingredient, in context: ModelContext) throws -> Bool {
-    guard !IngredientLibrarySeeder.seededIDs.contains(ingredient.id) else { return false }
+  static func check(_ ingredient: Ingredient, in context: ModelContext) throws -> IngredientDeletionCheck {
+    if IngredientLibrarySeeder.seededIDs.contains(ingredient.id) { return .seeded }
     let ingredientID = ingredient.id
     // Full fetch + in-memory check: a #Predicate over the optional `ingredient`
     // relationship isn't cleanly expressible in Swift 6 SwiftData, and the
@@ -16,6 +22,6 @@ enum IngredientDeletion {
     let referenced = try context
       .fetch(FetchDescriptor<MedicationComponent>())
       .contains { $0.ingredient?.id == ingredientID }
-    return !referenced
+    return referenced ? .referenced : .allowed
   }
 }

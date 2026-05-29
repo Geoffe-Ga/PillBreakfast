@@ -21,7 +21,7 @@ struct IngredientsTests {
     let acetaminophen = try #require(
       context.fetch(FetchDescriptor<Ingredient>()).first { $0.name == "Acetaminophen" }
     )
-    #expect(try IngredientDeletion.isDeletable(acetaminophen, in: context) == false)
+    #expect(try IngredientDeletion.check(acetaminophen, in: context) == .seeded)
   }
 
   @Test func referencedUserIngredientCannotBeDeleted() throws {
@@ -33,7 +33,7 @@ struct IngredientsTests {
     context.insert(med)
     try context.save()
 
-    #expect(try IngredientDeletion.isDeletable(custom, in: context) == false)
+    #expect(try IngredientDeletion.check(custom, in: context) == .referenced)
   }
 
   @Test func unreferencedUserIngredientCanBeDeleted() throws {
@@ -42,7 +42,7 @@ struct IngredientsTests {
     context.insert(custom)
     try context.save()
 
-    #expect(try IngredientDeletion.isDeletable(custom, in: context) == true)
+    #expect(try IngredientDeletion.check(custom, in: context) == .allowed)
   }
 
   // MARK: - High-risk sync

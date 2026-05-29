@@ -6,6 +6,10 @@ import SwiftUI
 /// user takes responsibility for the numbers the safety system enforces — the
 /// disclaimer is shown here too. On save, the regimen snapshot is re-pushed so the
 /// watch picks up the change.
+///
+/// Seeded library ingredients are intentionally editable here — their thresholds
+/// are *personal* ceilings, not read-only canonical values. Only their deletion is
+/// blocked (see `IngredientDeletion`).
 struct IngredientEditorView: View {
   let ingredient: Ingredient
 
@@ -83,22 +87,33 @@ struct IngredientEditorView: View {
     }
   }
 
-  /// A field is valid when it's blank (means "no threshold") or parses cleanly.
-  /// Save is blocked otherwise so a typo can't masquerade as "no change".
+  /// Parsed thresholds, or `nil` if a field is non-empty but unparseable. A blank
+  /// field means "no threshold". Single source of truth for both `isValid` and
+  /// `save()` so the validation and save paths can't diverge.
+  private var parsedThresholds: (ceiling: Double?, interval: Int?)? {
+    func parse<T>(_ text: String, _ convert: (String) -> T?) -> T?? {
+      let trimmed = text.trimmingCharacters(in: .whitespaces)
+      if trimmed.isEmpty { return .some(nil) } // blank → no threshold
+      guard let value = convert(trimmed) else { return nil } // non-numeric → invalid
+      return .some(value)
+    }
+    guard let ceiling = parse(ceilingText, Double.init),
+          let interval = parse(intervalText, Int.init)
+    else { return nil }
+    return (ceiling, interval)
+  }
+
+  /// Save is blocked when a field is non-empty but unparseable, so a typo can't
+  /// masquerade as "no change".
   private var isValid: Bool {
-    let ceiling = ceilingText.trimmingCharacters(in: .whitespaces)
-    let interval = intervalText.trimmingCharacters(in: .whitespaces)
-    let ceilingOK = ceiling.isEmpty || Double(ceiling) != nil
-    let intervalOK = interval.isEmpty || Int(interval) != nil
-    return ceilingOK && intervalOK
+    parsedThresholds != nil
   }
 
   private func save() {
-    // Empty → no threshold. Non-numeric input is ignored (field keeps the old value).
-    let trimmedCeiling = ceilingText.trimmingCharacters(in: .whitespaces)
-    let trimmedInterval = intervalText.trimmingCharacters(in: .whitespaces)
-    ingredient.dailyCeilingMg = trimmedCeiling.isEmpty ? nil : Double(trimmedCeiling) ?? ingredient.dailyCeilingMg
-    ingredient.minIntervalMinutes = trimmedInterval.isEmpty ? nil : Int(trimmedInterval) ?? ingredient.minIntervalMinutes
+    // `isValid` gates the Save button, so this is non-nil here.
+    guard let thresholds = parsedThresholds else { return }
+    ingredient.dailyCeilingMg = thresholds.ceiling
+    ingredient.minIntervalMinutes = thresholds.interval
     ingredient.isHighRisk = isHighRisk
 
     do {
