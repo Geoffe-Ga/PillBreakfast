@@ -8,16 +8,11 @@ private struct AddFailure: Error {}
 @MainActor
 private final class FakeNotificationCenter: NotificationScheduling {
   private(set) var added: [UNNotificationRequest] = []
-  private(set) var removedIdentifiers: [String] = []
   var throwOnAdd = false
 
   func add(_ request: UNNotificationRequest) async throws {
     if throwOnAdd { throw AddFailure() }
     added.append(request)
-  }
-
-  func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
-    removedIdentifiers.append(contentsOf: identifiers)
   }
 }
 
@@ -54,7 +49,7 @@ struct SnoozeReschedulerTests {
 
   // MARK: - snooze
 
-  @Test func snoozeSchedulesOneShotRequestAndCancelsOnlyItsOwnID() async throws {
+  @Test func snoozeSchedulesOneShotRequestWithMedicationBody() async throws {
     let cal = try calendar()
     let center = FakeNotificationCenter()
     let doseID = UUID()
@@ -78,13 +73,9 @@ struct SnoozeReschedulerTests {
 
     let trigger = try #require(request.trigger as? UNCalendarNotificationTrigger)
     #expect(trigger.repeats == false) // one-shot, never repeating
-
-    // Cancelled only its own namespaced id — never the daily recurring fire.
-    #expect(center.removedIdentifiers == [request.identifier])
-    #expect(center.removedIdentifiers.allSatisfy { $0.hasPrefix(SnoozeRescheduler.snoozeIdentifierPrefix) })
   }
 
-  @Test func reSnoozeReusesIDAndCancelsThePrevious() async throws {
+  @Test func reSnoozeReusesTheSameIdentifierSoItReplacesInPlace() async throws {
     let cal = try calendar()
     let center = FakeNotificationCenter()
     let doseID = UUID()
@@ -104,11 +95,10 @@ struct SnoozeReschedulerTests {
     try await snooze(hour: 14, minute: 30)
     try await snooze(hour: 16, minute: 0) // re-snooze to a new time
 
-    // Same identifier both times (keyed on dose + original occurrence)...
+    // Both adds reuse the same per-occurrence identifier, so the real center
+    // replaces the prior snooze in place (idempotent reschedule).
+    #expect(center.added.count == 2)
     #expect(Set(center.added.map(\.identifier)).count == 1)
-    // ...and each call cancelled the prior snooze for that id.
-    let id = try #require(center.added.first).identifier
-    #expect(center.removedIdentifiers.count(where: { $0 == id }) == 2)
   }
 
   @Test func snoozeRethrowsWhenCenterAddFails() async throws {
@@ -128,5 +118,16 @@ struct SnoozeReschedulerTests {
         calendar: cal
       )
     }
+    // Add-only ordering: a failed add leaves nothing scheduled (and never cancelled
+    // a prior snooze), so the user's existing reminder survives.
+    #expect(center.added.isEmpty)
+  }
+
+  @Test func resolveTargetRollsToTomorrowWhenTargetEqualsNow() throws {
+    let cal = try calendar()
+    let now = try date(2026, 5, 15, 9, 0, in: cal)
+    // Exactly now → not strictly ahead → rolls to tomorrow (don't fire immediately).
+    let target = try SnoozeRescheduler.resolveTarget(from: DateComponents(hour: 9, minute: 0), now: now, calendar: cal)
+    #expect(try target == date(2026, 5, 16, 9, 0, in: cal))
   }
 }
