@@ -9,20 +9,34 @@ import SwiftData
 // wire format. DoseEvents flow back watch → iPhone over a separate channel (EPIC 03).
 
 public struct RegimenSnapshot: Codable, Sendable, Hashable {
-  public static let currentSchemaVersion = 1
+  /// v2 added `preferences`. The decode path below tolerates v1 payloads (no
+  /// `preferences` key) by defaulting them, so a not-yet-updated watch can't crash.
+  public static let currentSchemaVersion = 2
 
   public let schemaVersion: Int
   public let ingredients: [IngredientDTO]
   public let medications: [MedicationDTO]
+  public let preferences: UserPreferences
 
   public init(
     schemaVersion: Int = RegimenSnapshot.currentSchemaVersion,
     ingredients: [IngredientDTO],
-    medications: [MedicationDTO]
+    medications: [MedicationDTO],
+    preferences: UserPreferences = UserPreferences()
   ) {
     self.schemaVersion = schemaVersion
     self.ingredients = ingredients
     self.medications = medications
+    self.preferences = preferences
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+    self.ingredients = try container.decode([IngredientDTO].self, forKey: .ingredients)
+    self.medications = try container.decode([MedicationDTO].self, forKey: .medications)
+    // v1 snapshots have no `preferences` key — default to 0.5s (SPEC §2.1).
+    self.preferences = try container.decodeIfPresent(UserPreferences.self, forKey: .preferences) ?? UserPreferences()
   }
 }
 
@@ -151,7 +165,7 @@ public extension RegimenSnapshot {
   /// Reads the current SwiftData store into an immutable snapshot. Main-actor-bound
   /// because it touches `@Model` objects, but returns only Sendable value types.
   @MainActor
-  static func from(context: ModelContext) throws -> RegimenSnapshot {
+  static func from(context: ModelContext, preferences: UserPreferences = UserPreferences()) throws -> RegimenSnapshot {
     let ingredients = try context.fetch(FetchDescriptor<Ingredient>()).map { ingredient in
       IngredientDTO(
         id: ingredient.id,
@@ -194,7 +208,7 @@ public extension RegimenSnapshot {
       )
     }
 
-    return RegimenSnapshot(ingredients: ingredients, medications: medications)
+    return RegimenSnapshot(ingredients: ingredients, medications: medications, preferences: preferences)
   }
 
   /// Writes the snapshot into a target store with upsert-by-`id` semantics.

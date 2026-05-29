@@ -80,6 +80,9 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
         try snapshot.apply(to: PersistenceController.shared.container.mainContext)
         self.logger.info("Applied regimen with \(snapshot.medications.count, privacy: .public) medications.")
         #if os(watchOS)
+        // Preferences ride on the snapshot but live in UserDefaults, not SwiftData,
+        // so apply() doesn't touch them — store them here so the gesture reads them.
+        UserPreferencesStore.shared.preferences = snapshot.preferences
         // Notifications fire on the watch directly (SPEC §8.1); rebuild from the
         // freshly-applied regimen.
         await NotificationBootstrap.refresh(from: snapshot)
@@ -123,7 +126,7 @@ public final class WatchConnectivityCoordinator: NSObject, WCSessionDelegate {
       return
     }
     do {
-      let snapshot = try RegimenSnapshot.from(context: context)
+      let snapshot = try RegimenSnapshot.from(context: context, preferences: UserPreferencesStore.shared.preferences)
       let data = try JSONEncoder().encode(snapshot)
       try WCSession.default.updateApplicationContext(["regimen": data])
       logger.info("Pushed regimen with \(snapshot.medications.count, privacy: .public) medications.")

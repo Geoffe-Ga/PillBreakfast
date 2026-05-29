@@ -19,6 +19,7 @@ struct PillBreakfastApp: App {
   var body: some Scene {
     WindowGroup {
       MainTabView()
+        .environment(UserPreferencesStore.shared)
     }
     .modelContainer(PersistenceController.shared.container)
   }
