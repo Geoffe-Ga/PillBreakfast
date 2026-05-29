@@ -20,6 +20,21 @@ struct MedicationFormStateTests {
     #expect(state.validationErrors.contains("Name required."))
   }
 
+  @Test func addPRNQuantityDedupesAndSorts() {
+    let state = MedicationFormState()
+    state.addPRNQuantity(2)
+    state.addPRNQuantity(1)
+    state.addPRNQuantity(2) // duplicate — ignored
+    #expect(state.prnAvailableQuantities == [1, 2])
+  }
+
+  @Test func initFromMedicationPopulatesPRNQuantities() {
+    let medication = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    medication.prnAvailableQuantities = [1, 2]
+    let state = MedicationFormState(medication: medication)
+    #expect(state.prnAvailableQuantities == [1, 2])
+  }
+
   @Test func missingIngredientIsInvalid() {
     let state = validForm()
     state.componentDraft.ingredientID = nil

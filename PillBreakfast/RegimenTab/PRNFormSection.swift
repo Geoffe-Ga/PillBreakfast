@@ -7,6 +7,9 @@ import SwiftUI
 ///
 /// This is *configuration*, never dose logging — the iPhone never logs doses.
 struct PRNFormSection: View {
+  /// Bounds for "take N at a time" — a sane upper limit for a single PRN dose.
+  private static let quantityRange = 1 ... 10
+
   @Bindable var formState: MedicationFormState
   @State private var newQuantity = 1
 
@@ -18,13 +21,10 @@ struct PRNFormSection: View {
       .onDelete { formState.prnAvailableQuantities.remove(atOffsets: $0) }
 
       HStack {
-        Stepper("Quantity: \(newQuantity)", value: $newQuantity, in: 1 ... 10)
-        Button("Add") {
-          if !formState.prnAvailableQuantities.contains(newQuantity) {
-            formState.prnAvailableQuantities.append(newQuantity)
-            formState.prnAvailableQuantities.sort()
-          }
-        }
+        Stepper("Quantity: \(newQuantity)", value: $newQuantity, in: Self.quantityRange)
+        Button("Add") { formState.addPRNQuantity(newQuantity) }
+          // Disabled rather than a silent no-op when the value is already listed.
+          .disabled(formState.prnAvailableQuantities.contains(newQuantity))
       }
     } header: {
       Text("Available quantities")

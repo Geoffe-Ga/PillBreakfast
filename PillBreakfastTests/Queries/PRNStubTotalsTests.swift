@@ -26,7 +26,7 @@ struct PRNStubTotalsTests {
     let row = try #require(summaries.first)
     #expect(row.medicationID == prn.id)
     #expect(row.displayName == "Tylenol")
-    #expect(row.summaryText == "0 mg today · no doses logged")
+    #expect(row.summaryText == PRNStubTotals.stubSummaryText)
   }
 
   @Test func emptyWhenNoPRNProducts() throws {
