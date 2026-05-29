@@ -131,6 +131,23 @@ struct HealthKitImportTests {
 
   @Test func sheetConstructsWithDefaultsAndInjection() {
     _ = HealthKitImportSheet()
-    _ = HealthKitImportSheet(importer: FakeImporter(fetch: .success([draft("Lithium")])), onImport: { _ in })
+    _ = HealthKitImportSheet(importer: FakeImporter(fetch: .success([draft("Lithium")])))
+  }
+
+  // MARK: - Selection → MedicationDraft transform (covers the deferred test from #45's review)
+
+  @Test func medicationDraftsCarryOnlyTheSelectedSubset() {
+    let a = draft("Lithium")
+    let b = draft("Vitamin D")
+    let c = draft("Gabapentin", scheduled: true)
+    let result = HealthKitImportSheet.medicationDrafts(from: [a, b, c], selectedIDs: [a.id, c.id])
+    #expect(result.count == 2)
+    #expect(result.map(\.displayName) == ["Lithium", "Gabapentin"])
+    #expect(result.map(\.healthKitConceptID) == [a.healthKitConceptID, c.healthKitConceptID])
+  }
+
+  @Test func medicationDraftsEmptyWhenNothingSelected() {
+    let a = draft("Lithium")
+    #expect(HealthKitImportSheet.medicationDrafts(from: [a], selectedIDs: []).isEmpty)
   }
 }
