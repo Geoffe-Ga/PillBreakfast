@@ -13,6 +13,7 @@ struct PillBreakfast_Watch_App_Watch_AppApp: App {
     WindowGroup {
       RightNowView()
         .environment(UserPreferencesStore.shared)
+        .environment(NotificationActionRouter.shared)
     }
     .modelContainer(PersistenceController.shared.container)
   }
