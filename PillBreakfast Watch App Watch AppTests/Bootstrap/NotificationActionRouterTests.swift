@@ -1,17 +1,15 @@
+import Foundation
 @testable import PillBreakfast_Watch_App_Watch_App
 import Testing
 
 @MainActor
 struct NotificationActionRouterTests {
-  @Test func snoozeActionRoutesToSnooze() {
+  @Test func presentSnoozeStashesContextForTheRootView() {
     let router = NotificationActionRouter()
-    router.handle(actionIdentifier: NotificationCategory.Action.snooze)
-    #expect(router.isShowingSnooze)
-  }
+    #expect(router.pendingSnooze == nil)
 
-  @Test func unknownActionDoesNotRoute() {
-    let router = NotificationActionRouter()
-    router.handle(actionIdentifier: "SOME_OTHER_ACTION")
-    #expect(!router.isShowingSnooze)
+    let context = SnoozeContext(scheduledDoseID: UUID(), originalScheduledFor: .now, medicationName: "Vitamin D")
+    router.presentSnooze(context)
+    #expect(router.pendingSnooze == context)
   }
 }
