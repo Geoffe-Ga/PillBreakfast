@@ -20,9 +20,14 @@ struct HealthKitImportTests {
     }
   }
 
-  @Test func authorizationResultHasThreeCases() {
-    let all: [HealthKitImportAuthorizationResult] = [.authorized, .denied, .notAvailable]
-    #expect(all.count == 3)
+  @Test func authorizationResultIsExhaustive() {
+    // Compile-time guard: adding a case without updating the mapping in
+    // `HealthKitImportViewState.mapped(from:)` becomes a build error.
+    for result in [HealthKitImportAuthorizationResult.authorized, .denied, .notAvailable] {
+      switch result {
+      case .authorized, .denied, .notAvailable: break
+      }
+    }
   }
 
   @Test func eachResultMapsToItsViewState() {
@@ -51,8 +56,25 @@ struct HealthKitImportTests {
     #expect(await HealthKitImportViewState.resolve(using: importer) == .failed("boom"))
   }
 
+  @Test func checkingStateHasMessageAndSymbol() {
+    #expect(!HealthKitImportViewState.checking.message.isEmpty)
+    #expect(HealthKitImportViewState.checking.symbolName == "heart.text.square")
+  }
+
+  @Test func authorizedMessageKeepsTheReadOnlyTrustSignal() {
+    let message = HealthKitImportViewState.authorized.message
+    #expect(message.contains("never writes"))
+    #expect(HealthKitImportViewState.authorized.symbolName == "heart.text.square")
+  }
+
+  @Test func notAvailableMessageExplainsHealthIsUnavailable() {
+    #expect(HealthKitImportViewState.notAvailable.message.contains("isn't available"))
+    #expect(HealthKitImportViewState.notAvailable.symbolName == "heart.slash")
+  }
+
   @Test func deniedMessageGuidesUserToSettings() {
     #expect(HealthKitImportViewState.denied.message.contains("Settings"))
+    #expect(HealthKitImportViewState.denied.symbolName == "heart.slash")
   }
 
   @Test func failedMessageIncludesTheUnderlyingReason() {

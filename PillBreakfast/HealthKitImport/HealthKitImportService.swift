@@ -24,8 +24,6 @@ protocol HealthKitImporting: Sendable {
 actor HealthKitImportService: HealthKitImporting {
   private let store = HKHealthStore()
 
-  init() {}
-
   /// Requests *per-medication* read scope: HealthKit presents a picker and the
   /// user chooses which Health medications PillBreakfast may see (SPEC §3.1). We
   /// never request blanket read.
