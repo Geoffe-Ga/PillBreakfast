@@ -34,6 +34,9 @@ public struct ShimmerModifier: ViewModifier {
         }
       }
       .onAppear {
+        // Reset first so the sweep replays from the start on every appear (State
+        // persists across a disappear/reappear of the same view identity).
+        phase = 0
         // Respect Reduce Motion: skip the sweep entirely (band stays off-screen),
         // so the label simply renders without animation.
         guard !reduceMotion else { return }

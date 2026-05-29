@@ -8,8 +8,8 @@ struct QueueSuccessView: View {
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.compact) {
       Image(systemName: "checkmark.circle.fill")
-        // Monochrome per the design convention (color is reserved for high-risk).
         .font(.largeTitle)
+        // Monochrome per the design convention (color is reserved for high-risk).
         .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
       LiquidGlassTheme.Typography.title("All pills logged")
         .shimmer()

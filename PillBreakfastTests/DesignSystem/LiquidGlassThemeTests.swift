@@ -45,6 +45,12 @@ struct LiquidGlassThemeTests {
     )
   }
 
+  @Test func shimmerExtensionAppliesModifier() {
+    // Compile-presence + correct-modifier guard for the public shimmer() API
+    // (the animation itself is visual and covered by snapshot tests later).
+    #expect(Text("done").shimmer() is ModifiedContent<Text, ShimmerModifier>)
+  }
+
   @Test func captionBuilderIsFontOnly() {
     // Caption applies only the font (no embedded foreground style), matching the
     // other builders.
