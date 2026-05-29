@@ -9,8 +9,6 @@ struct HealthKitImportTests {
 
   @MainActor
   @Test func sheetConstructs() {
-    // Smoke: the stub sheet builds and constructs (it routes through the service so
-    // EPIC_07_ISSUE_02 can replace the body without rewiring the entry point).
     _ = HealthKitImportSheet()
   }
 }

@@ -1,15 +1,10 @@
 import SwiftUI
 
-/// Stub "Import from Apple Health" sheet (SPEC §6.1). Opens from the Regimen tab,
-/// explains that import isn't wired yet, and dismisses. The real authorization +
-/// query + mapping flow replaces the body across later EPIC 07 issues; the sheet
-/// already routes through `HealthKitImportService` so that wiring stays in place.
+/// Stub "Import from Apple Health" sheet (SPEC §6.1); real flow lands in EPIC 07.
 struct HealthKitImportSheet: View {
   @Environment(\.dismiss) private var dismiss
 
-  // @State (not let) so SwiftUI owns the actor's lifetime across redraws — once
-  // ISSUE_02 adds real state (authorization status), a plain let would reset it on
-  // every re-render.
+  // @State (not let) so the actor survives SwiftUI redraws once ISSUE_02 adds real state.
   @State private var service = HealthKitImportService()
   @State private var message = "Checking Apple Health…"
 
