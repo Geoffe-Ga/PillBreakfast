@@ -1,5 +1,6 @@
 import Foundation
 @testable import PillBreakfast
+import SwiftData
 import Testing
 
 @MainActor
@@ -140,7 +141,11 @@ struct HealthKitImportTests {
     let a = draft("Lithium")
     let b = draft("Vitamin D")
     let c = draft("Gabapentin", scheduled: true)
-    let result = HealthKitImportSheet.medicationDrafts(from: [a, b, c], selectedIDs: [a.id, c.id])
+    let result = HealthKitImportSheet.medicationDrafts(
+      from: [a, b, c],
+      selectedIDs: [a.id, c.id],
+      existingConceptIDs: []
+    )
     #expect(result.count == 2)
     #expect(result.map(\.displayName) == ["Lithium", "Gabapentin"])
     #expect(result.map(\.healthKitConceptID) == [a.healthKitConceptID, c.healthKitConceptID])
@@ -148,6 +153,122 @@ struct HealthKitImportTests {
 
   @Test func medicationDraftsEmptyWhenNothingSelected() {
     let a = draft("Lithium")
-    #expect(HealthKitImportSheet.medicationDrafts(from: [a], selectedIDs: []).isEmpty)
+    #expect(HealthKitImportSheet.medicationDrafts(
+      from: [a],
+      selectedIDs: [],
+      existingConceptIDs: []
+    ).isEmpty)
+  }
+
+  // MARK: - Idempotent re-import (SPEC §10 Phase 6 gate)
+
+  @Test func medicationDraftsSkipsAlreadyImportedConceptTokens() {
+    let a = draft("Lithium") // conceptID == "concept-Lithium"
+    let b = draft("Vitamin D") // conceptID == "concept-Vitamin D"
+    let result = HealthKitImportSheet.medicationDrafts(
+      from: [a, b],
+      selectedIDs: [a.id, b.id],
+      existingConceptIDs: [a.healthKitConceptID]
+    )
+    // Lithium is already imported and is dropped even though it's selected;
+    // Vitamin D remains. This is the defense-in-depth filter — the row would
+    // also be UI-disabled, but the mapper enforces the contract regardless.
+    #expect(result.count == 1)
+    #expect(result.first?.displayName == "Vitamin D")
+  }
+
+  @Test func medicationDraftsEmptyWhenEveryDraftIsAlreadyImported() {
+    let a = draft("Lithium")
+    let b = draft("Vitamin D")
+    let result = HealthKitImportSheet.medicationDrafts(
+      from: [a, b],
+      selectedIDs: [a.id, b.id],
+      existingConceptIDs: [a.healthKitConceptID, b.healthKitConceptID]
+    )
+    #expect(result.isEmpty)
+  }
+
+  @Test func fetchExistingConceptIDsReturnsLinkedTokensOnly() throws {
+    let context = try makeInMemoryContext()
+    // Manually-added medications (no Health link) must not appear in the
+    // dedupe set, otherwise a user-created med name colliding with a future
+    // Health med would block import.
+    let manual = Medication(displayName: "Manual", unitForm: .tablet, kind: .maintenance)
+    let imported = Medication(
+      displayName: "Lithium",
+      unitForm: .tablet,
+      kind: .maintenance,
+      healthKitConceptID: "lithium-token"
+    )
+    context.insert(manual)
+    context.insert(imported)
+    try context.save()
+
+    let ids = HealthKitImportSheet.fetchExistingConceptIDs(from: context)
+    #expect(ids == ["lithium-token"])
+  }
+
+  @Test func fetchExistingConceptIDsReturnsEmptyOnFreshStore() throws {
+    let context = try makeInMemoryContext()
+    #expect(HealthKitImportSheet.fetchExistingConceptIDs(from: context).isEmpty)
+  }
+
+  /// Phase 6 gate: setting up Lithium in Health, running the import, then
+  /// running it again must not produce a second `Medication`. Verifies the
+  /// full projection path — `fetchExistingConceptIDs` →
+  /// `medicationDrafts(...existingConceptIDs:)` — against a real SwiftData
+  /// store, mirroring what the sheet does at task time.
+  @Test func reImportInsertsZeroNewMedications() throws {
+    let context = try makeInMemoryContext()
+    let lithium = draft("Lithium", scheduled: true) // conceptID "concept-Lithium"
+
+    // First import: nothing exists yet, so the mapper hands us one draft.
+    let firstProjection = HealthKitImportSheet.medicationDrafts(
+      from: [lithium],
+      selectedIDs: [lithium.id],
+      existingConceptIDs: HealthKitImportSheet.fetchExistingConceptIDs(from: context)
+    )
+    #expect(firstProjection.count == 1)
+    insertMedications(from: firstProjection, into: context)
+    try context.save()
+    #expect(try context.fetch(FetchDescriptor<Medication>()).count == 1)
+
+    // Re-import (same Health-side draft, same conceptID): the existing-set is
+    // now populated, the mapper drops the draft, and the store stays at one.
+    let existing = HealthKitImportSheet.fetchExistingConceptIDs(from: context)
+    #expect(existing == [lithium.healthKitConceptID])
+    let secondProjection = HealthKitImportSheet.medicationDrafts(
+      from: [lithium],
+      selectedIDs: [lithium.id],
+      existingConceptIDs: existing
+    )
+    #expect(secondProjection.isEmpty)
+    insertMedications(from: secondProjection, into: context)
+    try context.save()
+    #expect(try context.fetch(FetchDescriptor<Medication>()).count == 1)
+  }
+
+  // MARK: - Fixtures
+
+  private func makeInMemoryContext() throws -> ModelContext {
+    let container = try ModelContainer(
+      for: PersistenceController.schema,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return ModelContext(container)
+  }
+
+  /// Mirrors the `Medication` shape `ConfirmComponentsView.performImport`
+  /// persists — minus the user-confirmed components, which are immaterial to
+  /// dedupe (the dedupe key is `healthKitConceptID`, set at construction).
+  private func insertMedications(from drafts: [MedicationDraft], into context: ModelContext) {
+    for draft in drafts {
+      context.insert(Medication(
+        displayName: draft.displayName,
+        unitForm: .tablet,
+        kind: .maintenance,
+        healthKitConceptID: draft.healthKitConceptID
+      ))
+    }
   }
 }

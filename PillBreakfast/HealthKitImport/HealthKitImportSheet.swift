@@ -1,3 +1,5 @@
+import os
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -68,30 +70,57 @@ struct HealthKitImportSheet: View {
   /// signal can't be silently deleted.
   static let readOnlyDisclaimer = "PillBreakfast only reads from Apple Health; it never writes."
 
+  private static let logger = Logger(
+    subsystem: "com.creekmasons.pillbreakfast",
+    category: "HealthImport"
+  )
+
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
+  @Environment(\.modelContext) private var modelContext
 
   // @State (not let) so the injected importer survives SwiftUI redraws; the
   // default is the live service, tests inject a fake via the initializer.
   @State private var importer: any HealthKitImporting
   @State private var state: HealthKitImportViewState = .checking
   @State private var selectedIDs: Set<UUID> = []
+  /// Health concept tokens already on a local `Medication`; loaded at task time (SPEC §10 Phase 6).
+  @State private var existingConceptIDs: Set<String> = []
   @State private var path = NavigationPath()
 
   init(importer: any HealthKitImporting = HealthKitImportService()) {
     _importer = State(initialValue: importer)
   }
 
-  /// Pure mapping used by the Import button: pick the selected entries from the
-  /// loaded drafts and project them into `MedicationDraft`s. Exposed `static` so
-  /// tests can verify the selection→draft transform without the view layer.
+  /// Project the selected, not-already-imported Health drafts into `MedicationDraft`s.
   static func medicationDrafts(
     from loaded: [HealthMedicationDraft],
-    selectedIDs: Set<UUID>
+    selectedIDs: Set<UUID>,
+    existingConceptIDs: Set<String>
   ) -> [MedicationDraft] {
     loaded
       .filter { selectedIDs.contains($0.id) }
+      .filter { !HealthMedicationMapper.isAlreadyImported($0, existingConceptIDs: existingConceptIDs) }
       .map(HealthMedicationMapper.toDraft)
+  }
+
+  /// Health concept tokens already linked to a local `Medication`; empty on fetch failure.
+  @MainActor
+  static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
+    let descriptor = FetchDescriptor<Medication>(
+      predicate: #Predicate { $0.healthKitConceptID != nil }
+    )
+    do {
+      let medications = try context.fetch(descriptor)
+      return Set(medications.compactMap(\.healthKitConceptID))
+    } catch {
+      // SwiftData errors can embed PHI from model summaries; `.auto` redacts in
+      // release but pin `.private` so the intent survives refactors.
+      logger.error(
+        "Health import dedupe fetch failed: \(error.localizedDescription, privacy: .private)"
+      )
+      return []
+    }
   }
 
   var body: some View {
@@ -113,7 +142,10 @@ struct HealthKitImportSheet: View {
         .navigationDestination(for: ConfirmComponentsRoute.self) { route in
           ConfirmComponentsView(drafts: route.drafts) { dismiss() }
         }
-        .task { state = await HealthKitImportViewState.resolve(using: importer) }
+        .task {
+          existingConceptIDs = Self.fetchExistingConceptIDs(from: modelContext)
+          state = await HealthKitImportViewState.resolve(using: importer)
+        }
     }
   }
 
@@ -130,8 +162,13 @@ struct HealthKitImportSheet: View {
     List {
       Section {
         ForEach(drafts) { draft in
-          Button { toggle(draft.id) } label: { row(draft) }
+          let alreadyImported = HealthMedicationMapper.isAlreadyImported(
+            draft, existingConceptIDs: existingConceptIDs
+          )
+          Button { toggle(draft.id) } label: { row(draft, alreadyImported: alreadyImported) }
             .buttonStyle(.plain)
+            .disabled(alreadyImported)
+            .accessibilityHint(alreadyImported ? "Already in your PillBreakfast regimen" : "")
         }
       } footer: {
         Text(Self.readOnlyDisclaimer)
@@ -139,19 +176,25 @@ struct HealthKitImportSheet: View {
     }
   }
 
-  private func row(_ draft: HealthMedicationDraft) -> some View {
+  private func row(_ draft: HealthMedicationDraft, alreadyImported: Bool) -> some View {
     let isSelected = selectedIDs.contains(draft.id)
     return HStack {
       VStack(alignment: .leading, spacing: 2) {
         Text(draft.displayName)
-        Text(draft.hasSchedule ? "Scheduled" : "As needed")
+        Text(alreadyImported ? "Already imported" : (draft.hasSchedule ? "Scheduled" : "As needed"))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
-      Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-        .foregroundStyle(isSelected ? .primary : .secondary)
-        .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
+      if alreadyImported {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(.secondary)
+          .accessibilityHidden(true)
+      } else {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+          .foregroundStyle(isSelected ? .primary : .secondary)
+          .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
+      }
     }
     .contentShape(.rect)
   }
@@ -188,7 +231,12 @@ struct HealthKitImportSheet: View {
   }
 
   private func confirm(_ drafts: [HealthMedicationDraft]) {
-    path.append(ConfirmComponentsRoute(drafts: Self.medicationDrafts(from: drafts, selectedIDs: selectedIDs)))
+    let projected = Self.medicationDrafts(
+      from: drafts,
+      selectedIDs: selectedIDs,
+      existingConceptIDs: existingConceptIDs
+    )
+    path.append(ConfirmComponentsRoute(drafts: projected))
   }
 }
 

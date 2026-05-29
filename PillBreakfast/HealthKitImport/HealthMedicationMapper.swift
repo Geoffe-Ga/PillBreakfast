@@ -17,6 +17,14 @@ enum HealthMedicationMapper {
     )
   }
 
+  /// True when the Health draft's `healthKitConceptID` is already on a local `Medication`.
+  static func isAlreadyImported(
+    _ draft: HealthMedicationDraft,
+    existingConceptIDs: Set<String>
+  ) -> Bool {
+    existingConceptIDs.contains(draft.healthKitConceptID)
+  }
+
   /// Case-folded substring match of the draft's display name against each
   /// library ingredient's canonical name and aliases. Best signal when the
   /// Health name is the generic ("Ibuprofen" → seeded `Ibuprofen`); branded
