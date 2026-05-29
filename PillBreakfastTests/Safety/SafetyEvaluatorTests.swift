@@ -6,6 +6,13 @@ import Testing
 @MainActor
 struct SafetyEvaluatorTests {
   private let now = Date(timeIntervalSince1970: 1_700_000_000)
+  /// Pinned to UTC so "today" boundaries are deterministic regardless of the
+  /// runner's timezone (the prior doses sit a few hours before `now`).
+  private let calendar: Calendar = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+    return calendar
+  }()
 
   private func makeContext() throws -> ModelContext {
     let container = try ModelContainer(
@@ -70,7 +77,7 @@ struct SafetyEvaluatorTests {
     try context.save()
 
     // Proposing 3 × 300 = 900 → 3000 + 900 = 3900 > 3600.
-    let violations = try SafetyEvaluator.violationsIfTaken(neurontin, quantity: 3, at: now, in: context)
+    let violations = try SafetyEvaluator.violationsIfTaken(neurontin, quantity: 3, at: now, in: context, calendar: calendar)
     let ceiling = try #require(ceilingViolation(in: violations))
     #expect(ceiling.current == 3000)
     #expect(ceiling.proposed == 3900)
@@ -86,7 +93,7 @@ struct SafetyEvaluatorTests {
     logDose(apap.id, mg: 1000, at: now.addingTimeInterval(-2 * 3600), in: context)
     try context.save()
 
-    let violations = try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context)
+    let violations = try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context, calendar: calendar)
     #expect(hasTooSoon(in: violations))
     // 1000 + (2 × 500) = 2000, well under 4000 — no ceiling violation.
     #expect(ceilingViolation(in: violations) == nil)
@@ -114,7 +121,7 @@ struct SafetyEvaluatorTests {
     try context.save()
 
     // 4 Excedrin → 4 × 250 = 1000mg acetaminophen → 3500 + 1000 = 4500 > 4000.
-    let violations = try SafetyEvaluator.violationsIfTaken(excedrin, quantity: 4, at: now, in: context)
+    let violations = try SafetyEvaluator.violationsIfTaken(excedrin, quantity: 4, at: now, in: context, calendar: calendar)
     let ceiling = try #require(ceilingViolation(in: violations))
     #expect(ceiling.current == 3500)
     #expect(ceiling.proposed == 4500)
@@ -134,7 +141,7 @@ struct SafetyEvaluatorTests {
     try context.save()
 
     // 500 + (1 × 500) = 1000 == ceiling → no violation.
-    #expect(try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 1, at: now, in: context).isEmpty)
+    #expect(try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 1, at: now, in: context, calendar: calendar).isEmpty)
   }
 
   @Test func clearedRegimenHasNoViolations() throws {
@@ -144,7 +151,26 @@ struct SafetyEvaluatorTests {
     try context.save()
 
     // No prior doses; a single 2-tablet dose (1000mg) is well within limits.
-    #expect(try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context).isEmpty)
+    #expect(try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context, calendar: calendar).isEmpty)
+  }
+
+  @Test func ingredientWithNoConstraintsIsAlwaysSafe() throws {
+    // A plain vitamin: no ceiling, no interval — both guards short-circuit.
+    let context = try makeContext()
+    let vitaminD = makeIngredient("Vitamin D", in: context) // ceiling/interval nil
+    let supplement = makeMed("Vitamin D", components: [(vitaminD, 2000)], in: context)
+    logDose(vitaminD.id, mg: 50000, at: now.addingTimeInterval(-60), in: context) // huge + recent
+    try context.save()
+
+    #expect(try SafetyEvaluator.violationsIfTaken(supplement, quantity: 5, at: now, in: context, calendar: calendar).isEmpty)
+  }
+
+  @Test func medicationWithNoComponentsIsAlwaysSafe() throws {
+    let context = try makeContext()
+    let med = makeMed("Mystery", components: [], in: context)
+    try context.save()
+
+    #expect(try SafetyEvaluator.violationsIfTaken(med, quantity: 1, at: now, in: context, calendar: calendar).isEmpty)
   }
 
   @Test func ceilingAndIntervalStackOnWorstCaseDose() throws {
@@ -156,7 +182,7 @@ struct SafetyEvaluatorTests {
     try context.save()
 
     // 2 × 500 = 1000 → 3500 + 1000 = 4500 > 4000, and only 1h since the last dose.
-    let violations = try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context)
+    let violations = try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 2, at: now, in: context, calendar: calendar)
     #expect(violations.count == 2)
     #expect(ceilingViolation(in: violations) != nil)
     #expect(hasTooSoon(in: violations))

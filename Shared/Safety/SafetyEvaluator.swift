@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 
 /// Decides whether a prospective dose would violate any ingredient safety rule,
@@ -9,6 +10,8 @@ import SwiftData
 /// calls this before logging.
 @MainActor
 public enum SafetyEvaluator {
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Safety")
+
   public static func violationsIfTaken(
     _ medication: Medication,
     quantity: Int,
@@ -18,8 +21,18 @@ public enum SafetyEvaluator {
   ) throws -> [Violation] {
     var violations: [Violation] = []
 
+    // Assumes one component per ingredient (the form enforces this today). If
+    // combo editing (EPIC_05_ISSUE_06) ever allows the same ingredient in two
+    // components, this must aggregate addedMg per ingredient before the ceiling
+    // check, or it would under-count the proposed dose (#109).
     for component in medication.components {
-      guard let ingredient = component.ingredient else { continue }
+      guard let ingredient = component.ingredient else {
+        // A component with no ingredient is a data-integrity fault. Log it loudly:
+        // for a safety gate, a check that silently doesn't fire because data is
+        // missing is worse than a false positive.
+        logger.warning("Component \(component.id, privacy: .public) has no ingredient; cannot safety-check it.")
+        continue
+      }
       let addedMg = Double(quantity) * component.dosagePerUnitMg
 
       // Daily ceiling: today's logged total (across all products) plus the dose
