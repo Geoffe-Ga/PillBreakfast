@@ -7,6 +7,12 @@ import Foundation
 /// the numbers, and the UI (the soft-warning interstitial, EPIC_05_ISSUE_05)
 /// shapes the wording. An empty `[Violation]` means safe; a non-empty result
 /// means show the warning, naming each ingredient.
+///
+/// `Sendable` is sound despite the `Ingredient` (`@Model`) associated value: under
+/// the module's default `@MainActor` isolation both `Ingredient` and this enum are
+/// main-actor-isolated, and a global-actor-isolated type is implicitly `Sendable`
+/// (its state is protected by the actor). It's only ever produced and consumed on
+/// the main actor — the conformance isn't weakened.
 public enum Violation: Sendable, Hashable, Identifiable {
   /// Taking the dose would push the ingredient's day total over its ceiling.
   case ceiling(ingredient: Ingredient, current: Double, proposed: Double, ceiling: Double)

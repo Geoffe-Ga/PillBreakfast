@@ -453,7 +453,7 @@ Each phase below will be expanded into its own plan file under `plan/` using the
 **Gate (three test cases must all pass):**
 1. *Gabapentin self-pacing:* Take 600mg gabapentin; total reads 600mg. Attempt to take more than 1200mg cumulative, see warning, can override.
 2. *Tylenol self-pacing:* Take 1000mg Tylenol; total reads 1000mg acetaminophen. Attempt to take another 1000mg within 4 hours, see min-interval warning.
-3. *Cross-product safety (the killer test):* Take 1500mg standalone Tylenol, then attempt to take 4 tablets of a combo product (e.g., Excedrin Extra Strength = 1000mg additional acetaminophen). Warning fires on acetaminophen total exceeding 4000mg daily ceiling, even though product names are different.
+3. *Cross-product safety (the killer test):* Take 3500mg standalone Tylenol across the day, then attempt to take 4 tablets of a combo product (e.g., Excedrin Extra Strength = 1000mg additional acetaminophen). Warning fires on the acetaminophen total (3500 + 1000 = 4500mg) exceeding the 4000mg daily ceiling, even though product names are different. (Earlier drafts used "1500mg + 4 Excedrin" — that sums to 2500mg and does not trip 4000mg; corrected here and in `SafetyEvaluatorTests`.)
 
 ### Phase 5 — Snooze-Until-Time
 

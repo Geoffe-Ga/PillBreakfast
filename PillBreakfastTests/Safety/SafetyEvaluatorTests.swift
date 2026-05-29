@@ -44,7 +44,7 @@ struct SafetyEvaluatorTests {
       quantity: 1,
       status: .taken,
       loggedOn: .watch,
-      ingredientAmounts: [LoggedIngredientAmount(ingredientID: ingredientID, ingredientName: "x", totalMg: mg)]
+      ingredientAmounts: [LoggedIngredientAmount(ingredientID: ingredientID, ingredientName: "test", totalMg: mg)]
     ))
   }
 
@@ -123,6 +123,19 @@ struct SafetyEvaluatorTests {
   }
 
   // MARK: - Negative / stacking
+
+  @Test func doseLandingExactlyOnCeilingIsAllowed() throws {
+    // Pins the `>` (not `>=`) semantics: a dose that brings the day total to
+    // exactly the ceiling is allowed — only exceeding it is a violation.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 1000, in: context)
+    let tylenol = makeMed("Tylenol", components: [(apap, 500)], in: context)
+    logDose(apap.id, mg: 500, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    // 500 + (1 × 500) = 1000 == ceiling → no violation.
+    #expect(try SafetyEvaluator.violationsIfTaken(tylenol, quantity: 1, at: now, in: context).isEmpty)
+  }
 
   @Test func clearedRegimenHasNoViolations() throws {
     let context = try makeContext()
