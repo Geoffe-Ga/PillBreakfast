@@ -120,6 +120,13 @@ struct HealthKitImportSheet: View {
   /// every draft, so a disk-full or schema-mismatch error restores pre-PR
   /// behavior (duplicates possible) rather than silently blocking import. The
   /// failure is logged via OSLog so it still leaves a trace.
+  ///
+  /// Pinned to `@MainActor` because `ModelContext` is not `Sendable` and its
+  /// fetch must stay on the actor that owns it; the call site
+  /// (`.task { … }` on the sheet) already inherits MainActor, but the
+  /// annotation lets the compiler enforce the constraint statically if the
+  /// helper is ever called from elsewhere.
+  @MainActor
   static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
     let descriptor = FetchDescriptor<Medication>(
       predicate: #Predicate { $0.healthKitConceptID != nil }
@@ -184,7 +191,7 @@ struct HealthKitImportSheet: View {
           Button { toggle(draft.id) } label: { row(draft, alreadyImported: alreadyImported) }
             .buttonStyle(.plain)
             .disabled(alreadyImported)
-            .accessibilityHint(alreadyImported ? "Already in your PillBreakfast regimen." : "")
+            .accessibilityHint(alreadyImported ? "Already in your PillBreakfast regimen" : "")
         }
       } footer: {
         Text(Self.readOnlyDisclaimer)
