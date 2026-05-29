@@ -6,6 +6,7 @@ import SwiftUI
 /// now (back to the tap-through queue). The user is the authority.
 struct SnoozeWarningView: View {
   let context: SnoozeContext
+  let snoozeCount: Int
   let onSnoozeAgain: () -> Void
   let onResolved: () -> Void
 
@@ -16,16 +17,18 @@ struct SnoozeWarningView: View {
 
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
-      LiquidGlassTheme.Typography.title("Snoozed 3 times")
+      LiquidGlassTheme.Typography.title("Snoozed \(snoozeCount) times")
       LiquidGlassTheme.Typography.caption("Skip instead, or take it now?")
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         .multilineTextAlignment(.center)
 
-      Button("Skip", action: skip)
-        .buttonStyle(.borderedProminent)
-      Button("Take now", action: onResolved)
-        .buttonStyle(.bordered)
+      // Lead with the lightest action: on the Digital Crown the first button is the
+      // most reachable, so the irreversible Skip goes last to avoid accidental taps.
       Button("Snooze again", action: onSnoozeAgain)
+        .buttonStyle(.bordered)
+      Button("Take now", action: onResolved)
+        .buttonStyle(.borderedProminent)
+      Button("Skip", action: skip)
         .buttonStyle(.bordered)
     }
     .padding()
@@ -38,8 +41,10 @@ struct SnoozeWarningView: View {
     }
   }
 
-  /// "Take now" routes back to the queue (where the dose is confirmed through the
-  /// usual tap-through, including any high-risk press-and-hold), so it just resolves.
+  /// Logs a skipped dose and clears this occurrence's snooze count. "Take now" (via
+  /// `onResolved`) only dismisses to the tap-through queue, where the dose is confirmed
+  /// through the usual flow (press-and-hold for high-risk) — the count is intentionally
+  /// left intact on that path, since merely dismissing the nudge isn't a resolution.
   private func skip() {
     do {
       try SnoozeSkip.skip(

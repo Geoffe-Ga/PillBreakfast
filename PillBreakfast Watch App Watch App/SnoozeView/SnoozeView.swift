@@ -20,6 +20,7 @@ struct SnoozeView: View {
   @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
   @State private var rescheduleFailed = false
   @State private var route: SnoozeRoute = .picker
+  @State private var snoozeCount = 0
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
@@ -29,6 +30,7 @@ struct SnoozeView: View {
       case .warning:
         SnoozeWarningView(
           context: context,
+          snoozeCount: snoozeCount,
           onSnoozeAgain: { route = .picker },
           onResolved: { dismiss() }
         )
@@ -36,7 +38,11 @@ struct SnoozeView: View {
         picker
       }
     }
-    .onAppear { route = SnoozeViewRouter.routeForCount(currentSnoozeCount()) }
+    .onAppear {
+      let count = currentSnoozeCount()
+      snoozeCount = count
+      route = SnoozeViewRouter.routeForCount(count)
+    }
   }
 
   private var picker: some View {

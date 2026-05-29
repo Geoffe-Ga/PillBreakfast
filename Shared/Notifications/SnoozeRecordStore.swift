@@ -58,8 +58,12 @@ public enum SnoozeRecordStore {
     calendar: Calendar
   ) throws -> SnoozeRecord? {
     let startOfDay = calendar.startOfDay(for: day)
+    // calendarDay is always stored as calendar.startOfDay(for:) (see increment), so an
+    // equality match is exact and pushes the day filter into the fetch instead of memory.
     return try context
-      .fetch(FetchDescriptor<SnoozeRecord>(predicate: #Predicate { $0.scheduledDoseID == scheduledDoseID }))
-      .first { calendar.isDate($0.calendarDay, inSameDayAs: startOfDay) }
+      .fetch(FetchDescriptor<SnoozeRecord>(predicate: #Predicate {
+        $0.scheduledDoseID == scheduledDoseID && $0.calendarDay == startOfDay
+      }))
+      .first
   }
 }
