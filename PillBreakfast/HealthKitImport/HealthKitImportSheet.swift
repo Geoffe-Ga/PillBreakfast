@@ -58,10 +58,17 @@ enum HealthKitImportViewState: Equatable {
   }
 }
 
+/// NavigationStack route from the import-sheet's selection list to the
+/// per-medication ingredient confirmation step.
+struct ConfirmComponentsRoute: Hashable {
+  let drafts: [MedicationDraft]
+}
+
 /// "Import from Apple Health" sheet (SPEC §6.1). Requests per-medication read
-/// scope, lists the granted medications with per-row selection, and hands the
-/// chosen drafts to `onImport`. Mapping the drafts to `Medication`s is the next
-/// issue (EPIC 07 ISSUE 04), so the default `onImport` is a no-op.
+/// scope, lists the granted medications with per-row selection, and on Import
+/// pushes the chosen drafts onto the ingredient-confirmation step
+/// (`ConfirmComponentsView`), which persists the medications and pushes the
+/// snapshot to the watch.
 struct HealthKitImportSheet: View {
   /// Shown as the read-only assurance footer; also asserted in tests so the trust
   /// signal can't be silently deleted.
@@ -75,19 +82,26 @@ struct HealthKitImportSheet: View {
   @State private var importer: any HealthKitImporting
   @State private var state: HealthKitImportViewState = .checking
   @State private var selectedIDs: Set<UUID> = []
+  @State private var path = NavigationPath()
 
-  private let onImport: ([HealthMedicationDraft]) -> Void
-
-  init(
-    importer: any HealthKitImporting = HealthKitImportService(),
-    onImport: @escaping ([HealthMedicationDraft]) -> Void = { _ in }
-  ) {
+  init(importer: any HealthKitImporting = HealthKitImportService()) {
     _importer = State(initialValue: importer)
-    self.onImport = onImport
+  }
+
+  /// Pure mapping used by the Import button: pick the selected entries from the
+  /// loaded drafts and project them into `MedicationDraft`s. Exposed `static` so
+  /// tests can verify the selection→draft transform without the view layer.
+  static func medicationDrafts(
+    from loaded: [HealthMedicationDraft],
+    selectedIDs: Set<UUID>
+  ) -> [MedicationDraft] {
+    loaded
+      .filter { selectedIDs.contains($0.id) }
+      .map(HealthMedicationMapper.toDraft)
   }
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       content
         .navigationTitle("Apple Health")
         .navigationBarTitleDisplayMode(.inline)
@@ -97,10 +111,13 @@ struct HealthKitImportSheet: View {
           }
           if case let .loaded(drafts) = state, !drafts.isEmpty {
             ToolbarItem(placement: .confirmationAction) {
-              Button("Import") { confirm(drafts) }
+              Button("Next") { confirm(drafts) }
                 .disabled(selectedIDs.isEmpty)
             }
           }
+        }
+        .navigationDestination(for: ConfirmComponentsRoute.self) { route in
+          ConfirmComponentsView(drafts: route.drafts) { dismiss() }
         }
         .task { state = await HealthKitImportViewState.resolve(using: importer) }
     }
@@ -177,8 +194,7 @@ struct HealthKitImportSheet: View {
   }
 
   private func confirm(_ drafts: [HealthMedicationDraft]) {
-    onImport(drafts.filter { selectedIDs.contains($0.id) })
-    dismiss()
+    path.append(ConfirmComponentsRoute(drafts: Self.medicationDrafts(from: drafts, selectedIDs: selectedIDs)))
   }
 }
 
