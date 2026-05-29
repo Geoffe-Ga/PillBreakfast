@@ -5,8 +5,7 @@ import UserNotifications
 public protocol NotificationScheduling {
   func add(_ request: UNNotificationRequest) async throws
   func removePendingNotificationRequests(withIdentifiers identifiers: [String])
-  func pendingNotificationRequests() async -> [UNNotificationRequest]
 }
 
-/// UNUserNotificationCenter already provides all three with matching signatures.
+/// UNUserNotificationCenter already provides both with matching signatures.
 extension UNUserNotificationCenter: NotificationScheduling {}
