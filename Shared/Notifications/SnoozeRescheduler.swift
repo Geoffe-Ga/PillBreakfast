@@ -1,4 +1,6 @@
 import Foundation
+import os
+import SwiftData
 import UserNotifications
 
 /// Reschedules a dose reminder to a user-chosen wall-clock time (SPEC §8.3).
@@ -26,6 +28,7 @@ public enum SnoozeRescheduler {
     snoozeUntil: DateComponents,
     now: Date,
     center: any NotificationScheduling,
+    context: ModelContext,
     calendar: Calendar = .current
   ) async throws {
     let target = try resolveTarget(from: snoozeUntil, now: now, calendar: calendar)
@@ -45,7 +48,27 @@ public enum SnoozeRescheduler {
     // re-snooze atomically swaps the prior snooze — no separate cancel that could
     // leave the user with no reminder if `add` then failed.
     try await center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+
+    // Count the snooze only after it's actually scheduled, so the fourth-snooze
+    // warning reflects snoozes that really happened. Key the count on the dose's
+    // scheduled day (stable across re-snoozes and a cross-midnight skip), not on `now`.
+    do {
+      try SnoozeRecordStore.increment(
+        scheduledDoseID: scheduledDoseID,
+        on: originalScheduledFor,
+        at: now,
+        in: context,
+        calendar: calendar
+      )
+    } catch {
+      // The notification is already scheduled, so the snooze itself succeeded. The
+      // fourth-snooze warning is a soft nudge, not a safety gate — log a missed
+      // increment rather than failing with a misleading "couldn't snooze" error.
+      logger.error("Snooze scheduled but count increment failed: \(error.localizedDescription, privacy: .public)")
+    }
   }
+
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
   static func identifier(scheduledDoseID: UUID, originalScheduledFor: Date) -> String {
     "\(snoozeIdentifierPrefix)\(scheduledDoseID.uuidString).\(isoFormatter.string(from: originalScheduledFor))"

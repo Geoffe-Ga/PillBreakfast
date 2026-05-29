@@ -16,6 +16,9 @@ public final class PersistenceController {
     Medication.self,
     ScheduledDose.self,
     DoseEvent.self,
+    // Additive (lightweight migration): a new standalone model with no
+    // relationships, so existing stores upgrade in place.
+    SnoozeRecord.self,
   ])
 
   private static let logger = Logger(

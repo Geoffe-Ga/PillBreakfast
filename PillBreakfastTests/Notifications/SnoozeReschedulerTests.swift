@@ -1,5 +1,6 @@
 import Foundation
 @testable import PillBreakfast
+import SwiftData
 import Testing
 import UserNotifications
 
@@ -28,6 +29,14 @@ struct SnoozeReschedulerTests {
     var components = DateComponents()
     components.year = y; components.month = mo; components.day = d; components.hour = h; components.minute = mi
     return try #require(calendar.date(from: components))
+  }
+
+  private func makeContext() throws -> ModelContext {
+    let container = try ModelContainer(
+      for: PersistenceController.schema,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return ModelContext(container)
   }
 
   // MARK: - resolveTarget
@@ -62,6 +71,7 @@ struct SnoozeReschedulerTests {
       snoozeUntil: DateComponents(hour: 14, minute: 30),
       now: date(2026, 5, 15, 10, 0, in: cal),
       center: center,
+      context: makeContext(),
       calendar: cal
     )
 
@@ -78,8 +88,10 @@ struct SnoozeReschedulerTests {
   @Test func reSnoozeReusesTheSameIdentifierSoItReplacesInPlace() async throws {
     let cal = try calendar()
     let center = FakeNotificationCenter()
+    let context = try makeContext()
     let doseID = UUID()
     let original = try date(2026, 5, 15, 8, 0, in: cal)
+    let now = try date(2026, 5, 15, 10, 0, in: cal)
 
     func snooze(hour: Int, minute: Int) async throws {
       try await SnoozeRescheduler.snooze(
@@ -87,8 +99,9 @@ struct SnoozeReschedulerTests {
         originalScheduledFor: original,
         medicationName: "Vitamin D",
         snoozeUntil: DateComponents(hour: hour, minute: minute),
-        now: date(2026, 5, 15, 10, 0, in: cal),
+        now: now,
         center: center,
+        context: context,
         calendar: cal
       )
     }
@@ -99,6 +112,8 @@ struct SnoozeReschedulerTests {
     // replaces the prior snooze in place (idempotent reschedule).
     #expect(center.added.count == 2)
     #expect(Set(center.added.map(\.identifier)).count == 1)
+    // Each successful snooze bumps the occurrence's count.
+    #expect(try SnoozeRecordStore.currentCount(scheduledDoseID: doseID, on: now, in: context, calendar: cal) == 2)
   }
 
   @Test func snoozeRethrowsWhenCenterAddFails() async throws {
@@ -115,6 +130,7 @@ struct SnoozeReschedulerTests {
         snoozeUntil: DateComponents(hour: 14, minute: 30),
         now: now,
         center: center,
+        context: makeContext(),
         calendar: cal
       )
     }

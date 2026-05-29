@@ -1,4 +1,5 @@
 import os
+import SwiftData
 import SwiftUI
 import UserNotifications
 import WatchKit
@@ -15,12 +16,36 @@ struct SnoozeView: View {
   static let defaultOffset: TimeInterval = 30 * 60
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.modelContext) private var modelContext
   @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
   @State private var rescheduleFailed = false
+  @State private var route: SnoozeRoute = .picker
+  @State private var snoozeCount = 0
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
   var body: some View {
+    Group {
+      switch route {
+      case .warning:
+        SnoozeWarningView(
+          context: context,
+          snoozeCount: snoozeCount,
+          onSnoozeAgain: { route = .picker },
+          onResolved: { dismiss() }
+        )
+      case .picker:
+        picker
+      }
+    }
+    .onAppear {
+      let count = currentSnoozeCount()
+      snoozeCount = count
+      route = SnoozeViewRouter.routeForCount(count)
+    }
+  }
+
+  private var picker: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
       DatePicker("Snooze until", selection: $snoozeTime, displayedComponents: .hourAndMinute)
         .labelsHidden()
@@ -46,6 +71,21 @@ struct SnoozeView: View {
     }
   }
 
+  private func currentSnoozeCount() -> Int {
+    do {
+      return try SnoozeRecordStore.currentCount(
+        scheduledDoseID: context.scheduledDoseID,
+        on: context.originalScheduledFor,
+        in: modelContext
+      )
+    } catch {
+      // Safe default: 0 routes to the picker (never a false warning). Log rather than
+      // a silent try? so a persistent store failure is visible in production.
+      SnoozeView.logger.error("Snooze count lookup failed: \(error.localizedDescription, privacy: .public)")
+      return 0
+    }
+  }
+
   private func confirm() async {
     let components = Calendar.current.dateComponents([.hour, .minute], from: snoozeTime)
     do {
@@ -55,7 +95,8 @@ struct SnoozeView: View {
         medicationName: context.medicationName,
         snoozeUntil: components,
         now: .now,
-        center: UNUserNotificationCenter.current()
+        center: UNUserNotificationCenter.current(),
+        context: modelContext
       )
       dismiss()
     } catch {
