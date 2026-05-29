@@ -36,4 +36,12 @@ struct SnoozeViewTests {
     let picked = try date(2026, 5, 15, 0, 0, in: cal) // 00:00 has passed → tomorrow
     #expect(SnoozeView.targetLabel(for: picked, now: now, calendar: cal).contains("tomorrow"))
   }
+
+  @Test func initialSnoozeTimeOffsetsNowByThePreferenceMinutes() throws {
+    let cal = try calendar()
+    let now = try date(2026, 5, 15, 10, 0, in: cal)
+    // The picker opens at the user's default offset past now.
+    #expect(try SnoozeView.initialSnoozeTime(now: now, offsetMinutes: 45) == date(2026, 5, 15, 10, 45, in: cal))
+    #expect(try SnoozeView.initialSnoozeTime(now: now, offsetMinutes: 90) == date(2026, 5, 15, 11, 30, in: cal))
+  }
 }

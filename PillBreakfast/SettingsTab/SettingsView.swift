@@ -36,6 +36,19 @@ struct SettingsView: View {
         }
 
         Section {
+          Picker("Default snooze", selection: $store.preferences.defaultSnoozeOffsetMinutes) {
+            ForEach(UserPreferences.allowedSnoozeOffsets, id: \.self) { minutes in
+              Text("\(minutes) min").tag(minutes)
+            }
+          }
+          .onChange(of: store.preferences.defaultSnoozeOffsetMinutes) { _, _ in
+            pushPreferences()
+          }
+        } footer: {
+          Text("Starting position for the snooze picker on the watch.")
+        }
+
+        Section {
           Button("Reset to defaults") {
             store.reset()
             pushPreferences()

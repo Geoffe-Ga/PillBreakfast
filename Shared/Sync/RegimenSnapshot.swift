@@ -9,9 +9,11 @@ import SwiftData
 // wire format. DoseEvents flow back watch → iPhone over a separate channel (EPIC 03).
 
 public struct RegimenSnapshot: Codable, Sendable, Hashable {
-  /// v2 added `preferences`. The decode path below tolerates v1 payloads (no
-  /// `preferences` key) by defaulting them, so a not-yet-updated watch can't crash.
-  public static let currentSchemaVersion = 2
+  /// v2 added `preferences`; v3 added `preferences.defaultSnoozeOffsetMinutes`. The
+  /// decode path tolerates v1 payloads (no `preferences` key) by defaulting them, and
+  /// `UserPreferences.init(from:)` defaults the snooze offset on v2 payloads — so a
+  /// not-yet-updated watch can't crash on an older snapshot.
+  public static let currentSchemaVersion = 3
 
   public let schemaVersion: Int
   public let ingredients: [IngredientDTO]
