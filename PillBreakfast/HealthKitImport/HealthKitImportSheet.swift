@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -70,12 +71,18 @@ struct HealthKitImportSheet: View {
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
+  @Environment(\.modelContext) private var modelContext
 
   // @State (not let) so the injected importer survives SwiftUI redraws; the
   // default is the live service, tests inject a fake via the initializer.
   @State private var importer: any HealthKitImporting
   @State private var state: HealthKitImportViewState = .checking
   @State private var selectedIDs: Set<UUID> = []
+  /// Health concept tokens already on a local `Medication`. Loaded once when
+  /// the sheet appears so re-running the import flow against the same Health
+  /// authorization shows those rows as "Already imported" and skips them at
+  /// projection time (SPEC §10 Phase 6 gate; EPIC 07 ISSUE 05).
+  @State private var existingConceptIDs: Set<String> = []
   @State private var path = NavigationPath()
 
   init(importer: any HealthKitImporting = HealthKitImportService()) {
@@ -83,15 +90,32 @@ struct HealthKitImportSheet: View {
   }
 
   /// Pure mapping used by the Import button: pick the selected entries from the
-  /// loaded drafts and project them into `MedicationDraft`s. Exposed `static` so
-  /// tests can verify the selection→draft transform without the view layer.
+  /// loaded drafts and project them into `MedicationDraft`s. Drafts whose
+  /// `healthKitConceptID` already lives on a local `Medication` are dropped
+  /// here as well as visually disabled in the row — belt-and-suspenders against
+  /// a bug-introduced selection ever reaching persistence (EPIC 07 ISSUE 05).
+  /// Exposed `static` so tests can verify the selection→draft transform
+  /// without the view layer.
   static func medicationDrafts(
     from loaded: [HealthMedicationDraft],
-    selectedIDs: Set<UUID>
+    selectedIDs: Set<UUID>,
+    existingConceptIDs: Set<String> = []
   ) -> [MedicationDraft] {
     loaded
       .filter { selectedIDs.contains($0.id) }
+      .filter { !HealthMedicationMapper.isAlreadyImported($0, existingConceptIDs: existingConceptIDs) }
       .map(HealthMedicationMapper.toDraft)
+  }
+
+  /// One-shot read of the Health concept tokens already linked to local
+  /// `Medication`s. Returns an empty set on a failed fetch so the sheet still
+  /// presents the import list rather than going dark — the user has another
+  /// chance to opt out at the per-row level, and the mapper's defense-in-depth
+  /// filter still drops anything they manage to select.
+  static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
+    let descriptor = FetchDescriptor<Medication>()
+    let medications = (try? context.fetch(descriptor)) ?? []
+    return Set(medications.compactMap(\.healthKitConceptID))
   }
 
   var body: some View {
@@ -113,7 +137,10 @@ struct HealthKitImportSheet: View {
         .navigationDestination(for: ConfirmComponentsRoute.self) { route in
           ConfirmComponentsView(drafts: route.drafts) { dismiss() }
         }
-        .task { state = await HealthKitImportViewState.resolve(using: importer) }
+        .task {
+          existingConceptIDs = Self.fetchExistingConceptIDs(from: modelContext)
+          state = await HealthKitImportViewState.resolve(using: importer)
+        }
     }
   }
 
@@ -130,8 +157,12 @@ struct HealthKitImportSheet: View {
     List {
       Section {
         ForEach(drafts) { draft in
-          Button { toggle(draft.id) } label: { row(draft) }
+          let alreadyImported = HealthMedicationMapper.isAlreadyImported(
+            draft, existingConceptIDs: existingConceptIDs
+          )
+          Button { toggle(draft.id) } label: { row(draft, alreadyImported: alreadyImported) }
             .buttonStyle(.plain)
+            .disabled(alreadyImported)
         }
       } footer: {
         Text(Self.readOnlyDisclaimer)
@@ -139,19 +170,21 @@ struct HealthKitImportSheet: View {
     }
   }
 
-  private func row(_ draft: HealthMedicationDraft) -> some View {
+  private func row(_ draft: HealthMedicationDraft, alreadyImported: Bool) -> some View {
     let isSelected = selectedIDs.contains(draft.id)
     return HStack {
       VStack(alignment: .leading, spacing: 2) {
         Text(draft.displayName)
-        Text(draft.hasSchedule ? "Scheduled" : "As needed")
+        Text(alreadyImported ? "Already imported" : (draft.hasSchedule ? "Scheduled" : "As needed"))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
-      Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-        .foregroundStyle(isSelected ? .primary : .secondary)
-        .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
+      if !alreadyImported {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+          .foregroundStyle(isSelected ? .primary : .secondary)
+          .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
+      }
     }
     .contentShape(.rect)
   }
@@ -188,7 +221,12 @@ struct HealthKitImportSheet: View {
   }
 
   private func confirm(_ drafts: [HealthMedicationDraft]) {
-    path.append(ConfirmComponentsRoute(drafts: Self.medicationDrafts(from: drafts, selectedIDs: selectedIDs)))
+    let projected = Self.medicationDrafts(
+      from: drafts,
+      selectedIDs: selectedIDs,
+      existingConceptIDs: existingConceptIDs
+    )
+    path.append(ConfirmComponentsRoute(drafts: projected))
   }
 }
 

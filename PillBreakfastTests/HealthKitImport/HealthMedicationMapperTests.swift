@@ -31,6 +31,36 @@ struct HealthMedicationMapperTests {
     #expect(result.id != source.id)
   }
 
+  // MARK: - isAlreadyImported
+
+  @Test func isAlreadyImportedTrueWhenConceptTokenMatches() {
+    let draft = healthDraft("Lithium", conceptID: "lithium-token")
+    #expect(HealthMedicationMapper.isAlreadyImported(
+      draft,
+      existingConceptIDs: ["lithium-token"]
+    ))
+  }
+
+  @Test func isAlreadyImportedFalseWhenConceptTokenAbsent() {
+    let draft = healthDraft("Lithium", conceptID: "lithium-token")
+    #expect(!HealthMedicationMapper.isAlreadyImported(
+      draft,
+      existingConceptIDs: ["some-other-token"]
+    ))
+    #expect(!HealthMedicationMapper.isAlreadyImported(draft, existingConceptIDs: []))
+  }
+
+  @Test func isAlreadyImportedIgnoresDisplayNameCollisions() {
+    // Same display name, different Health concept tokens → not a dupe. Dedupe
+    // is keyed on the Health token specifically so a user can have two Health
+    // medications that happen to share a name (e.g. a brand and a generic).
+    let draft = healthDraft("Lithium", conceptID: "lithium-token-a")
+    #expect(!HealthMedicationMapper.isAlreadyImported(
+      draft,
+      existingConceptIDs: ["lithium-token-b"]
+    ))
+  }
+
   // MARK: - suggestedIngredient
 
   @Test func suggestedIngredientMatchesByCanonicalName() throws {
