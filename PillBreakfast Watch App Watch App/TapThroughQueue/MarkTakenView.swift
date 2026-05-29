@@ -12,6 +12,14 @@ struct MarkTakenView: View {
   let onMarkTaken: () -> Void
   let onSkip: () -> Void
 
+  /// Optional so the view is safe without the store injected (previews/tests fall
+  /// back to the default hold duration).
+  @Environment(UserPreferencesStore.self) private var preferencesStore: UserPreferencesStore?
+
+  private var holdDuration: TimeInterval {
+    preferencesStore?.preferences.highRiskHoldDurationSeconds ?? UserPreferences.defaultHoldDuration
+  }
+
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.compact) {
       HStack(spacing: 6) {
@@ -26,7 +34,7 @@ struct MarkTakenView: View {
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
 
       if isHighRisk {
-        HighRiskConfirmButton(onConfirmed: onMarkTaken)
+        HighRiskConfirmButton(holdDuration: holdDuration, onConfirmed: onMarkTaken)
       } else {
         SingleTapConfirmButton(onConfirmed: onMarkTaken)
       }

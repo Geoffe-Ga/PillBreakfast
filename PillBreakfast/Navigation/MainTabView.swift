@@ -12,7 +12,7 @@ struct MainTabView: View {
       ComingSoonView(title: "History")
         .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
 
-      ComingSoonView(title: "Settings")
+      SettingsView()
         .tabItem { Label("Settings", systemImage: "gearshape") }
     }
   }
@@ -32,5 +32,6 @@ private struct ComingSoonView: View {
 
 #Preview {
   MainTabView()
+    .environment(UserPreferencesStore())
     .modelContainer(for: Medication.self, inMemory: true)
 }
