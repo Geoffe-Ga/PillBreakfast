@@ -37,6 +37,14 @@ struct LiquidGlassThemeTests {
     )
   }
 
+  @Test func titleBuilderAppliesTitleFont() {
+    let text = "All caught up"
+    #expect(
+      LiquidGlassTheme.Typography.title(text)
+        == Text(text).font(LiquidGlassTheme.Typography.titleFont)
+    )
+  }
+
   @Test func captionBuilderIsFontOnly() {
     // Caption applies only the font (no embedded foreground style), matching the
     // other builders.

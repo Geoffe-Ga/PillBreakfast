@@ -31,14 +31,13 @@ struct RightNowView: View {
   }
 
   var body: some View {
-    // Glass backs the whole screen (the outer container), nav bar included, so
-    // the entire surface reads as one piece of Liquid Glass rather than a glass
-    // panel under a system-opaque title.
+    // Glass is applied per visible leaf screen (the empty state here, and the
+    // tap-through / success screens own theirs) rather than once on the nav, so
+    // the layers never stack glass-on-glass.
     NavigationStack {
       content
         .navigationTitle("Right Now")
     }
-    .glassBackground()
     .task(id: scheduleSignature) { reload() }
     // The window is time-relative, so re-evaluate when the app is foregrounded
     // (time has passed since the last reload even if no data changed).
@@ -50,13 +49,14 @@ struct RightNowView: View {
   @ViewBuilder
   private var content: some View {
     if pendingDoses.isEmpty {
-      VStack(spacing: 8) {
+      VStack(spacing: LiquidGlassTheme.Spacing.compact) {
         Image(systemName: "checkmark.circle")
           .font(.title2)
-        Text("All caught up")
-          .font(.headline)
+        LiquidGlassTheme.Typography.title("All caught up")
       }
-      .foregroundStyle(.secondary)
+      .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .glassBackground()
     } else {
       TapThroughQueueView(pendingDoses: pendingDoses, onFinished: reload)
     }

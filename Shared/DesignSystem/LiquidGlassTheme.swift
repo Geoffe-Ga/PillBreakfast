@@ -21,6 +21,10 @@ public enum LiquidGlassTheme {
   }
 
   public enum Typography {
+    /// SF Pro Rounded, title3-shaped — prominent status/headline text that isn't
+    /// a medication name (e.g. "All caught up"). Distinct role from
+    /// `medicationNameFont` so status copy doesn't borrow med-name semantics.
+    public static let titleFont: Font = .system(.title3, design: .rounded, weight: .semibold)
     /// SF Pro Rounded, title-shaped — medication names (SPEC §9).
     public static let medicationNameFont: Font = .system(.title, design: .rounded, weight: .semibold)
     /// SF Pro (Display at this size), title3-shaped, monospaced digits — dosage

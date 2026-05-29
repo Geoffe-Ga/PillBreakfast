@@ -6,6 +6,11 @@ import SwiftUI
 /// namespace itself; these wrap them (different names to avoid colliding with
 /// the stored font properties).
 public extension LiquidGlassTheme.Typography {
+  /// Prominent status/headline text (not a medication name).
+  static func title(_ text: String) -> Text {
+    Text(text).font(titleFont)
+  }
+
   /// A medication name styled per SPEC §9 (SF Pro Rounded).
   static func medicationName(_ text: String) -> Text {
     Text(text).font(medicationNameFont)
