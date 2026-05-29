@@ -40,4 +40,20 @@ struct ViolationMessageBuilderTests {
     #expect(message.detailLines.contains("Recommended spacing: 4h"))
     #expect(try #require(message.detailLines.first).contains("(1h 20m ago)"))
   }
+
+  @Test func durationFormattingEdgeCases() throws {
+    let apap = Ingredient(name: "Acetaminophen")
+
+    // Exactly 60-minute interval, dose taken exactly now → "1h" spacing, "0m ago".
+    let exactHour = Violation.tooSoon(ingredient: apap, lastTakenAt: now, minInterval: 60)
+    let hourMessage = ViolationMessageBuilder.message(for: exactHour, at: now)
+    #expect(hourMessage.detailLines.contains("Recommended spacing: 1h"))
+    #expect(try #require(hourMessage.detailLines.first).contains("(0m ago)"))
+
+    // Future timestamp (clock skew) clamps to "0m ago" rather than "-5m".
+    let future = Violation.tooSoon(ingredient: apap, lastTakenAt: now.addingTimeInterval(5 * 60), minInterval: 0)
+    let futureMessage = ViolationMessageBuilder.message(for: future, at: now)
+    #expect(futureMessage.detailLines.contains("Recommended spacing: 0m"))
+    #expect(try #require(futureMessage.detailLines.first).contains("(0m ago)"))
+  }
 }

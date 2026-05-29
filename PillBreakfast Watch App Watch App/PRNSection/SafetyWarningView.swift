@@ -11,8 +11,12 @@ struct SafetyWarningView: View {
   let onOverride: () -> Void
   let onCancel: () -> Void
 
+  /// Captured once when the warning appears so the "X ago" elapsed times stay put
+  /// while the user reads, rather than drifting on every re-render.
+  @State private var now = Date.now
+
   private var messages: [ViolationMessage] {
-    violations.map { ViolationMessageBuilder.message(for: $0, at: .now) }
+    violations.map { ViolationMessageBuilder.message(for: $0, at: now) }
   }
 
   var body: some View {

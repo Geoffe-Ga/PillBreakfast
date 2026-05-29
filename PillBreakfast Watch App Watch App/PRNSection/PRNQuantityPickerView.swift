@@ -1,6 +1,7 @@
 import os
 import SwiftData
 import SwiftUI
+import WatchKit
 
 /// Picks how many units of a PRN product to log, then logs the dose — gating the
 /// write on `SafetyEvaluator`. If the dose would cross an ingredient ceiling or
@@ -93,6 +94,9 @@ struct PRNQuantityPickerView: View {
       if violations.isEmpty {
         write()
       } else {
+        // Signal "something unusual" on the wrist as the warning appears, so the
+        // user notices before reading.
+        WKInterfaceDevice.current().play(.notification)
         pendingViolations = violations
       }
     } catch {
@@ -124,8 +128,10 @@ struct PRNQuantityPickerView: View {
       onLogged()
       dismiss()
     } catch {
+      // Keep the interstitial up (if it was showing) so an override that fails to
+      // write keeps its context; the alert appears over it and the user can retry
+      // or cancel from there.
       PRNQuantityPickerView.logger.error("Failed to log PRN dose: \(error.localizedDescription, privacy: .public)")
-      pendingViolations = nil
       writeFailed = true
     }
   }
