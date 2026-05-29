@@ -43,8 +43,10 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
       // Stub: batch-logging from the notification lands in EPIC 05.
       logger.info("Mark-all-taken action received (stub).")
     case NotificationCategory.Action.snooze:
-      // Stub: snooze-until-time flow lands in EPIC 06.
-      logger.info("Snooze action received (stub).")
+      // .foreground action: route the view layer to SnoozeView (the reschedule
+      // logic itself is EPIC_06_ISSUE_02).
+      logger.info("Snooze action received; routing to SnoozeView.")
+      await NotificationActionRouter.shared.handle(actionIdentifier: response.actionIdentifier)
     default:
       // Default tap / Open app: the OS foregrounds us onto RightNowView.
       logger.info("Notification opened the app.")

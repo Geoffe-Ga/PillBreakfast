@@ -1,17 +1,25 @@
 import UserNotifications
 
 /// The notification category and its custom actions (SPEC §8.2). Mark-all-taken
-/// and Snooze are stubs here — wired in EPIC 05 and EPIC 06 respectively.
+/// is a stub (EPIC 05); Snooze opens the watch `SnoozeView` (EPIC 06 — the
+/// reschedule logic itself lands in EPIC_06_ISSUE_02).
 public enum NotificationCategory {
   public static let maintenanceDose = "MAINTENANCE_DOSE"
 
   public enum Action {
     public static let openApp = "OPEN_APP"
     public static let markAllTaken = "MARK_ALL_TAKEN"
-    public static let snooze = "SNOOZE_UNTIL_TIME"
+    /// `.foreground` so tapping it opens the app onto `SnoozeView` (SPEC §8.3).
+    /// Reverse-DNS id (was the short `SNOOZE_UNTIL_TIME`). `register` re-runs on
+    /// every launch and merges the rebuilt category, so the renamed action is
+    /// picked up by already-scheduled notifications (they reference the category
+    /// by its unchanged `MAINTENANCE_DOSE` id).
+    public static let snooze = "com.creekmasons.pillbreakfast.action.snoozeUntilTime"
   }
 
-  public static func register(on center: UNUserNotificationCenter = .current()) async {
+  /// Builds the maintenance-dose category. Pure (no system access) so its action
+  /// set is unit-testable without a notification center.
+  public static func makeCategory() -> UNNotificationCategory {
     let openApp = UNNotificationAction(
       identifier: Action.openApp,
       title: "Open app",
@@ -26,18 +34,21 @@ public enum NotificationCategory {
     )
     let snooze = UNNotificationAction(
       identifier: Action.snooze,
-      title: "Snooze…",
+      title: "Snooze until…",
       options: [.foreground]
     )
-    let category = UNNotificationCategory(
+    return UNNotificationCategory(
       identifier: maintenanceDose,
       actions: [openApp, markAllTaken, snooze],
       intentIdentifiers: [],
       options: []
     )
+  }
+
+  public static func register(on center: UNUserNotificationCenter = .current()) async {
     // Additive: merge with any existing categories so a future EPIC registering
     // its own category (and vice-versa) doesn't clobber this one.
     let existing = await center.notificationCategories()
-    center.setNotificationCategories(existing.union([category]))
+    center.setNotificationCategories(existing.union([makeCategory()]))
   }
 }

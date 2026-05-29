@@ -7,6 +7,7 @@ import SwiftUI
 struct RightNowView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(NotificationActionRouter.self) private var actionRouter
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
   @State private var pendingDoses: [PendingDose] = []
@@ -31,6 +32,7 @@ struct RightNowView: View {
   }
 
   var body: some View {
+    @Bindable var actionRouter = actionRouter
     // Glass is applied per visible leaf screen (the empty state here, and the
     // tap-through / success screens own theirs) rather than once on the nav, so
     // the layers never stack glass-on-glass.
@@ -43,6 +45,10 @@ struct RightNowView: View {
     // (time has passed since the last reload even if no data changed).
     .onChange(of: scenePhase) { _, phase in
       if phase == .active { reload() }
+    }
+    // Presented when the "Snooze until…" notification action routes here.
+    .sheet(isPresented: $actionRouter.isShowingSnooze) {
+      SnoozeView()
     }
   }
 
@@ -83,5 +89,6 @@ struct RightNowView: View {
 
 #Preview {
   RightNowView()
+    .environment(NotificationActionRouter.shared)
     .modelContainer(for: Medication.self, inMemory: true)
 }
