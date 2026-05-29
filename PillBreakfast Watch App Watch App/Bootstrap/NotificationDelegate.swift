@@ -43,10 +43,19 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
       // Stub: batch-logging from the notification lands in EPIC 05.
       logger.info("Mark-all-taken action received (stub).")
     case NotificationCategory.Action.snooze:
-      // .foreground action: route the view layer to SnoozeView (the reschedule
-      // logic itself is EPIC_06_ISSUE_02).
-      logger.info("Snooze action received; routing to SnoozeView.")
-      await NotificationActionRouter.shared.handle(actionIdentifier: response.actionIdentifier)
+      // .foreground action: recover which dose this was for and route SnoozeView.
+      let request = response.notification.request
+      if let doseID = NotificationScheduler.scheduledDoseID(fromIdentifier: request.identifier) {
+        logger.info("Snooze action received; routing to SnoozeView.")
+        let context = SnoozeContext(
+          scheduledDoseID: doseID,
+          originalScheduledFor: response.notification.date,
+          medicationName: request.content.body
+        )
+        await NotificationActionRouter.shared.presentSnooze(context)
+      } else {
+        logger.warning("Snooze action on an unrecognized notification id; ignoring.")
+      }
     default:
       // Default tap / Open app: the OS foregrounds us onto RightNowView.
       logger.info("Notification opened the app.")

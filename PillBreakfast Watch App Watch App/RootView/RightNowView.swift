@@ -46,9 +46,9 @@ struct RightNowView: View {
     .onChange(of: scenePhase) { _, phase in
       if phase == .active { reload() }
     }
-    // Presented when the "Snooze until…" notification action routes here.
-    .sheet(isPresented: $actionRouter.isShowingSnooze) {
-      SnoozeView()
+    // Presented when the "Snooze until…" notification action routes a dose here.
+    .sheet(item: $actionRouter.pendingSnooze) { context in
+      SnoozeView(context: context)
     }
   }
 

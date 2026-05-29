@@ -97,6 +97,17 @@ public enum NotificationScheduler {
     return "\(identifierPrefix)\(dose.id.uuidString).\(weekday)"
   }
 
+  /// Recovers the `ScheduledDose` id from one of our reminder identifiers (the
+  /// inverse of `identifier(for:weekday:)`) — used when a notification action fires
+  /// and we need to know which dose it was for. Returns `nil` for foreign ids.
+  public static func scheduledDoseID(fromIdentifier identifier: String) -> UUID? {
+    guard identifier.hasPrefix(identifierPrefix) else { return nil }
+    // After the prefix: "<uuid>" or "<uuid>.<weekday>". The UUID has no dots.
+    let remainder = identifier.dropFirst(identifierPrefix.count)
+    let uuidPart = remainder.prefix { $0 != "." }
+    return UUID(uuidString: String(uuidPart))
+  }
+
   /// One trigger for a daily dose, or one per ISO weekday when `daysOfWeek` is set.
   private static func makeTriggers(for dose: ScheduledDoseDTO) -> [(trigger: UNCalendarNotificationTrigger, weekday: Int?)] {
     if dose.daysOfWeek.isEmpty {
