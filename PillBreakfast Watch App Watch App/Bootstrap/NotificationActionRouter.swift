@@ -5,6 +5,10 @@ import Observation
 public struct SnoozeContext: Identifiable, Sendable, Hashable {
   public let scheduledDoseID: UUID
   public let originalScheduledFor: Date
+  /// Currently the notification's full body text (the aggregate slot content), not
+  /// a bare name — it's reused verbatim as the rescheduled reminder's body. Don't
+  /// treat it as a clean medication name for a UI label until #117 threads the
+  /// name through `userInfo`.
   public let medicationName: String
 
   public var id: UUID {
