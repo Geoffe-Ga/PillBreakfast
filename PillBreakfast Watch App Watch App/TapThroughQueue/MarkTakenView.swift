@@ -13,19 +13,17 @@ struct MarkTakenView: View {
   let onSkip: () -> Void
 
   var body: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: LiquidGlassTheme.Spacing.compact) {
       HStack(spacing: 6) {
         if let color = Color(hex: colorHex) {
           Circle().fill(color).frame(width: 10, height: 10)
         }
-        Text(medicationName)
-          .font(.headline)
+        LiquidGlassTheme.Typography.medicationName(medicationName)
           .multilineTextAlignment(.center)
       }
 
-      Text(detail)
-        .font(.caption)
-        .foregroundStyle(.secondary)
+      LiquidGlassTheme.Typography.dosage(detail)
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
 
       if isHighRisk {
         HighRiskConfirmButton(onConfirmed: onMarkTaken)
@@ -35,9 +33,11 @@ struct MarkTakenView: View {
 
       Button("Skip", action: onSkip)
         .buttonStyle(.bordered)
-        .font(.caption)
+        .font(LiquidGlassTheme.Typography.captionFont)
     }
     .padding()
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .glassBackground()
   }
 }
 

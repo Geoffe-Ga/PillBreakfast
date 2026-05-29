@@ -30,6 +30,8 @@ struct RegimenListView: View {
         section("PRN", medications: prn)
       }
     }
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
         Button {

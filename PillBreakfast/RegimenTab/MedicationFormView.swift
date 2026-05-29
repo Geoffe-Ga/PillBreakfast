@@ -50,7 +50,10 @@ struct MedicationFormView: View {
         Section {
           ForEach(formState.validationErrors, id: \.self) { error in
             Text(error)
-              .font(.footnote)
+              .font(LiquidGlassTheme.Typography.captionFont)
+              // Semantic error color, not decoration — kept deliberately. Color
+              // discipline (amber-only) governs the watch logging surface; an
+              // error indicator on the iPhone setup form is a different concern.
               .foregroundStyle(.red)
           }
         }
@@ -59,11 +62,13 @@ struct MedicationFormView: View {
       if formState.kind == .prn {
         Section {
           Text("PRN configuration arrives in a later phase.")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            .font(LiquidGlassTheme.Typography.captionFont)
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
       }
     }
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .sheet(isPresented: $showingNewIngredient) {
       NewIngredientView { newID in
         formState.componentDraft.ingredientID = newID

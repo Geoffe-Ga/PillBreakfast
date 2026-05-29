@@ -32,6 +32,11 @@ struct TapThroughQueueView: View {
         // it leaves that dose pending — it resurfaces on the next queue open (each
         // tap still logs its own screen's dose). The gesture flow is reworked in
         // EPIC 04 (press-and-hold), where swipe-past is constrained.
+        // `.verticalPage` provides watchOS 26's native paged transition — a glass
+        // slide-and-refraction between pages (WWDC 2025 "Build with Liquid Glass
+        // on watchOS"), so no custom transition is needed here. Glass backgrounds
+        // live on the leaf screens (MarkTakenView / QueueSuccessView), not on this
+        // router, to avoid stacking glass layers.
         TabView(selection: $index) {
           ForEach(Array(pendingDoses.enumerated()), id: \.offset) { offset, dose in
             doseScreen(dose).tag(offset)
