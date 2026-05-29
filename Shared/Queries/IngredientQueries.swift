@@ -10,7 +10,11 @@ import SwiftData
 /// caller's local calendar day, injected for deterministic tests.
 @MainActor
 public enum IngredientQueries {
-  /// Total mg of `ingredient` consumed in `now`'s calendar day, up to `now`.
+  /// Total mg of `ingredient` consumed in `now`'s calendar day, **at or before**
+  /// `now` (inclusive). This is the amount already logged; a ceiling check should
+  /// add the prospective dose on top (`totalToday(at: now) + prospectiveMg`), since
+  /// the about-to-be-taken dose isn't in the store yet. Inclusive `<= now` is
+  /// deliberate so a dose logged at exactly `now` counts as consumed.
   public static func totalToday(
     ingredient: Ingredient,
     in context: ModelContext,
@@ -32,12 +36,18 @@ public enum IngredientQueries {
       .reduce(0) { $0 + $1.totalMg }
   }
 
-  /// The most recent `.taken` time at or before `now` whose dose included
-  /// `ingredient`, or `nil` if there is none.
+  /// The most recent `.taken` time at or before `now` (inclusive) whose dose
+  /// included `ingredient`, or `nil` if there is none.
+  ///
+  /// No `fetchLimit`: the matching event can be arbitrarily far back if the most
+  /// recent events are `.skipped`/`.snoozed` or for other ingredients, so a limit
+  /// could return a false `nil`. The fetch is `takenAt`-indexed and descending, so
+  /// the common case (a recent match) is cheap, but the worst case scans history —
+  /// a bounded/indexed implementation is tracked as a follow-up.
   public static func lastDoseTime(
     ingredient: Ingredient,
     in context: ModelContext,
-    before now: Date
+    atOrBefore now: Date
   ) throws -> Date? {
     var descriptor = FetchDescriptor<DoseEvent>(
       predicate: #Predicate { $0.takenAt <= now }

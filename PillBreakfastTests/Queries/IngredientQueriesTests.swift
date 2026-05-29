@@ -147,7 +147,7 @@ struct IngredientQueriesTests {
     let latest = try date(2026, 5, 29, 10, 0, in: cal)
     insertDose(context, ingredientID: apap.id, mg: 500, at: latest)
 
-    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, before: now) == latest)
+    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == latest)
   }
 
   @Test func lastDoseTimeIgnoresSkippedAndFutureAndOtherIngredients() throws {
@@ -162,7 +162,7 @@ struct IngredientQueriesTests {
     try insertDose(context, ingredientID: ibuprofen.id, mg: 400, at: date(2026, 5, 29, 10, 0, in: cal), status: .taken)
     try insertDose(context, ingredientID: apap.id, mg: 500, at: date(2026, 5, 29, 14, 0, in: cal), status: .taken) // future
 
-    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, before: now) == taken)
+    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == taken)
   }
 
   @Test func lastDoseTimeIsNilWhenNoMatchingDose() throws {
@@ -171,6 +171,6 @@ struct IngredientQueriesTests {
     let apap = Ingredient(name: "Acetaminophen")
     let now = try date(2026, 5, 29, 12, 0, in: cal)
 
-    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, before: now) == nil)
+    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == nil)
   }
 }
