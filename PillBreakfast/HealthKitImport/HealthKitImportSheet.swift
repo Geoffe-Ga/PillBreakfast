@@ -115,10 +115,11 @@ struct HealthKitImportSheet: View {
   /// One-shot read of the Health concept tokens already linked to local
   /// `Medication`s. The predicate filters in the store so manual (non-Health)
   /// meds are never materialized. Returns an empty set on a thrown fetch so
-  /// the sheet still presents the import list rather than going dark — the
-  /// failure is logged via OSLog so a disk-full or schema-mismatch error
-  /// leaves a trace, and the mapper's defense-in-depth filter still drops
-  /// anything the user manages to select.
+  /// the sheet still presents the import list rather than going dark — note
+  /// that with an empty set the mapper's `isAlreadyImported` is `false` for
+  /// every draft, so a disk-full or schema-mismatch error restores pre-PR
+  /// behavior (duplicates possible) rather than silently blocking import. The
+  /// failure is logged via OSLog so it still leaves a trace.
   static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
     let descriptor = FetchDescriptor<Medication>(
       predicate: #Predicate { $0.healthKitConceptID != nil }
@@ -127,9 +128,13 @@ struct HealthKitImportSheet: View {
       let medications = try context.fetch(descriptor)
       return Set(medications.compactMap(\.healthKitConceptID))
     } catch {
-      // Default `.private` redaction — SwiftData error descriptions can embed
-      // model summaries that include medication names.
-      logger.error("Health import dedupe fetch failed: \(error.localizedDescription)")
+      // Explicit `.private` — SwiftData error descriptions can embed model
+      // summaries that include medication names (PHI). String interpolation
+      // defaults to `.auto`, which redacts in release but is implicit; pin it
+      // so the intent survives future refactors.
+      logger.error(
+        "Health import dedupe fetch failed: \(error.localizedDescription, privacy: .private)"
+      )
       return []
     }
   }
