@@ -69,6 +69,8 @@ struct IngredientEditorView: View {
     .toolbar {
       ToolbarItem(placement: .confirmationAction) {
         Button("Save", action: save)
+          // Don't let a non-numeric entry save silently as "no change" — block it.
+          .disabled(!isValid)
       }
     }
     .alert(
@@ -79,6 +81,16 @@ struct IngredientEditorView: View {
     } message: {
       Text(saveError ?? "")
     }
+  }
+
+  /// A field is valid when it's blank (means "no threshold") or parses cleanly.
+  /// Save is blocked otherwise so a typo can't masquerade as "no change".
+  private var isValid: Bool {
+    let ceiling = ceilingText.trimmingCharacters(in: .whitespaces)
+    let interval = intervalText.trimmingCharacters(in: .whitespaces)
+    let ceilingOK = ceiling.isEmpty || Double(ceiling) != nil
+    let intervalOK = interval.isEmpty || Int(interval) != nil
+    return ceilingOK && intervalOK
   }
 
   private func save() {

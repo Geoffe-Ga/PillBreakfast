@@ -83,5 +83,8 @@ struct IngredientsListView: View {
   NavigationStack {
     IngredientsListView()
   }
-  .modelContainer(for: Ingredient.self, inMemory: true)
+  // Medication pulls in the related Ingredient/MedicationComponent models, so the
+  // preview container matches the live schema breadth (deletion checks touch
+  // MedicationComponent).
+  .modelContainer(for: Medication.self, inMemory: true)
 }
