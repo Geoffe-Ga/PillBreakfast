@@ -152,7 +152,7 @@ struct HealthKitImportTests {
     #expect(HealthKitImportSheet.medicationDrafts(from: [a], selectedIDs: []).isEmpty)
   }
 
-  // MARK: - Idempotent re-import (EPIC 07 ISSUE 05 / SPEC §10 Phase 6 gate)
+  // MARK: - Idempotent re-import (SPEC §10 Phase 6 gate)
 
   @Test func medicationDraftsSkipsAlreadyImportedConceptTokens() {
     let a = draft("Lithium") // conceptID == "concept-Lithium"

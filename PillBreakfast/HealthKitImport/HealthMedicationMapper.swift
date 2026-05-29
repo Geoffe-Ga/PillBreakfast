@@ -25,7 +25,7 @@ enum HealthMedicationMapper {
   /// not silently overwrite either. There is no merge: a med whose token is
   /// already present is presented as read-only in the import list and is
   /// dropped from `medicationDrafts(...)` for defense-in-depth (SPEC §10
-  /// Phase 6 gate; EPIC 07 ISSUE 05).
+  /// Phase 6 gate).
   static func isAlreadyImported(
     _ draft: HealthMedicationDraft,
     existingConceptIDs: Set<String>

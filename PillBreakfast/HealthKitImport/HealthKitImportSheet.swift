@@ -1,3 +1,4 @@
+import os
 import SwiftData
 import SwiftUI
 import UIKit
@@ -69,6 +70,11 @@ struct HealthKitImportSheet: View {
   /// signal can't be silently deleted.
   static let readOnlyDisclaimer = "PillBreakfast only reads from Apple Health; it never writes."
 
+  private static let logger = Logger(
+    subsystem: "com.creekmasons.pillbreakfast",
+    category: "HealthImport"
+  )
+
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
   @Environment(\.modelContext) private var modelContext
@@ -81,7 +87,7 @@ struct HealthKitImportSheet: View {
   /// Health concept tokens already on a local `Medication`. Loaded once when
   /// the sheet appears so re-running the import flow against the same Health
   /// authorization shows those rows as "Already imported" and skips them at
-  /// projection time (SPEC §10 Phase 6 gate; EPIC 07 ISSUE 05).
+  /// projection time (SPEC §10 Phase 6 gate).
   @State private var existingConceptIDs: Set<String> = []
   @State private var path = NavigationPath()
 
@@ -93,9 +99,8 @@ struct HealthKitImportSheet: View {
   /// loaded drafts and project them into `MedicationDraft`s. Drafts whose
   /// `healthKitConceptID` already lives on a local `Medication` are dropped
   /// here as well as visually disabled in the row — belt-and-suspenders against
-  /// a bug-introduced selection ever reaching persistence (EPIC 07 ISSUE 05).
-  /// Exposed `static` so tests can verify the selection→draft transform
-  /// without the view layer.
+  /// a bug-introduced selection ever reaching persistence. Exposed `static` so
+  /// tests can verify the selection→draft transform without the view layer.
   static func medicationDrafts(
     from loaded: [HealthMedicationDraft],
     selectedIDs: Set<UUID>,
@@ -108,14 +113,25 @@ struct HealthKitImportSheet: View {
   }
 
   /// One-shot read of the Health concept tokens already linked to local
-  /// `Medication`s. Returns an empty set on a failed fetch so the sheet still
-  /// presents the import list rather than going dark — the user has another
-  /// chance to opt out at the per-row level, and the mapper's defense-in-depth
-  /// filter still drops anything they manage to select.
+  /// `Medication`s. The predicate filters in the store so manual (non-Health)
+  /// meds are never materialized. Returns an empty set on a thrown fetch so
+  /// the sheet still presents the import list rather than going dark — the
+  /// failure is logged via OSLog so a disk-full or schema-mismatch error
+  /// leaves a trace, and the mapper's defense-in-depth filter still drops
+  /// anything the user manages to select.
   static func fetchExistingConceptIDs(from context: ModelContext) -> Set<String> {
-    let descriptor = FetchDescriptor<Medication>()
-    let medications = (try? context.fetch(descriptor)) ?? []
-    return Set(medications.compactMap(\.healthKitConceptID))
+    let descriptor = FetchDescriptor<Medication>(
+      predicate: #Predicate { $0.healthKitConceptID != nil }
+    )
+    do {
+      let medications = try context.fetch(descriptor)
+      return Set(medications.compactMap(\.healthKitConceptID))
+    } catch {
+      // Default `.private` redaction — SwiftData error descriptions can embed
+      // model summaries that include medication names.
+      logger.error("Health import dedupe fetch failed: \(error.localizedDescription)")
+      return []
+    }
   }
 
   var body: some View {
@@ -163,6 +179,7 @@ struct HealthKitImportSheet: View {
           Button { toggle(draft.id) } label: { row(draft, alreadyImported: alreadyImported) }
             .buttonStyle(.plain)
             .disabled(alreadyImported)
+            .accessibilityHint(alreadyImported ? "Already in your PillBreakfast regimen." : "")
         }
       } footer: {
         Text(Self.readOnlyDisclaimer)
