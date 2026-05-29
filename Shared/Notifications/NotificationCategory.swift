@@ -10,6 +10,10 @@ public enum NotificationCategory {
     public static let openApp = "OPEN_APP"
     public static let markAllTaken = "MARK_ALL_TAKEN"
     /// `.foreground` so tapping it opens the app onto `SnoozeView` (SPEC §8.3).
+    /// Reverse-DNS id (was the short `SNOOZE_UNTIL_TIME`). `register` re-runs on
+    /// every launch and merges the rebuilt category, so the renamed action is
+    /// picked up by already-scheduled notifications (they reference the category
+    /// by its unchanged `MAINTENANCE_DOSE` id).
     public static let snooze = "com.creekmasons.pillbreakfast.action.snoozeUntilTime"
   }
 

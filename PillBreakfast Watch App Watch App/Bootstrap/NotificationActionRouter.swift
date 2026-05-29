@@ -13,7 +13,9 @@ public final class NotificationActionRouter {
   /// When true, the root view presents `SnoozeView`.
   public var isShowingSnooze = false
 
-  private init() {}
+  /// `internal` (not `public`): production uses `.shared`, but tests can spin up a
+  /// fresh instance instead of mutating and restoring global state.
+  init() {}
 
   /// Maps a delivered action identifier onto a routing flag.
   public func handle(actionIdentifier: String) {
