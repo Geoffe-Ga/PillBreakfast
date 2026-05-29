@@ -30,7 +30,10 @@ struct SnoozeViewTests {
     #expect(SnoozeView.targetLabel(for: picked, now: now, calendar: cal).contains("tomorrow"))
   }
 
-  @Test func constructs() {
-    _ = SnoozeView(context: SnoozeContext(scheduledDoseID: UUID(), originalScheduledFor: .now, medicationName: "Vitamin D"))
+  @Test func targetLabelRollsToTomorrowAtMidnightBoundary() throws {
+    let cal = try calendar()
+    let now = try date(2026, 5, 15, 23, 59, in: cal)
+    let picked = try date(2026, 5, 15, 0, 0, in: cal) // 00:00 has passed → tomorrow
+    #expect(SnoozeView.targetLabel(for: picked, now: now, calendar: cal).contains("tomorrow"))
   }
 }

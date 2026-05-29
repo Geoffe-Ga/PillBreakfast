@@ -1,6 +1,7 @@
 import os
 import SwiftUI
 import UserNotifications
+import WatchKit
 
 /// Opened when the "Snooze until…" notification action fires (SPEC §2.2, §8.3).
 /// Pick a wall-clock time; Done reschedules the dose via `SnoozeRescheduler` and
@@ -15,6 +16,7 @@ struct SnoozeView: View {
 
   @Environment(\.dismiss) private var dismiss
   @State private var snoozeTime: Date = .now.addingTimeInterval(SnoozeView.defaultOffset)
+  @State private var rescheduleFailed = false
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Snooze")
 
@@ -37,6 +39,11 @@ struct SnoozeView: View {
     .padding()
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .glassBackground()
+    .alert("Couldn't snooze", isPresented: $rescheduleFailed) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text("The reminder couldn't be rescheduled. Try again.")
+    }
   }
 
   private func confirm() async {
@@ -50,10 +57,14 @@ struct SnoozeView: View {
         now: .now,
         center: UNUserNotificationCenter.current()
       )
+      dismiss()
     } catch {
+      // Don't dismiss on failure: surface it (a silently-missed snooze is the worst
+      // outcome) so the user can retry from the still-open sheet.
       SnoozeView.logger.error("Failed to reschedule snooze: \(error.localizedDescription, privacy: .public)")
+      WKInterfaceDevice.current().play(.failure)
+      rescheduleFailed = true
     }
-    dismiss()
   }
 
   /// "Will fire 10:17 PM today" / "…tomorrow" — pure so it's unit-testable.
