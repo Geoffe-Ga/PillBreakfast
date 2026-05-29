@@ -58,12 +58,6 @@ enum HealthKitImportViewState: Equatable {
   }
 }
 
-/// NavigationStack route from the import-sheet's selection list to the
-/// per-medication ingredient confirmation step.
-struct ConfirmComponentsRoute: Hashable {
-  let drafts: [MedicationDraft]
-}
-
 /// "Import from Apple Health" sheet (SPEC §6.1). Requests per-medication read
 /// scope, lists the granted medications with per-row selection, and on Import
 /// pushes the chosen drafts onto the ingredient-confirmation step

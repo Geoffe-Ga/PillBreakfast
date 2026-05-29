@@ -2,6 +2,13 @@ import os
 import SwiftData
 import SwiftUI
 
+/// NavigationStack route from the import sheet's selection list to the
+/// per-medication ingredient confirmation step. Defined here (next to the
+/// destination view) so the navigation contract is collocated with its target.
+struct ConfirmComponentsRoute: Hashable {
+  let drafts: [MedicationDraft]
+}
+
 /// Per-medication ingredient confirmation step of the Apple Health import flow
 /// (SPEC §6.1 — composition must be user-confirmed because Health doesn't
 /// expose it). Each imported draft is shown with a multi-select picker over the
@@ -139,6 +146,21 @@ struct ConfirmComponentsView: View {
 
   private func performImport() {
     for draft in drafts {
+      // Two safety-relevant gaps the user must close in the regimen UI after
+      // import — neither is derivable from the Health side:
+      //
+      //   - `unitForm: .tablet` is a placeholder. HealthKit's
+      //     `HKMedicationGeneralForm` exposes capsules / liquids / patches /
+      //     etc., but mapping it cleanly is out of scope here; the user picks
+      //     the correct form on `EditMedicationView`.
+      //   - High-risk medications (lithium is the SPEC example) require
+      //     press-and-hold confirmation on the watch. `Medication.isHighRisk`
+      //     is computed from the ingredients' `isHighRisk` flag, and the
+      //     seeded library is OTC-only (no flagged ingredients), so a newly
+      //     imported lithium product comes through low-risk and gets the
+      //     single-tap gesture until the user marks its ingredient as
+      //     high-risk in the Ingredients screen. EPIC_05_ISSUE_NN should add
+      //     a post-import safety-flag prompt; until then this is documented.
       let medication = Medication(
         displayName: draft.displayName,
         unitForm: .tablet,
@@ -160,13 +182,17 @@ struct ConfirmComponentsView: View {
     do {
       try modelContext.save()
     } catch {
-      Self.logger.error("Health import save failed: \(error.localizedDescription, privacy: .public)")
+      // Default `.private` redaction — SwiftData/Core Data error descriptions
+      // can embed model-object summaries that include medication names.
+      Self.logger.error("Health import save failed: \(error.localizedDescription)")
       modelContext.rollback()
       InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+    // `onComplete` dismisses the entire import sheet, which tears down the
+    // NavigationStack this view lives in. A second `dismiss()` here would
+    // target an already-departing parent.
     onComplete()
-    dismiss()
   }
 }
