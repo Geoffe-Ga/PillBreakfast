@@ -15,7 +15,6 @@ public struct ViolationMessage: Sendable, Hashable, Identifiable {
   }
 }
 
-@MainActor
 public enum ViolationMessageBuilder {
   public static func message(for violation: Violation, at now: Date) -> ViolationMessage {
     switch violation {
@@ -49,8 +48,10 @@ public enum ViolationMessageBuilder {
     hoursMinutes(minutes: Int(seconds / 60))
   }
 
-  /// "4h", "1h 20m", or "45m" — never an empty string (0 → "0m").
+  /// "4h", "1h 20m", or "45m" — never an empty string (0 → "0m"). Negative input
+  /// (future timestamp from clock skew) is clamped to 0 so we never render "-1h".
   private static func hoursMinutes(minutes: Int) -> String {
+    let minutes = max(0, minutes)
     let hours = minutes / 60
     let mins = minutes % 60
     if hours > 0, mins > 0 { return "\(hours)h \(mins)m" }

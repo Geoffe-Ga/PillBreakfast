@@ -10,6 +10,9 @@ import SwiftUI
 /// — and override — with the EPIC 04 press-and-hold; everything else single-taps.
 struct PRNQuantityPickerView: View {
   let medication: Medication
+  /// Called after a successful write so the host can refresh (e.g. reload totals).
+  /// It must **not** navigate — this view owns its own dismissal via `dismiss()`,
+  /// so a host that also popped would double-pop.
   let onLogged: () -> Void
 
   @Environment(\.modelContext) private var modelContext
