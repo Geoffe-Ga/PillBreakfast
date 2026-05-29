@@ -165,6 +165,45 @@ struct IngredientQueriesTests {
     #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == taken)
   }
 
+  // MARK: - lastProductDoseTime
+
+  @Test func lastProductDoseTimeIsPerProductNotPerIngredient() throws {
+    let cal = try calendar("UTC")
+    let context = try makeContext()
+    let apap = Ingredient(name: "Acetaminophen")
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    let excedrin = Medication(displayName: "Excedrin", unitForm: .tablet, kind: .prn)
+    context.insert(tylenol)
+    context.insert(excedrin)
+
+    let tylenolTime = try date(2026, 5, 29, 8, 0, in: cal)
+    let excedrinTime = try date(2026, 5, 29, 10, 0, in: cal) // more recent, shares acetaminophen
+    context.insert(DoseEvent(
+      medication: tylenol, takenAt: tylenolTime, quantity: 1, status: .taken, loggedOn: .watch,
+      ingredientAmounts: [LoggedIngredientAmount(ingredientID: apap.id, ingredientName: "Acetaminophen", totalMg: 500)]
+    ))
+    context.insert(DoseEvent(
+      medication: excedrin, takenAt: excedrinTime, quantity: 1, status: .taken, loggedOn: .watch,
+      ingredientAmounts: [LoggedIngredientAmount(ingredientID: apap.id, ingredientName: "Acetaminophen", totalMg: 250)]
+    ))
+    try context.save()
+
+    let now = try date(2026, 5, 29, 12, 0, in: cal)
+    // Per product: Tylenol's last dose is its own, not Excedrin's (more recent, same ingredient).
+    #expect(try IngredientQueries.lastProductDoseTime(medication: tylenol, in: context, atOrBefore: now) == tylenolTime)
+    #expect(try IngredientQueries.lastProductDoseTime(medication: excedrin, in: context, atOrBefore: now) == excedrinTime)
+  }
+
+  @Test func lastProductDoseTimeIsNilWhenProductNeverTaken() throws {
+    let cal = try calendar("UTC")
+    let context = try makeContext()
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    context.insert(tylenol)
+    try context.save()
+
+    #expect(try IngredientQueries.lastProductDoseTime(medication: tylenol, in: context, atOrBefore: date(2026, 5, 29, 12, 0, in: cal)) == nil)
+  }
+
   @Test func lastDoseTimeIsNilWhenNoMatchingDose() throws {
     let cal = try calendar("UTC")
     let context = try makeContext()

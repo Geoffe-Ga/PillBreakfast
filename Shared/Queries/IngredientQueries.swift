@@ -61,4 +61,25 @@ public enum IngredientQueries {
       }?
       .takenAt
   }
+
+  /// The most recent `.taken` time this **product** was logged, at or before `now`.
+  ///
+  /// Per-*product* (by medication), unlike `lastDoseTime` which is per-ingredient:
+  /// PRN row labels show when this product was last taken, while safety checks
+  /// aggregate by ingredient (SPEC §7.3). Same unbounded-scan caveat as
+  /// `lastDoseTime` (tracked in the bounded-scan follow-up).
+  public static func lastProductDoseTime(
+    medication: Medication,
+    in context: ModelContext,
+    atOrBefore now: Date
+  ) throws -> Date? {
+    var descriptor = FetchDescriptor<DoseEvent>(
+      predicate: #Predicate { $0.takenAt <= now }
+    )
+    descriptor.sortBy = [SortDescriptor(\.takenAt, order: .reverse)]
+    let medicationID = medication.id
+    return try context.fetch(descriptor)
+      .first { $0.status == .taken && $0.medication?.id == medicationID }?
+      .takenAt
+  }
 }
