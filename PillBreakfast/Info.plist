@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>PillBreakfast reads your medications from Apple Health to make setup faster. PillBreakfast never writes to Apple Health.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

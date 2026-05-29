@@ -9,6 +9,7 @@ struct RegimenListView: View {
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
   @State private var showingAdd = false
+  @State private var showingHealthKitImport = false
   @State private var archiveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
@@ -40,9 +41,19 @@ struct RegimenListView: View {
           Label("Add medication", systemImage: "plus")
         }
       }
+      ToolbarItem(placement: .secondaryAction) {
+        Button {
+          showingHealthKitImport = true
+        } label: {
+          Label("Import from Apple Health", systemImage: "heart.text.square")
+        }
+      }
     }
     .sheet(isPresented: $showingAdd) {
       AddMedicationView()
+    }
+    .sheet(isPresented: $showingHealthKitImport) {
+      HealthKitImportSheet()
     }
     .alert(
       "Couldn't archive medication",
