@@ -9,7 +9,7 @@ struct MainTabView: View {
       RegimenTabHostView()
         .tabItem { Label("Regimen", systemImage: "pills") }
 
-      ComingSoonView(title: "History")
+      HistoryTabView()
         .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
 
       SettingsView()
@@ -18,20 +18,8 @@ struct MainTabView: View {
   }
 }
 
-private struct ComingSoonView: View {
-  let title: String
-
-  var body: some View {
-    NavigationStack {
-      Text("Coming soon")
-        .foregroundStyle(.secondary)
-        .navigationTitle(title)
-    }
-  }
-}
-
 #Preview {
   MainTabView()
     .environment(UserPreferencesStore())
-    .modelContainer(for: Medication.self, inMemory: true)
+    .modelContainer(for: [Medication.self, DoseEvent.self], inMemory: true)
 }
