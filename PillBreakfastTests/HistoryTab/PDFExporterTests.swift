@@ -153,18 +153,22 @@ struct PDFExporterTests {
   // MARK: - Ingredient aggregation
 
   @Test func aggregateIngredientsSumsTakenAndIgnoresSkippedSnoozed() {
+    // Distinct ascending timestamps honor `aggregateIngredients`'s sort
+    // precondition. Shared `.now` would risk a non-deterministic identity
+    // ordering and could trip the in-method `assert`.
     let id = UUID()
+    let base = Date()
     let events: [DoseEvent] = [
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: .now, quantity: 1, status: .skipped, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(takenAt: base.addingTimeInterval(2), quantity: 1, status: .skipped, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: .now, quantity: 1, status: .snoozed, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(takenAt: base.addingTimeInterval(3), quantity: 1, status: .snoozed, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
     ]
@@ -180,11 +184,12 @@ struct PDFExporterTests {
     let aspirinID = UUID()
     let babyAspirin = Medication(displayName: "Bayer 81mg", unitForm: .tablet, kind: .prn)
     let comboCold = Medication(displayName: "Excedrin", unitForm: .tablet, kind: .prn)
+    let base = Date()
     let events: [DoseEvent] = [
-      DoseEvent(medication: babyAspirin, takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medication: babyAspirin, takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 81),
       ]),
-      DoseEvent(medication: comboCold, takenAt: .now, quantity: 2, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medication: comboCold, takenAt: base.addingTimeInterval(1), quantity: 2, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 500),
       ]),
     ]
@@ -195,11 +200,12 @@ struct PDFExporterTests {
   }
 
   @Test func aggregateIngredientsSortsAlphabetically() {
+    let base = Date()
     let lithium = LoggedIngredientAmount(ingredientID: UUID(), ingredientName: "Lithium Carbonate", totalMg: 300)
     let apap = LoggedIngredientAmount(ingredientID: UUID(), ingredientName: "Acetaminophen", totalMg: 500)
     let events: [DoseEvent] = [
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [lithium]),
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [apap]),
+      DoseEvent(takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [lithium]),
+      DoseEvent(takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [apap]),
     ]
     let totals = PDFExporter.aggregateIngredients(in: events)
     #expect(totals.map(\.ingredientName) == ["Acetaminophen", "Lithium Carbonate"])

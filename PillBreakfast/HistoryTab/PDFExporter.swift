@@ -154,7 +154,7 @@ enum PDFExporter {
     // UUID-suffixed so repeated exports in the same second never collide
     // (and Mail's preview cache distinguishes them by URL).
     FileManager.default.temporaryDirectory
-      .appendingPathComponent("PillBreakfast-\(UUID().uuidString).pdf")
+      .appending(component: "PillBreakfast-\(UUID().uuidString).pdf")
   }
 
   // MARK: - Rendering
@@ -192,6 +192,10 @@ enum PDFExporter {
   /// in the day headers and slip test assertions. The PDF is a US-Letter
   /// English-language document; the formatter follows.
   private static let dayHeaderFormatStyle = Date.FormatStyle(date: .complete, time: .omitted)
+    .locale(Locale(identifier: "en_US"))
+  /// Same locale pin for the footer's "Generated …" stamp so the header and
+  /// footer never disagree on language inside one document.
+  private static let footerDateStyle = Date.FormatStyle(date: .abbreviated, time: .shortened)
     .locale(Locale(identifier: "en_US"))
 
   /// Precondition: `blocks` were partitioned by `PDFPaginator.paginate` so
@@ -290,7 +294,7 @@ enum PDFExporter {
       .paragraphStyle: rightAlignedParagraphStyle,
     ]
     pageCounter.draw(in: pageRect, withAttributes: pageAttributes)
-    let stamp = "Generated \(generatedAt.formatted(date: .abbreviated, time: .shortened))"
+    let stamp = "Generated \(generatedAt.formatted(footerDateStyle))"
     let stampRect = CGRect(
       x: rightRect.minX,
       y: footerY + layout.footerLineSpacing,
