@@ -10,6 +10,7 @@ struct EditMedicationView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var formState: MedicationFormState
   @State private var createdIngredientIDs: [UUID] = []
+  @State private var saveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
@@ -33,6 +34,17 @@ struct EditMedicationView: View {
       .onDisappear {
         InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
       }
+      .alert(
+        "Couldn't save medication",
+        isPresented: Binding(
+          get: { saveError != nil },
+          set: { if !$0 { saveError = nil } }
+        )
+      ) {
+        Button("OK", role: .cancel) { saveError = nil }
+      } message: {
+        Text(saveError ?? "")
+      }
   }
 
   private func save() {
@@ -43,6 +55,9 @@ struct EditMedicationView: View {
       EditMedicationView.logger.error("Failed to save medication edit: \(error.localizedDescription, privacy: .public)")
       // Revert any partial mutations to the existing medication.
       modelContext.rollback()
+      // Surface the failure so the user can fix the input and retry rather
+      // than tapping Save into a no-op.
+      saveError = "The change couldn't be saved. Please try again."
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)

@@ -9,6 +9,7 @@ struct AddMedicationView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var formState = MedicationFormState()
   @State private var createdIngredientIDs: [UUID] = []
+  @State private var saveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
 
@@ -24,6 +25,17 @@ struct AddMedicationView: View {
             Button("Save") { save() }
               .disabled(!formState.isValid)
           }
+        }
+        .alert(
+          "Couldn't add medication",
+          isPresented: Binding(
+            get: { saveError != nil },
+            set: { if !$0 { saveError = nil } }
+          )
+        ) {
+          Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+          Text(saveError ?? "")
         }
     }
   }
@@ -45,6 +57,9 @@ struct AddMedicationView: View {
       // ingredients) so autosave can't flush a half-built graph.
       modelContext.rollback()
       InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
+      // Sheet stays open so the user can fix the input and retry rather than
+      // staring at an unchanged screen wondering whether Save did anything.
+      saveError = "The medication couldn't be saved. Please try again."
       return
     }
     InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)

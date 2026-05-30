@@ -40,6 +40,19 @@ struct HistoryTabView: View {
     self.calendar = calendar
   }
 
+  /// Total events in the 30-day window after the optional medication filter
+  /// — drives the "No history yet" empty state when the heatmap would render
+  /// 30 zero-shade cells.
+  private var scopedEventCount: Int {
+    let cells = Self.days(
+      from: doseEvents,
+      reference: referenceDate,
+      calendar: calendar,
+      filterMedicationID: filterMedicationID
+    )
+    return cells.reduce(0) { $0 + $1.eventCount }
+  }
+
   var body: some View {
     NavigationStack {
       HeatmapView(days: Self.days(
@@ -48,6 +61,15 @@ struct HistoryTabView: View {
         calendar: calendar,
         filterMedicationID: filterMedicationID
       ))
+      .overlay {
+        if scopedEventCount == 0 {
+          ContentUnavailableView(
+            "No history yet",
+            systemImage: "tray",
+            description: Text(Self.emptyDescription(forFilter: filterMedicationID, in: medications))
+          )
+        }
+      }
       .navigationTitle("History")
       .toolbar {
         ToolbarItem(placement: .primaryAction) {
@@ -130,6 +152,17 @@ struct HistoryTabView: View {
       exportedURL = nil
       exportError = "Couldn't generate the export. Please try again."
     }
+  }
+
+  /// Description for the empty-history overlay. The unfiltered case nudges
+  /// the user toward the watch (the only logging surface); the filtered case
+  /// names the medication so it's clear nothing was logged for *it*
+  /// specifically rather than a global blank state.
+  static func emptyDescription(forFilter selection: UUID?, in medications: [Medication]) -> String {
+    if let id = selection, let name = medications.first(where: { $0.id == id })?.displayName {
+      return "No \(name) doses logged in the last 30 days."
+    }
+    return "Log doses on your watch and they'll appear here."
   }
 
   /// Start-of-day for the oldest cell in the 30-day window.
