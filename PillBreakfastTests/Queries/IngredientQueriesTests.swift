@@ -212,4 +212,32 @@ struct IngredientQueriesTests {
 
     #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == nil)
   }
+
+  @Test func lastDoseTimeFindsMatchBeyondFirstPage() throws {
+    // Bounded-scan regression: seed `pageSize + 50` non-matching events with
+    // takenAt newer than the single matching dose, then assert the match is
+    // still returned. A naive `fetchLimit = pageSize` without paging would
+    // return `nil` here.
+    let cal = try calendar("UTC")
+    let context = try makeContext()
+    let apap = Ingredient(name: "Acetaminophen")
+    let ibu = Ingredient(name: "Ibuprofen")
+    let now = try date(2026, 5, 29, 12, 0, in: cal)
+
+    // The needle: one apap dose, far back relative to the noise.
+    let needleTaken = try date(2026, 5, 28, 8, 0, in: cal)
+    insertDose(context, ingredientID: apap.id, mg: 500, at: needleTaken)
+
+    // The haystack: `pageSize + 50` ibuprofen doses with takenAt strictly
+    // newer than the needle so they sort ahead of it in descending order.
+    let haystackCount = IngredientQueries.pageSize + 50
+    let baseHaystack = try date(2026, 5, 28, 9, 0, in: cal) // 1h after needle
+    for offset in 0 ..< haystackCount {
+      let takenAt = try #require(cal.date(byAdding: .second, value: offset, to: baseHaystack))
+      insertDose(context, ingredientID: ibu.id, mg: 200, at: takenAt)
+    }
+    try context.save()
+
+    #expect(try IngredientQueries.lastDoseTime(ingredient: apap, in: context, atOrBefore: now) == needleTaken)
+  }
 }
