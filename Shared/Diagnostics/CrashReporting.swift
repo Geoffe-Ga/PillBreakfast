@@ -97,8 +97,13 @@ public final class CrashReporting: NSObject {
   /// so 30 keeps roughly a month of history per kind — long enough for the
   /// EPIC 10 soak window and for normal post-mortem investigations without
   /// the App Group container growing unbounded across a daily-use install.
-  /// `nonisolated` because `prune` (which uses this as a default arg) is
-  /// nonisolated to run off MetricKit's internal queue.
+  ///
+  /// `nonisolated` is load-bearing here, not decorative: under the module's
+  /// `-default-isolation MainActor` setting, `final class CrashReporting`
+  /// inherits MainActor — so without the annotation this constant is
+  /// MainActor-isolated and can't appear as a default arg in `prune(...)`
+  /// (which is itself `nonisolated`). Dropping the annotation reintroduces
+  /// "main actor-isolated default value in a nonisolated context" at build.
   public nonisolated static let retainPerKind: Int = 30
 
   /// Write payload bytes to disk under the chosen `directory`, then truncate
@@ -150,23 +155,27 @@ public final class CrashReporting: NSObject {
   /// Internal so tests can exercise the truncation independently of a
   /// write; production callers are expected to go through `persist`, which
   /// invokes this on the just-written kind.
+  ///
+  /// Not file-coordinated: MetricKit delivers at most one batch per day,
+  /// so concurrent `prune` calls aren't expected. If that contract ever
+  /// changes (e.g. a second writer in `Diagnostics/`), this needs a
+  /// `NSFileCoordinator` or process-wide lock around the read+delete.
   nonisolated static func prune(
     kind: String,
     in directory: URL,
     retainCount: Int = retainPerKind
   ) {
+    // First-launch case: the directory hasn't been created yet (no payload
+    // has ever been written). That's a clean no-op, not a failure — split
+    // it from the catch so unexpected `contentsOfDirectory` failures
+    // (permissions, sandbox, corrupted entries) surface at `.warning`
+    // rather than getting silently swallowed alongside the expected path.
+    if !FileManager.default.fileExists(atPath: directory.path) { return }
     let contents: [String]
     do {
       contents = try FileManager.default.contentsOfDirectory(atPath: directory.path)
     } catch {
-      // Missing directory is the natural no-op (no payloads ever written) —
-      // listing returns an error rather than an empty array, so swallow it
-      // rather than surfacing a stack trace for the expected first-launch
-      // path. `debug` (not `error`) because the catch is wider than missing-
-      // directory — permission and corrupted-entry failures land here too,
-      // and we want a breadcrumb for an investigator without lighting up the
-      // log for normal first-launches.
-      logger.debug(
+      logger.warning(
         "prune skipped — could not list \(directory.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
       )
       return

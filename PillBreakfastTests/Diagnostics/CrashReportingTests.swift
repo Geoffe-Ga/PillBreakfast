@@ -91,9 +91,12 @@ struct CrashReportingTests {
 
   /// Seed `count` files of the given kind with deterministic, lex-sortable
   /// names (`<kind>-0001-…json`, `<kind>-0002-…json`, …). The zero-padding
-  /// matches `persist`'s "lex sort == chronological" invariant.
+  /// matches `persist`'s "lex sort == chronological" invariant. `count == 0`
+  /// just creates the directory — useful if a future test wants to assert
+  /// the prune is a no-op on an empty bucket without falling into `1...0`.
   private func seedFiles(count: Int, kind: String, in directory: URL) throws {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    guard count > 0 else { return }
     for index in 1 ... count {
       let filename = "\(kind)-\(String(format: "%04d", index))-AAAA.json"
       try Data().write(to: directory.appendingPathComponent(filename))
