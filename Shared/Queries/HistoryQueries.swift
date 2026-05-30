@@ -60,8 +60,10 @@ public enum HistoryQueries {
 
     // Aggregate ingredient totals by ID. Each amount carries its own name and
     // mg; if the same ingredient appears across multiple `.taken` events on
-    // the day, sum their mg and keep the first-seen name (the snapshot is
-    // already canonical per #Index on `Ingredient.name`).
+    // the day, sum their mg and keep the first-seen name. If a user renames
+    // an ingredient between doses, the displayed label is whichever snapshot
+    // landed in the fetch first; tracking the cross-snapshot rename is a
+    // documented edge case for a future cleanup.
     var totalsByID: [UUID: LoggedIngredientAmount] = [:]
     for event in taken {
       for amount in event.ingredientAmounts {
