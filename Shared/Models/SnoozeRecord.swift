@@ -16,11 +16,14 @@ public final class SnoozeRecord {
   public var count: Int
   public var lastSnoozedAt: Date
 
+  /// `count` has no default — the only valid initial value is 1 (the first
+  /// snooze), and a defaulted 0 would model an "empty" record state that
+  /// `SnoozeRecordStore.increment` (the sole inserter) never produces.
   public init(
     id: UUID = UUID(),
     scheduledDoseID: UUID,
     calendarDay: Date,
-    count: Int = 0,
+    count: Int,
     lastSnoozedAt: Date = .now
   ) {
     self.id = id

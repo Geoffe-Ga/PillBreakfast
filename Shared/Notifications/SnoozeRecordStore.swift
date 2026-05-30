@@ -15,8 +15,22 @@ public enum SnoozeRecordStore {
     try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar)?.count ?? 0
   }
 
+  /// Rows whose `calendarDay` is strictly older than `today - staleHorizonDays`
+  /// are deleted; a row at exactly that boundary is **kept**. The retained
+  /// window is therefore `staleHorizonDays + 1` days (today plus the prior
+  /// `staleHorizonDays`). The fourth-snooze warning only reads today's row, so
+  /// 1 would be functionally enough — the extra week is debugging headroom (a
+  /// row visible in the store the morning after a regression is much easier to
+  /// reason about than one already pruned) and a buffer for DST / timezone
+  /// shifts around midnight.
+  public static let staleHorizonDays: Int = 7
+
   /// Bumps the occurrence's count by one (creating the record if needed) and
-  /// returns the new count.
+  /// returns the new count. Also prunes any records older than
+  /// `staleHorizonDays` so a long-used medication's history doesn't accumulate
+  /// indefinitely. Increment is the natural prune trigger: it's already a
+  /// write, runs at most a handful of times per day, and amortizes the
+  /// housekeeping over user interaction without a separate background pass.
   @discardableResult
   public static func increment(
     scheduledDoseID: UUID,
@@ -26,6 +40,7 @@ public enum SnoozeRecordStore {
     calendar: Calendar = .current
   ) throws -> Int {
     let startOfDay = calendar.startOfDay(for: day)
+    try pruneStaleRecords(asOf: startOfDay, in: context, calendar: calendar)
     if let existing = try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar) {
       existing.count += 1
       existing.lastSnoozedAt = now
@@ -49,6 +64,23 @@ public enum SnoozeRecordStore {
     guard let existing = try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar) else { return }
     context.delete(existing)
     try context.save()
+  }
+
+  /// Bulk `delete(model:where:)` so stale rows never materialize into the
+  /// store's working set.
+  private static func pruneStaleRecords(
+    asOf referenceDay: Date,
+    in context: ModelContext,
+    calendar: Calendar
+  ) throws {
+    guard let cutoff = calendar.date(byAdding: .day, value: -staleHorizonDays, to: referenceDay) else {
+      // Day arithmetic on a valid calendar can't produce nil here; assert in
+      // debug so a SDK regression surfaces in tests rather than silently
+      // skipping prune in release.
+      assertionFailure("calendar.date(byAdding: .day, value: -\(staleHorizonDays), to: \(referenceDay)) returned nil")
+      return
+    }
+    try context.delete(model: SnoozeRecord.self, where: #Predicate { $0.calendarDay < cutoff })
   }
 
   private static func record(
