@@ -52,4 +52,36 @@ struct SnoozeRecordStoreTests {
     try SnoozeRecordStore.reset(scheduledDoseID: doseID, on: day, in: context)
     #expect(try SnoozeRecordStore.currentCount(scheduledDoseID: doseID, on: day, in: context) == 0)
   }
+
+  @Test func incrementPrunesRecordsOlderThanHorizon() throws {
+    let context = try makeContext()
+    let calendar = Calendar(identifier: .gregorian)
+    let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+    let staleDay = try #require(
+      calendar.date(byAdding: .day, value: -(SnoozeRecordStore.staleHorizonDays + 1), to: today)
+    )
+    let edgeKeptDay = try #require(
+      calendar.date(byAdding: .day, value: -(SnoozeRecordStore.staleHorizonDays - 1), to: today)
+    )
+
+    // Seed two pre-existing rows, both for different occurrences.
+    let staleID = UUID()
+    let keptID = UUID()
+    context.insert(SnoozeRecord(scheduledDoseID: staleID, calendarDay: staleDay, count: 1, lastSnoozedAt: staleDay))
+    context.insert(SnoozeRecord(scheduledDoseID: keptID, calendarDay: edgeKeptDay, count: 1, lastSnoozedAt: edgeKeptDay))
+    try context.save()
+    #expect(try context.fetchCount(FetchDescriptor<SnoozeRecord>()) == 2)
+
+    // Today's increment fires the prune.
+    #expect(
+      try SnoozeRecordStore.increment(scheduledDoseID: UUID(), on: today, at: today, in: context, calendar: calendar) == 1
+    )
+
+    // Stale row is gone; the edge-kept row and today's row both remain.
+    let remaining = try context.fetch(FetchDescriptor<SnoozeRecord>())
+    let surviving = Set(remaining.map(\.scheduledDoseID))
+    #expect(!surviving.contains(staleID))
+    #expect(surviving.contains(keptID))
+    #expect(remaining.count == 2)
+  }
 }

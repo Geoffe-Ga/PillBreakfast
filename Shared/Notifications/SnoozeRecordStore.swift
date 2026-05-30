@@ -15,8 +15,17 @@ public enum SnoozeRecordStore {
     try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar)?.count ?? 0
   }
 
+  /// How many days of `SnoozeRecord` history we keep. The count only matters
+  /// for *today's* occurrence — anything older than this many days is dead
+  /// weight from the perspective of the fourth-snooze warning.
+  public static let staleHorizonDays: Int = 7
+
   /// Bumps the occurrence's count by one (creating the record if needed) and
-  /// returns the new count.
+  /// returns the new count. Also prunes any records older than
+  /// `staleHorizonDays` so a long-used medication's history doesn't accumulate
+  /// indefinitely. Increment is the natural prune trigger: it's already a
+  /// write, runs at most a handful of times per day, and amortizes the
+  /// housekeeping over user interaction without a separate background pass.
   @discardableResult
   public static func increment(
     scheduledDoseID: UUID,
@@ -26,6 +35,7 @@ public enum SnoozeRecordStore {
     calendar: Calendar = .current
   ) throws -> Int {
     let startOfDay = calendar.startOfDay(for: day)
+    try pruneStaleRecords(asOf: startOfDay, in: context, calendar: calendar)
     if let existing = try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar) {
       existing.count += 1
       existing.lastSnoozedAt = now
@@ -49,6 +59,18 @@ public enum SnoozeRecordStore {
     guard let existing = try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar) else { return }
     context.delete(existing)
     try context.save()
+  }
+
+  /// Deletes every `SnoozeRecord` whose `calendarDay` is more than
+  /// `staleHorizonDays` before `referenceDay`. Uses SwiftData's bulk
+  /// `delete(model:where:)` so the rows aren't materialized.
+  private static func pruneStaleRecords(
+    asOf referenceDay: Date,
+    in context: ModelContext,
+    calendar: Calendar
+  ) throws {
+    guard let cutoff = calendar.date(byAdding: .day, value: -staleHorizonDays, to: referenceDay) else { return }
+    try context.delete(model: SnoozeRecord.self, where: #Predicate { $0.calendarDay < cutoff })
   }
 
   private static func record(

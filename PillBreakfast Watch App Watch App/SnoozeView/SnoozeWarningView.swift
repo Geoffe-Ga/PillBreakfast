@@ -26,6 +26,11 @@ struct SnoozeWarningView: View {
       // most reachable, so the irreversible Skip goes last to avoid accidental taps.
       Button("Snooze again", action: onSnoozeAgain)
         .buttonStyle(.bordered)
+      // "Take now" dismisses to the tap-through queue without cancelling the
+      // pending snooze `UNCalendarNotificationTrigger` — the eventual confirm
+      // rebuilds notifications (which cancels it), but in the window between
+      // "Take now" and the confirm a spurious reminder could fire. Acceptable
+      // for a soft-nudge path; documented so it isn't read as an oversight.
       Button("Take now", action: onResolved)
         .buttonStyle(.borderedProminent)
       Button("Skip", action: skip)
