@@ -62,6 +62,10 @@ struct DayDrillDownView: View {
     }
     .navigationTitle(date.formatted(date: .abbreviated, time: .omitted))
     .navigationBarTitleDisplayMode(.inline)
+    // Ingredient totals lag the `@Query` event list by one sync when new
+    // events arrive mid-view: `@Query` re-renders reactively, but this
+    // `.task` only re-runs when `date` changes. Acceptable for a read-only
+    // history surface.
     .task(id: date) {
       do {
         summary = try HistoryQueries.dailySummary(in: modelContext, day: date)
@@ -77,8 +81,12 @@ struct DayDrillDownView: View {
   }
 
   /// Round to whole mg — adequate precision for ceilings (e.g. 2400 mg/day Lithium).
+  /// Guards against non-finite inputs: `Int(.nan)` / `Int(.infinity)` would trap.
+  /// Trusted SwiftData rows shouldn't produce non-finite totals, but the guard
+  /// removes the crash surface for free.
   static func formatMg(_ mg: Double) -> String {
-    "\(Int(mg.rounded())) mg"
+    guard mg.isFinite else { return "— mg" }
+    return "\(Int(mg.rounded())) mg"
   }
 }
 
