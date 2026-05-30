@@ -154,7 +154,7 @@ struct PDFExporterTests {
 
   @Test func aggregateIngredientsSumsTakenAndIgnoresSkippedSnoozed() {
     let id = UUID()
-    let context: [DoseEvent] = [
+    let events: [DoseEvent] = [
       DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
@@ -168,9 +168,30 @@ struct PDFExporterTests {
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
     ]
-    let totals = PDFExporter.aggregateIngredients(in: context)
+    let totals = PDFExporter.aggregateIngredients(in: events)
     #expect(totals.count == 1)
     #expect(totals.first?.totalMg == 600)
+  }
+
+  @Test func aggregateIngredientsRollsUpSameIngredientAcrossMedications() {
+    // Aspirin in a baby-aspirin pill and aspirin in a combo cold med both
+    // count toward the same per-ingredient daily total — that's the safety
+    // ceiling primitive.
+    let aspirinID = UUID()
+    let babyAspirin = Medication(displayName: "Bayer 81mg", unitForm: .tablet, kind: .prn)
+    let comboCold = Medication(displayName: "Excedrin", unitForm: .tablet, kind: .prn)
+    let events: [DoseEvent] = [
+      DoseEvent(medication: babyAspirin, takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+        LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 81),
+      ]),
+      DoseEvent(medication: comboCold, takenAt: .now, quantity: 2, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+        LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 500),
+      ]),
+    ]
+    let totals = PDFExporter.aggregateIngredients(in: events)
+    #expect(totals.count == 1)
+    #expect(totals.first?.ingredientName == "Aspirin")
+    #expect(totals.first?.totalMg == 581)
   }
 
   @Test func aggregateIngredientsSortsAlphabetically() {
