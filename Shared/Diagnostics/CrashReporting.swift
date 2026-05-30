@@ -162,7 +162,13 @@ public final class CrashReporting: NSObject {
       // Missing directory is the natural no-op (no payloads ever written) —
       // listing returns an error rather than an empty array, so swallow it
       // rather than surfacing a stack trace for the expected first-launch
-      // path.
+      // path. `debug` (not `error`) because the catch is wider than missing-
+      // directory — permission and corrupted-entry failures land here too,
+      // and we want a breadcrumb for an investigator without lighting up the
+      // log for normal first-launches.
+      logger.debug(
+        "prune skipped — could not list \(directory.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+      )
       return
     }
     let prefix = "\(kind)-"
