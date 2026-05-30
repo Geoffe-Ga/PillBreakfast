@@ -137,13 +137,6 @@ public final class CrashReporting: NSObject {
     }
   }
 
-  /// Delete `<kind>-…` files beyond `retainCount` under `directory`. Sorts
-  /// lexicographically — chronologically, because filenames embed a
-  /// fixed-width unix stamp (`persist` writes `Int(now.timeIntervalSince1970)`,
-  /// which stays 10 digits until year 2286). Files that don't match the
-  /// kind prefix are left alone; the prune is intentionally scoped to what
-  /// `persist` produces.
-  ///
   /// Delete `<kind>-…` files in `directory` beyond `retainCount`; missing
   /// directory is a silent no-op. Not file-coordinated — assumes
   /// single-writer (MetricKit, once-per-day).
