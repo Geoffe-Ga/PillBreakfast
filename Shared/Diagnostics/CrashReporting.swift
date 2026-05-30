@@ -52,19 +52,20 @@ public final class CrashReporting: NSObject {
     super.init()
   }
 
-  /// Register with `MXMetricManager`. The production caller is the lazy
-  /// `shared` initializer, which guarantees a single invocation. The method
-  /// stays `nonisolated` so test helpers can call it on their own instances
-  /// without involving the shared singleton.
-  public nonisolated func start() {
+  /// Register with `MXMetricManager`. The only production caller is the lazy
+  /// `shared` initializer, which guarantees a single invocation —
+  /// `internal` (not `public`) so external callers can't accidentally
+  /// double-subscribe by calling `CrashReporting.shared.start()` again.
+  nonisolated func start() {
     #if canImport(MetricKit)
     MXMetricManager.shared.add(self)
     #endif
   }
 
-  /// Unregister; provided for explicit teardown but the App-lifetime
-  /// ownership pattern is the documented contract.
-  public nonisolated func stop() {
+  /// Unregister; provided for explicit teardown. `internal` so external
+  /// callers can't tear down the singleton's subscription out from under
+  /// the App-lifetime ownership contract.
+  nonisolated func stop() {
     #if canImport(MetricKit)
     MXMetricManager.shared.remove(self)
     #endif
@@ -93,6 +94,8 @@ public final class CrashReporting: NSObject {
   /// Write payload bytes to disk under the chosen `directory`. Pure / static so
   /// it's testable without touching MetricKit and so it can run on whatever
   /// queue MetricKit chose without capturing actor-isolated state.
+  // TODO(#138): truncate to the last N files per kind so the diagnostics
+  // folder doesn't grow unbounded across a daily-use install.
   nonisolated static func persist(
     payloads: [Data],
     kind: String,

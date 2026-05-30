@@ -25,8 +25,12 @@ Connect.
   actual crash but still next-foreground at the earliest).
 - **Network:** none. No third-party SDK init, no SDK background task, no DNS.
 - **SDK weight:** zero — system framework.
-- **Watch coverage:** `MXMetricManager` exists on watchOS 7+; the diagnostic
-  payload shape is reduced but the subscription pattern is identical.
+- **Watch coverage:** `MXMetricManager` exists on watchOS 7+; the subscription
+  pattern is identical, but the diagnostic payload shape is reduced — in
+  particular, the `MXCrashDiagnostic`/`MXAppLaunchDiagnostic` set on watchOS
+  has been smaller than iOS for most of MetricKit's history (Apple lists
+  per-version coverage in the framework's release notes; treat watch
+  payloads as best-effort signal rather than parity with iOS).
 
 ### Crashlytics (Firebase)
 
