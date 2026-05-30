@@ -21,5 +21,5 @@ struct MainTabView: View {
 #Preview {
   MainTabView()
     .environment(UserPreferencesStore())
-    .modelContainer(for: Medication.self, inMemory: true)
+    .modelContainer(for: [Medication.self, DoseEvent.self], inMemory: true)
 }

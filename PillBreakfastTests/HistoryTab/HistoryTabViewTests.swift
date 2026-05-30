@@ -104,14 +104,15 @@ struct HistoryTabViewTests {
     let descriptor = FetchDescriptor<DoseEvent>(sortBy: [SortDescriptor(\.takenAt)])
     let events = try context.fetch(descriptor)
     let cells = HistoryTabView.days(from: events, reference: ref, calendar: Self.utcCalendar())
-    // Look the cells up by day-of-month — assumes May has 30+ days and the
-    // window is May 1..30 in the chosen reference.
-    let byDay = Dictionary(uniqueKeysWithValues: cells.map { ($0.dayOfMonth, $0.eventCount) })
-    #expect(byDay[30] == 2)
-    #expect(byDay[29] == 1)
-    #expect(byDay[1] == 1)
+    // Key by the day-start `date` — `dayOfMonth` would collide across months
+    // and trap `Dictionary(uniqueKeysWithValues:)` on a window like May 15 →
+    // June 13.
+    let byDate = Dictionary(uniqueKeysWithValues: cells.map { ($0.date, $0.eventCount) })
+    #expect(byDate[Self.utcCalendar().startOfDay(for: reference(2026, 5, 30))] == 2)
+    #expect(byDate[Self.utcCalendar().startOfDay(for: reference(2026, 5, 29))] == 1)
+    #expect(byDate[Self.utcCalendar().startOfDay(for: reference(2026, 5, 1))] == 1)
     // Spot-check an unloaded day stays at zero.
-    #expect(byDay[15] == 0)
+    #expect(byDate[Self.utcCalendar().startOfDay(for: reference(2026, 5, 15))] == 0)
   }
 
   @Test func daysIgnoreEventsOutsideTheWindow() throws {
