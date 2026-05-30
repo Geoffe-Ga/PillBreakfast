@@ -83,7 +83,7 @@ struct HistoryTabView: View {
           filterMedicationID: filterMedicationID
         )
       }
-      .task { await generateExport() }
+      .task { generateExport() }
       .alert(
         "Export failed",
         isPresented: Binding(
@@ -91,14 +91,29 @@ struct HistoryTabView: View {
           set: { if !$0 { exportError = nil } }
         )
       ) {
-        Button("OK", role: .cancel) { exportError = nil }
+        Button("Try Again") {
+          exportError = nil
+          generateExport()
+        }
+        Button("Cancel", role: .cancel) { exportError = nil }
       } message: {
         Text(exportError ?? "")
       }
     }
   }
 
-  private func generateExport() async {
+  /// Runs on `.task` and on the alert's Try Again. Synchronous because
+  /// `PDFExporter.exportLast30Days` is `@MainActor` synchronous — wrapping
+  /// it in `async` would imply it's safe to await off-actor, which it isn't
+  /// until the detached-render work tracked by the `TODO(#57)` lands.
+  private func generateExport() {
+    // Delete the previous export before writing a new one so a busy History
+    // session (open tab → drill down → back → re-export) doesn't accumulate
+    // orphaned UUID-suffixed PDFs in `tmp/` until iOS sweeps it.
+    if let oldURL = exportedURL {
+      try? FileManager.default.removeItem(at: oldURL)
+      exportedURL = nil
+    }
     do {
       exportedURL = try PDFExporter.exportLast30Days(
         from: modelContext,
