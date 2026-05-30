@@ -64,7 +64,9 @@ public final class CrashReporting: NSObject {
 
   /// Unregister; provided for explicit teardown. `internal` so external
   /// callers can't tear down the singleton's subscription out from under
-  /// the App-lifetime ownership contract.
+  /// the App-lifetime ownership contract. No production caller by design —
+  /// the App-lifetime instance never stops; this stays as a test escape
+  /// hatch and a documentation surface for the inverse of `start()`.
   nonisolated func stop() {
     #if canImport(MetricKit)
     MXMetricManager.shared.remove(self)
@@ -86,7 +88,7 @@ public final class CrashReporting: NSObject {
       return containerURL.appendingPathComponent("Diagnostics", isDirectory: true)
     }
     logger.fault(
-      "App Group container unavailable; MetricKit payloads will land in tmp and be lost on next launch. Verify entitlements."
+      "App Group container unavailable; MetricKit payloads will land in tmp and may be lost at OS discretion. Verify entitlements."
     )
     return FileManager.default.temporaryDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
   }()
@@ -96,6 +98,12 @@ public final class CrashReporting: NSObject {
   /// queue MetricKit chose without capturing actor-isolated state.
   // TODO(#138): truncate to the last N files per kind so the diagnostics
   // folder doesn't grow unbounded across a daily-use install.
+  ///
+  /// Throws only when directory creation fails — without a writable directory
+  /// nothing else can succeed. Per-file write failures are best-effort: the
+  /// loop logs and keeps going so a disk-full mid-batch doesn't silently
+  /// discard payloads 3-5 of 5. For crash diagnostics, partial capture beats
+  /// all-or-nothing.
   nonisolated static func persist(
     payloads: [Data],
     kind: String,
@@ -109,7 +117,13 @@ public final class CrashReporting: NSObject {
     for data in payloads {
       let filename = "\(kind)-\(stamp)-\(UUID().uuidString).json"
       let url = directory.appendingPathComponent(filename)
-      try data.write(to: url)
+      do {
+        try data.write(to: url)
+      } catch {
+        logger.error(
+          "Failed to write \(kind, privacy: .public) payload: \(error.localizedDescription, privacy: .public)"
+        )
+      }
     }
   }
 }
