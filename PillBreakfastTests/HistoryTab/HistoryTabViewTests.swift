@@ -251,6 +251,55 @@ struct HistoryTabViewTests {
     #expect(copy.contains("watch"))
   }
 
+  // MARK: - day-rollover semantics
+
+  @Test func nextDayBoundaryReturnsStartOfFollowingDay() throws {
+    // Midday should sleep until the upcoming 00:00.
+    let now = reference(2026, 5, 30) // 12:00 UTC
+    let next = try #require(HistoryTabView.nextDayBoundary(after: now, calendar: Self.utcCalendar()))
+    let expected = try #require(
+      Self.utcCalendar().date(from: DateComponents(timeZone: TimeZone(identifier: "UTC"), year: 2026, month: 5, day: 31))
+    )
+    #expect(next == expected)
+  }
+
+  @Test func nextDayBoundaryFromExactMidnightAdvancesToNextMidnight() throws {
+    // Exactly at 00:00 the boundary is *tomorrow's* 00:00 — otherwise the
+    // sleep loop would fire immediately, never sleep, and burn CPU spinning.
+    let calendar = Self.utcCalendar()
+    let now = try #require(
+      calendar.date(from: DateComponents(timeZone: TimeZone(identifier: "UTC"), year: 2026, month: 5, day: 30))
+    )
+    let next = try #require(HistoryTabView.nextDayBoundary(after: now, calendar: calendar))
+    let expected = try #require(
+      calendar.date(from: DateComponents(timeZone: TimeZone(identifier: "UTC"), year: 2026, month: 5, day: 31))
+    )
+    #expect(next == expected)
+  }
+
+  @Test func windowSlidesForwardWhenReferenceAdvancesByOneDay() throws {
+    // The acceptance check for #128: the cell set must roll forward when the
+    // reference date crosses midnight. Driven through the `init(referenceDate:
+    // calendar:)` injection seam via `days(...)` so the assertion doesn't
+    // depend on a SwiftUI runtime.
+    let calendar = Self.utcCalendar()
+    let day1 = reference(2026, 5, 30)
+    let day2 = reference(2026, 5, 31)
+    let cellsDay1 = HistoryTabView.days(from: [], reference: day1, calendar: calendar)
+    let cellsDay2 = HistoryTabView.days(from: [], reference: day2, calendar: calendar)
+    let lastDay1 = try #require(cellsDay1.last)
+    let lastDay2 = try #require(cellsDay2.last)
+    let firstDay1 = try #require(cellsDay1.first)
+    let firstDay2 = try #require(cellsDay2.first)
+    // Right edge of the window tracks the reference date.
+    #expect(calendar.startOfDay(for: lastDay1.date) == calendar.startOfDay(for: day1))
+    #expect(calendar.startOfDay(for: lastDay2.date) == calendar.startOfDay(for: day2))
+    // And the whole window slides — the oldest cell on day2 is exactly one
+    // day after the oldest cell on day1.
+    let firstDay1PlusOne = try #require(calendar.date(byAdding: .day, value: 1, to: firstDay1.date))
+    #expect(firstDay1PlusOne == firstDay2.date)
+  }
+
   // MARK: - view construction smoke test
 
   @Test func viewConstructsWithoutCrashingOnEmptyStore() {
