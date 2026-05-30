@@ -7,7 +7,7 @@ import SwiftData
 public final class PersistenceController {
   public static let shared = PersistenceController()
 
-  public static let appGroupIdentifier = "group.com.creekmasons.pillbreakfast"
+  public nonisolated static let appGroupIdentifier = "group.com.creekmasons.pillbreakfast"
 
   /// The PillBreakfast model graph (SPEC §5.2).
   public static let schema = Schema([
