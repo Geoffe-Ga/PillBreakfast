@@ -99,6 +99,9 @@ struct PRNRowSummaryBuilderTests {
     let aspirin = makeIngredient("Aspirin", in: context) // no ceiling
     let caffeine = makeIngredient("Caffeine", in: context) // no ceiling
     let med = makeMed("Plain Combo", components: [(aspirin, 250), (caffeine, 65)], in: context)
+    // Only Aspirin's dose is logged — caffeine deliberately untouched. We're
+    // verifying the no-ceiling branch is reached at all, not which ingredient
+    // is highlighted (there's no highlight since neither has a ceiling).
     logProductDose(med, ingredientID: aspirin.id, name: "Aspirin", mg: 250, at: now.addingTimeInterval(-3600), in: context)
     try context.save()
 
