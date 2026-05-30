@@ -62,7 +62,6 @@ struct DoseEventBatchTests {
     let second = try DoseEventBatchMerger.merge(batch, into: context)
 
     #expect(second.inserted == 0)
-    // A nil → nil re-send is a pure no-op: no row dirtied, no counter bumped.
     #expect(second.updated == 0)
     #expect(try context.fetch(FetchDescriptor<DoseEvent>()).count == 1) // no duplicate
   }
@@ -96,6 +95,27 @@ struct DoseEventBatchTests {
       into: context
     )
 
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "with food")
+  }
+
+  @Test func mergeSkipsUpdateOnIdenticalNoteResend() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    let eventID = UUID()
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: "with food")]),
+      into: context
+    )
+    let second = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id, notes: "with food")]),
+      into: context
+    )
+
+    #expect(second.inserted == 0)
+    #expect(second.updated == 0)
     #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).notes == "with food")
   }
 
