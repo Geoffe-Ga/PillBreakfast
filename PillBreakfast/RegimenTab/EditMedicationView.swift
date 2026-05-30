@@ -55,8 +55,7 @@ struct EditMedicationView: View {
       EditMedicationView.logger.error("Failed to save medication edit: \(error.localizedDescription, privacy: .public)")
       // Revert any partial mutations to the existing medication.
       modelContext.rollback()
-      // Surface the failure so the user can fix the input and retry rather
-      // than tapping Save into a no-op.
+      // Same generic copy as the rest of the regimen editors; raw SwiftData errors aren't actionable.
       saveError = "The change couldn't be saved. Please try again."
       return
     }

@@ -41,9 +41,7 @@ struct HistoryTabView: View {
   }
 
   var body: some View {
-    // Hoist `Self.days(...)` into a single local so the heatmap init and the
-    // overlay's emptiness check don't each call it. A computed property
-    // wouldn't help — SwiftUI evaluates them per access, not per render.
+    // Hoist once: heatmap init and isEmpty check share the same cells.
     let cells = Self.days(
       from: doseEvents,
       reference: referenceDate,
@@ -51,7 +49,7 @@ struct HistoryTabView: View {
       filterMedicationID: filterMedicationID
     )
     let isEmpty = cells.allSatisfy { $0.eventCount == 0 }
-    return NavigationStack {
+    NavigationStack {
       HeatmapView(days: cells)
         .overlay {
           if isEmpty {
@@ -146,10 +144,7 @@ struct HistoryTabView: View {
     }
   }
 
-  /// Description for the empty-history overlay. The unfiltered case nudges
-  /// the user toward the watch (the only logging surface); the filtered case
-  /// names the medication so it's clear nothing was logged for *it*
-  /// specifically rather than a global blank state.
+  /// Description for the empty-history overlay; falls back to generic copy if the filter no longer matches a med.
   static func emptyDescription(forFilter selection: UUID?, in medications: [Medication]) -> String {
     if let id = selection, let name = medications.first(where: { $0.id == id })?.displayName {
       return "No \(name) doses logged in the last 30 days."
