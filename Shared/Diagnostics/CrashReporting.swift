@@ -93,11 +93,15 @@ public final class CrashReporting: NSObject {
     return FileManager.default.temporaryDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
   }()
 
-  /// Write payload bytes to disk under the chosen `directory`. Pure / static so
-  /// it's testable without touching MetricKit and so it can run on whatever
-  /// queue MetricKit chose without capturing actor-isolated state.
-  // TODO(#138): truncate to the last N files per kind so the diagnostics
-  // folder doesn't grow unbounded across a daily-use install.
+  /// Per-kind retention; ~1 month at one MetricKit batch/day. `nonisolated`
+  /// is required so this constant can default an arg of `nonisolated prune`
+  /// despite the class inheriting MainActor under `-default-isolation`.
+  public nonisolated static let retainPerKind: Int = 30
+
+  /// Write payload bytes to disk under the chosen `directory`, then truncate
+  /// the `<kind>-…` files there to the most recent `retainPerKind`. Pure /
+  /// static so it's testable without touching MetricKit and so it can run on
+  /// whatever queue MetricKit chose without capturing actor-isolated state.
   ///
   /// Throws only when directory creation fails — without a writable directory
   /// nothing else can succeed. Per-file write failures are best-effort: the
@@ -122,6 +126,49 @@ public final class CrashReporting: NSObject {
       } catch {
         logger.error(
           "Failed to write \(kind, privacy: .public) payload: \(error.localizedDescription, privacy: .public)"
+        )
+      }
+    }
+    // Truncate after each successful batch write — the just-written files
+    // are guaranteed to be the newest, so the prune keeps them and evicts
+    // the oldest until we're at `retainPerKind`.
+    if !payloads.isEmpty {
+      prune(kind: kind, in: directory)
+    }
+  }
+
+  /// Delete `<kind>-…` files in `directory` beyond `retainCount`; missing
+  /// directory is a silent no-op. Not file-coordinated — assumes
+  /// single-writer (MetricKit, once-per-day).
+  nonisolated static func prune(
+    kind: String,
+    in directory: URL,
+    retainCount: Int = retainPerKind
+  ) {
+    if !FileManager.default.fileExists(atPath: directory.path) { return }
+    let contents: [String]
+    do {
+      contents = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+    } catch {
+      // Real failure (permissions, sandbox, corrupted entries) — not a
+      // missing directory; surface so an investigator has a breadcrumb.
+      logger.warning(
+        "prune skipped — could not list \(directory.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+      )
+      return
+    }
+    let prefix = "\(kind)-"
+    let matching = contents
+      .filter { $0.hasPrefix(prefix) }
+      .sorted(by: >) // descending → newest first
+    if matching.count <= retainCount { return }
+    for stale in matching.dropFirst(retainCount) {
+      let url = directory.appendingPathComponent(stale)
+      do {
+        try FileManager.default.removeItem(at: url)
+      } catch {
+        logger.warning(
+          "Failed to prune stale \(kind, privacy: .public) payload \(stale, privacy: .public): \(error.localizedDescription, privacy: .public)"
         )
       }
     }
