@@ -73,9 +73,9 @@ public enum PRNRowSummaryBuilder {
       if percent > (best?.percent ?? -1) { best = (ingredient, percent) }
     }
     // Rounding (vs. truncating) means 99.5% reads as "100% of daily limit"
-    // — visually conservative for a safety-adjacent surface. The raw `percent`
-    // (and the underlying mg total) governs every actual safety decision; only
-    // the displayed integer rolls.
+    // — errs on the side of alerting for a safety-adjacent surface. The raw
+    // `percent` (and the underlying mg total) governs every actual safety
+    // decision; only the displayed integer rolls.
     let bestSuffix = best.map { " · \($0.ingredient.name.lowercased()) \(Int(($0.percent * 100).rounded()))% of daily limit" } ?? ""
     return PRNRowSummary(
       medicationID: medication.id,
