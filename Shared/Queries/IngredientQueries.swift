@@ -39,47 +39,77 @@ public enum IngredientQueries {
   /// The most recent `.taken` time at or before `now` (inclusive) whose dose
   /// included `ingredient`, or `nil` if there is none.
   ///
-  /// No `fetchLimit`: the matching event can be arbitrarily far back if the most
-  /// recent events are `.skipped`/`.snoozed` or for other ingredients, so a limit
-  /// could return a false `nil`. The fetch is `takenAt`-indexed and descending, so
-  /// the common case (a recent match) is cheap, but the worst case scans history —
-  /// a bounded/indexed implementation is tracked as a follow-up.
+  /// Implementation: paged descending scan with `pageSize` events per fetch,
+  /// stopping at the first match. Bounds memory to one page (~100 events) in
+  /// the common case while still finding far-back matches if the most recent
+  /// events are all `.skipped` / `.snoozed` / for-other-ingredients. The
+  /// `takenAt` index makes each page cheap.
   public static func lastDoseTime(
     ingredient: Ingredient,
     in context: ModelContext,
     atOrBefore now: Date
   ) throws -> Date? {
-    var descriptor = FetchDescriptor<DoseEvent>(
-      predicate: #Predicate { $0.takenAt <= now }
-    )
-    descriptor.sortBy = [SortDescriptor(\.takenAt, order: .reverse)]
     let ingredientID = ingredient.id
-    return try context.fetch(descriptor)
-      .first { event in
-        event.status == .taken
-          && event.ingredientAmounts.contains { $0.ingredientID == ingredientID }
-      }?
-      .takenAt
+    return try pagedScan(in: context, atOrBefore: now) { event in
+      event.status == .taken
+        && event.ingredientAmounts.contains { $0.ingredientID == ingredientID }
+    }
   }
 
   /// The most recent `.taken` time this **product** was logged, at or before `now`.
   ///
   /// Per-*product* (by medication), unlike `lastDoseTime` which is per-ingredient:
   /// PRN row labels show when this product was last taken, while safety checks
-  /// aggregate by ingredient (SPEC §7.3). Same unbounded-scan caveat as
-  /// `lastDoseTime` (tracked in the bounded-scan follow-up).
+  /// aggregate by ingredient (SPEC §7.3). Uses the same paged descending scan
+  /// as `lastDoseTime` — bounded memory, correct far-back lookup.
   public static func lastProductDoseTime(
     medication: Medication,
     in context: ModelContext,
     atOrBefore now: Date
   ) throws -> Date? {
-    var descriptor = FetchDescriptor<DoseEvent>(
-      predicate: #Predicate { $0.takenAt <= now }
-    )
-    descriptor.sortBy = [SortDescriptor(\.takenAt, order: .reverse)]
     let medicationID = medication.id
-    return try context.fetch(descriptor)
-      .first { $0.status == .taken && $0.medication?.id == medicationID }?
-      .takenAt
+    return try pagedScan(in: context, atOrBefore: now) { event in
+      event.status == .taken && event.medication?.id == medicationID
+    }
+  }
+
+  /// Page size for the descending-history scan. 100 covers Geoff's ~12-pills-
+  /// per-day budget across 8 days — typically more than enough to find a
+  /// recent match in a single page without materializing the full history.
+  /// `public` so tests can drive the boundary deterministically.
+  public static let pageSize: Int = 100
+
+  /// Descending paged scan over `DoseEvent`s with `takenAt <= now`, stopping
+  /// at the first event for which `match` returns true. Returns its
+  /// `takenAt`, or `nil` if no match is found across the whole history.
+  ///
+  /// Bounds memory to one page at a time. Correctness vs. the old unbounded
+  /// scan is preserved because the order is stable (`SortDescriptor` on the
+  /// indexed `takenAt`) and the scan terminates only when a page comes back
+  /// shorter than `pageSize` (i.e., we've reached the oldest events).
+  private static func pagedScan(
+    in context: ModelContext,
+    atOrBefore now: Date,
+    match: (DoseEvent) -> Bool
+  ) throws -> Date? {
+    var offset = 0
+    while true {
+      var descriptor = FetchDescriptor<DoseEvent>(
+        predicate: #Predicate { $0.takenAt <= now }
+      )
+      descriptor.sortBy = [SortDescriptor(\.takenAt, order: .reverse)]
+      descriptor.fetchLimit = pageSize
+      descriptor.fetchOffset = offset
+      let page = try context.fetch(descriptor)
+      if let hit = page.first(where: match) {
+        return hit.takenAt
+      }
+      // Last page is signaled by a short read — anything else means there's
+      // more history to walk.
+      if page.count < pageSize {
+        return nil
+      }
+      offset += page.count
+    }
   }
 }
