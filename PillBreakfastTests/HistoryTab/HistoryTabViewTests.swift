@@ -63,7 +63,7 @@ struct HistoryTabViewTests {
   @Test func daysProducesThirtyCells() {
     let ref = reference(2026, 5, 30)
     let cells = HistoryTabView.days(from: [], reference: ref, calendar: Self.utcCalendar())
-    #expect(cells.count == 30)
+    #expect(cells.count == HistoryTabView.windowDays)
   }
 
   @Test func daysAreChronologicalOldestToNewest() {
@@ -115,7 +115,12 @@ struct HistoryTabViewTests {
     #expect(byDate[Self.utcCalendar().startOfDay(for: reference(2026, 5, 15))] == 0)
   }
 
-  @Test func daysIgnoreEventsOutsideTheWindow() throws {
+  @Test func daysIgnoreEventsWithNoMatchingBucket() throws {
+    // This test exercises the bucket-lookup defensive filter in `days(...)`
+    // specifically — the `@Query` predicate's `>= start` is a separate gate
+    // and is not what's under test here. Together they form belt-and-suspenders:
+    // even if a future predicate change leaks an out-of-window event, the
+    // bucket lookup still drops it.
     let ref = reference(2026, 5, 30)
     let context = try makeInMemoryContext()
     // Way before the window (April 1).
@@ -127,8 +132,8 @@ struct HistoryTabViewTests {
     let events = try context.fetch(descriptor)
     let cells = HistoryTabView.days(from: events, reference: ref, calendar: Self.utcCalendar())
     let total = cells.reduce(0) { $0 + $1.eventCount }
-    // Only the in-window May 15 event is counted; the April 1 one is silently
-    // dropped because no cell's day-start matches it.
+    // Only the in-window May 15 event is counted; the April 1 one has no
+    // matching bucket key and is silently dropped.
     #expect(total == 1)
   }
 

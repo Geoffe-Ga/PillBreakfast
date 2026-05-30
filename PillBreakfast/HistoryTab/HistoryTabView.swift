@@ -13,6 +13,7 @@ struct HistoryTabView: View {
   private let referenceDate: Date
   private let calendar: Calendar
 
+  /// `referenceDate` is frozen at init; a session past midnight keeps the prior window until the density follow-up wires live refresh.
   init(referenceDate: Date = .now, calendar: Calendar = .current) {
     let start = HistoryTabView.windowStart(reference: referenceDate, calendar: calendar)
     _doseEvents = Query(
