@@ -149,6 +149,29 @@ struct PendingQueueSelectorTests {
     #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
   }
 
+  @Test func outOfWindowHistoryDoesNotAffectResult() throws {
+    // Regression: the old per-slot `med.doseEvents.contains(...)` traversed
+    // the full relationship and would hydrate every historical event. With
+    // the bounded-fetch refactor, a medication with hundreds of out-of-window
+    // events still resolves today's slot correctly — and the today fetch
+    // doesn't accidentally count those events as "already logged."
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+
+    // 60 historical events for the same med at the same hour:minute slot but
+    // on prior days. None of them should suppress today's slot.
+    for daysAgo in 1 ... 60 {
+      let priorDay = try date(2026, 5, 29 - daysAgo, 8, 0, in: cal)
+      try logDose(med, scheduledFor: priorDay, in: context)
+    }
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    let result = try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context)
+    #expect(result.count == 1)
+    #expect(try #require(result.first).scheduledFor == date(2026, 5, 29, 8, 0, in: cal))
+  }
+
   @Test func loggingOneSlotDoesNotSuppressAnotherSlot() throws {
     // A twice-daily med with both slots inside the window: logging the 8:00 dose
     // must not hide the 8:30 dose. (A coarse same-day match would wrongly drop both.)

@@ -42,12 +42,25 @@ public struct PendingQueueSelector: Sendable {
   public func pendingDoses(at now: Date, in context: ModelContext) throws -> [PendingDose] {
     let todayISOWeekday = Self.isoWeekday(fromCalendar: calendar.component(.weekday, from: now))
     let startOfDay = calendar.startOfDay(for: now)
+    let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
 
     // Predicate on the indexed `isArchived` only; the `kind` enum filter runs in
     // memory (as NotificationScheduler does) to sidestep #Predicate enum quirks.
     let meds = try context
       .fetch(FetchDescriptor<Medication>(predicate: #Predicate { !$0.isArchived }))
       .filter { $0.kind == .maintenance }
+
+    // Single bounded fetch of today's already-logged slots, then an O(1)
+    // lookup per scheduled slot. Replaces a per-slot
+    // `med.doseEvents.contains(...)` that hydrated *every* historical
+    // `DoseEvent` for each medication — the exact cascading-fetch hazard
+    // SPEC §5.2 calls out (and why `ingredientAmounts` is denormalized).
+    let loggedSlots = try Self.loggedSlotKeys(
+      in: context,
+      startOfDay: startOfDay,
+      nextDay: nextDay,
+      calendar: calendar
+    )
 
     var results: [PendingDose] = []
     for med in meds {
@@ -63,14 +76,13 @@ public struct PendingQueueSelector: Sendable {
         // `daysOfWeek` is ISO (Mon = 1 … Sun = 7); empty means every day.
         guard dose.daysOfWeek.isEmpty || dose.daysOfWeek.contains(todayISOWeekday) else { continue }
 
-        // Suppress a slot already logged today (taken or skipped). Match the slot
-        // precisely — same day AND same hour:minute — so a twice-daily med's later
-        // dose isn't hidden just because the earlier one was logged.
-        let alreadyLogged = med.doseEvents.contains { event in
-          guard let scheduledFor = event.scheduledFor else { return false } // PRN/unscheduled never matches a slot.
-          return calendar.isDate(scheduledFor, equalTo: scheduledToday, toGranularity: .minute)
-        }
-        guard !alreadyLogged else { continue }
+        // O(1) lookup in the pre-fetched slot set. The day is implicit in the
+        // fetch predicate (`scheduledFor` in `[startOfDay, nextDay)`), so the
+        // key only carries `(medicationID, hour, minute)` — a twice-daily
+        // med's later dose isn't hidden just because the earlier one was
+        // logged.
+        let slotKey = SlotKey(medicationID: med.id, hour: dose.hour, minute: dose.minute)
+        guard !loggedSlots.contains(slotKey) else { continue }
 
         results.append(PendingDose(
           medicationID: med.id,
@@ -80,6 +92,54 @@ public struct PendingQueueSelector: Sendable {
       }
     }
     return results.sorted { $0.scheduledFor < $1.scheduledFor }
+  }
+
+  /// Bounded by `takenAt` (which is indexed) rather than `scheduledFor`
+  /// because `#Predicate` doesn't support the optional force-unwrap pattern
+  /// — `event.scheduledFor != nil && event.scheduledFor! >= …` compiles but
+  /// fails at fetch time with `unsupportedPredicate` on iOS 26's SwiftData.
+  ///
+  /// The takenAt window is ±1 day around `startOfDay` so a proactively-
+  /// logged dose (taken late yesterday for today's slot, or taken in the
+  /// early morning for the next-day rollover edge) is still captured. At the
+  /// documented ~12 pills/day budget the worst-case fetch is ~36 events,
+  /// which is the bound the SPEC §5.2 cascading-fetch hazard demands.
+  /// `scheduledFor` is then filtered in memory to today's window before
+  /// building the SlotKey index.
+  @MainActor
+  static func loggedSlotKeys(
+    in context: ModelContext,
+    startOfDay: Date,
+    nextDay: Date,
+    calendar: Calendar
+  ) throws -> Set<SlotKey> {
+    let yesterday = calendar.date(byAdding: .day, value: -1, to: startOfDay) ?? startOfDay
+    let dayAfter = calendar.date(byAdding: .day, value: 1, to: nextDay) ?? nextDay
+    let descriptor = FetchDescriptor<DoseEvent>(
+      predicate: #Predicate { event in
+        event.takenAt >= yesterday && event.takenAt < dayAfter
+      }
+    )
+    let events = try context.fetch(descriptor)
+    var keys: Set<SlotKey> = []
+    for event in events {
+      guard let scheduledFor = event.scheduledFor,
+            scheduledFor >= startOfDay,
+            scheduledFor < nextDay,
+            let medicationID = event.medication?.id else { continue }
+      let components = calendar.dateComponents([.hour, .minute], from: scheduledFor)
+      guard let hour = components.hour, let minute = components.minute else { continue }
+      keys.insert(SlotKey(medicationID: medicationID, hour: hour, minute: minute))
+    }
+    return keys
+  }
+
+  /// Identity for the "already-logged today" lookup. The day is implicit in
+  /// the bounded fetch the keys come from; carrying it would be redundant.
+  struct SlotKey: Hashable {
+    let medicationID: UUID
+    let hour: Int
+    let minute: Int
   }
 
   /// `Calendar`'s `.weekday` is Gregorian (Sun = 1 … Sat = 7); the schedule stores
