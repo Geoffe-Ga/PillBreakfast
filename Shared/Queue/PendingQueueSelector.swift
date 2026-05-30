@@ -122,11 +122,16 @@ public struct PendingQueueSelector: Sendable {
     else {
       throw CalendarError.windowComputationFailed
     }
-    let descriptor = FetchDescriptor<DoseEvent>(
+    // `fetchLimit` is a defensive ceiling — the 12-pills/day budget gives
+    // ~36 events in a 3-day window, so 200 is comfortably above any
+    // realistic load while bounding a schema-drift / test-seed bug from
+    // hydrating millions of rows.
+    var descriptor = FetchDescriptor<DoseEvent>(
       predicate: #Predicate { event in
         event.takenAt >= yesterday && event.takenAt < dayAfter
       }
     )
+    descriptor.fetchLimit = 200
     let events = try context.fetch(descriptor)
     var keys: Set<SlotKey> = []
     for event in events {
@@ -149,7 +154,7 @@ public struct PendingQueueSelector: Sendable {
     let minute: Int
   }
 
-  public enum CalendarError: Error {
+  enum CalendarError: Error {
     /// `Calendar.date(byAdding: .day, …)` returned `nil` for the day-boundary
     /// math. Effectively impossible on the watchOS 26 Gregorian calendar, but
     /// throwing rather than falling back keeps a degenerate-window from
