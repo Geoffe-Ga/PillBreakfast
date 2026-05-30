@@ -29,6 +29,8 @@ struct PRNQuantityPickerView: View {
   /// quantities configured. Wider than `PRNFormSection.quantityRange` (1...10)
   /// because that's the *configuration* range — a user typing a custom one-off
   /// on the watch can go above the curated set without re-editing the form.
+  /// 20 is arbitrary-but-deliberate: covers the widest known PRN regimen
+  /// without inviting fat-finger fives like "take 99".
   private static let fallbackQuantityRange = 1 ... 20
 
   init(medication: Medication, onLogged: @escaping () -> Void) {

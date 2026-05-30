@@ -107,8 +107,8 @@ struct PRNRowSummaryBuilderTests {
 
     let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
     #expect(summary.firstLine == "Plain Combo")
-    // Last-dose text is present; no "% of daily limit" suffix.
-    #expect(summary.secondLine.contains("last "))
+    // Last-dose text starts the line; no "% of daily limit" suffix.
+    #expect(summary.secondLine.hasPrefix("last "))
     #expect(!summary.secondLine.contains("% of daily limit"))
     #expect(summary.highlightedIngredientID == nil)
   }
