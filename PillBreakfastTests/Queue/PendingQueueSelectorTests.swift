@@ -150,26 +150,26 @@ struct PendingQueueSelectorTests {
   }
 
   @Test func outOfWindowHistoryDoesNotAffectResult() throws {
-    // Regression: the old per-slot `med.doseEvents.contains(...)` traversed
-    // the full relationship and would hydrate every historical event. With
-    // the bounded-fetch refactor, a medication with hundreds of out-of-window
-    // events still resolves today's slot correctly — and the today fetch
-    // doesn't accidentally count those events as "already logged."
+    // Regression guard: the old per-slot `med.doseEvents.contains(...)`
+    // hydrated every historical event. The bounded fetch must not count
+    // out-of-window events as "already logged" — today's slot must still
+    // surface even when the same slot has been filled on 60 prior days.
     let cal = try calendar("America/New_York")
     let context = try makeContext()
     let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
 
-    // 60 historical events for the same med at the same hour:minute slot but
-    // on prior days. None of them should suppress today's slot.
+    // Seed via `Calendar.date(byAdding:)` rather than negative `day:`
+    // components, which can roll in surprising ways across short months.
     for daysAgo in 1 ... 60 {
-      let priorDay = try date(2026, 5, 29 - daysAgo, 8, 0, in: cal)
+      let priorDay = try #require(cal.date(byAdding: .day, value: -daysAgo, to: todayAt8))
       try logDose(med, scheduledFor: priorDay, in: context)
     }
 
     let now = try date(2026, 5, 29, 8, 5, in: cal)
     let result = try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context)
     #expect(result.count == 1)
-    #expect(try #require(result.first).scheduledFor == date(2026, 5, 29, 8, 0, in: cal))
+    #expect(try #require(result.first).scheduledFor == todayAt8)
   }
 
   @Test func loggingOneSlotDoesNotSuppressAnotherSlot() throws {

@@ -42,7 +42,11 @@ public struct PendingQueueSelector: Sendable {
   public func pendingDoses(at now: Date, in context: ModelContext) throws -> [PendingDose] {
     let todayISOWeekday = Self.isoWeekday(fromCalendar: calendar.component(.weekday, from: now))
     let startOfDay = calendar.startOfDay(for: now)
-    let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+    guard let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+      // Throwing rather than `?? startOfDay`: a zero-width window would silently
+      // collapse the "already logged" lookup and resurface every slot.
+      throw CalendarError.windowComputationFailed
+    }
 
     // Predicate on the indexed `isArchived` only; the `kind` enum filter runs in
     // memory (as NotificationScheduler does) to sidestep #Predicate enum quirks.
@@ -107,14 +111,17 @@ public struct PendingQueueSelector: Sendable {
   /// `scheduledFor` is then filtered in memory to today's window before
   /// building the SlotKey index.
   @MainActor
-  static func loggedSlotKeys(
+  private static func loggedSlotKeys(
     in context: ModelContext,
     startOfDay: Date,
     nextDay: Date,
     calendar: Calendar
   ) throws -> Set<SlotKey> {
-    let yesterday = calendar.date(byAdding: .day, value: -1, to: startOfDay) ?? startOfDay
-    let dayAfter = calendar.date(byAdding: .day, value: 1, to: nextDay) ?? nextDay
+    guard let yesterday = calendar.date(byAdding: .day, value: -1, to: startOfDay),
+          let dayAfter = calendar.date(byAdding: .day, value: 1, to: nextDay)
+    else {
+      throw CalendarError.windowComputationFailed
+    }
     let descriptor = FetchDescriptor<DoseEvent>(
       predicate: #Predicate { event in
         event.takenAt >= yesterday && event.takenAt < dayAfter
@@ -140,6 +147,14 @@ public struct PendingQueueSelector: Sendable {
     let medicationID: UUID
     let hour: Int
     let minute: Int
+  }
+
+  public enum CalendarError: Error {
+    /// `Calendar.date(byAdding: .day, …)` returned `nil` for the day-boundary
+    /// math. Effectively impossible on the watchOS 26 Gregorian calendar, but
+    /// throwing rather than falling back keeps a degenerate-window from
+    /// silently resurfacing every slot.
+    case windowComputationFailed
   }
 
   /// `Calendar`'s `.weekday` is Gregorian (Sun = 1 … Sat = 7); the schedule stores
