@@ -33,6 +33,16 @@ public struct DailySummary: Sendable, Hashable {
   }
 }
 
+/// Errors `HistoryQueries` raises when the inputs themselves are wrong (vs. a
+/// SwiftData fetch error, which propagates as-is).
+public enum HistoryQueriesError: Error, Sendable {
+  /// `Calendar` failed to produce the day-after `startOfDay`. Extremely rare —
+  /// only seen in malformed calendar identifiers — but explicitly raised
+  /// rather than falling back to an impossible `startOfDay ..< startOfDay`
+  /// range that would silently return zero events.
+  case calendarArithmeticFailed
+}
+
 /// Pure read helpers for the History tab. Like `IngredientQueries`, these read
 /// the denormalized `DoseEvent.ingredientAmounts` snapshots so the totals
 /// reflect what was actually logged, not the live product graph.
@@ -48,9 +58,14 @@ public enum HistoryQueries {
     calendar: Calendar = .current
   ) throws -> DailySummary {
     let startOfDay = calendar.startOfDay(for: day)
-    let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+    guard let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+      throw HistoryQueriesError.calendarArithmeticFailed
+    }
+    // `takenAt` ascending so the aggregation loop's "first-seen ingredient
+    // name wins" rule is deterministic across fetches.
     let descriptor = FetchDescriptor<DoseEvent>(
-      predicate: #Predicate { $0.takenAt >= startOfDay && $0.takenAt < nextDay }
+      predicate: #Predicate { $0.takenAt >= startOfDay && $0.takenAt < nextDay },
+      sortBy: [SortDescriptor(\DoseEvent.takenAt)]
     )
     let events = try context.fetch(descriptor)
 
@@ -60,10 +75,10 @@ public enum HistoryQueries {
 
     // Aggregate ingredient totals by ID. Each amount carries its own name and
     // mg; if the same ingredient appears across multiple `.taken` events on
-    // the day, sum their mg and keep the first-seen name. If a user renames
-    // an ingredient between doses, the displayed label is whichever snapshot
-    // landed in the fetch first; tracking the cross-snapshot rename is a
-    // documented edge case for a future cleanup.
+    // the day, sum their mg and keep the earliest snapshot's name (the fetch
+    // is sorted by `takenAt` ascending). A user renaming an ingredient mid-day
+    // therefore renders under the older name until the calendar day rolls
+    // over — documented edge case for a future cleanup.
     var totalsByID: [UUID: LoggedIngredientAmount] = [:]
     for event in taken {
       for amount in event.ingredientAmounts {

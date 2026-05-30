@@ -37,6 +37,7 @@ struct HeatmapView: View {
             HistoryDayCell(day: day, opacity: Self.opacity(for: day.eventCount, maxCount: maxCount))
           }
           .buttonStyle(.plain)
+          .accessibilityHint("Show day's events")
         }
       }
       .padding()
@@ -64,7 +65,11 @@ private struct HistoryDayCell: View {
 
   static func accessibilityLabel(for day: HistoryDay) -> String {
     let dateText = day.date.formatted(date: .abbreviated, time: .omitted)
-    let doseText = day.eventCount == 1 ? "1 dose" : "\(day.eventCount) doses"
+    let doseText = switch day.eventCount {
+    case 0: "no doses"
+    case 1: "1 dose"
+    default: "\(day.eventCount) doses"
+    }
     return "\(dateText), \(doseText)"
   }
 }

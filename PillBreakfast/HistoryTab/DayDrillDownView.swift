@@ -29,31 +29,35 @@ struct DayDrillDownView: View {
 
   var body: some View {
     List {
+      Section("Events") {
+        ForEach(events) { event in
+          DayEventRow(event: event)
+        }
+      }
+      if let summary, !summary.ingredientTotals.isEmpty {
+        Section("Ingredient totals") {
+          ForEach(summary.ingredientTotals, id: \.ingredientID) { amount in
+            HStack {
+              Text(amount.ingredientName)
+              Spacer()
+              Text(Self.formatMg(amount.totalMg))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            }
+          }
+        }
+      }
+    }
+    .overlay {
+      // `ContentUnavailableView` rendered inside a `List` becomes a single
+      // row instead of filling the surface; overlay puts it where it
+      // belongs.
       if events.isEmpty {
         ContentUnavailableView(
           "No doses logged",
           systemImage: "tray",
           description: Text("Nothing was logged on this day.")
         )
-      } else {
-        Section("Events") {
-          ForEach(events) { event in
-            DayEventRow(event: event)
-          }
-        }
-        if let summary, !summary.ingredientTotals.isEmpty {
-          Section("Ingredient totals") {
-            ForEach(summary.ingredientTotals, id: \.ingredientID) { amount in
-              HStack {
-                Text(amount.ingredientName)
-                Spacer()
-                Text(Self.formatMg(amount.totalMg))
-                  .foregroundStyle(.secondary)
-                  .monospacedDigit()
-              }
-            }
-          }
-        }
       }
     }
     .navigationTitle(date.formatted(date: .abbreviated, time: .omitted))
