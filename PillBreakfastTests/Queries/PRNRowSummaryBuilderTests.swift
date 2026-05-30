@@ -105,6 +105,22 @@ struct PRNRowSummaryBuilderTests {
     #expect(summary.highlightedIngredientID == apap.id)
   }
 
+  @Test func comboPercentRoundsHalfAwayFromZero() throws {
+    // Pins the safety-adjacent rounding: 99.5% of ceiling must render as
+    // "100% of daily limit", not "99%". Errs toward alerting; raw percent
+    // still governs the actual safety gate.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 1000, in: context)
+    let aspirin = makeIngredient("Aspirin", in: context) // combo shape needs ≥ 2 components
+    let med = makeMed("Combo", components: [(apap, 250), (aspirin, 100)], in: context)
+    // 995mg apap so far today = 99.5% of the 1000 ceiling.
+    logProductDose(med, ingredientID: apap.id, name: "Acetaminophen", mg: 995, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.secondLine.contains("acetaminophen 100% of daily limit"))
+  }
+
   @Test func comboVariantWithNoCeilingsOmitsUtilizationSuffix() throws {
     // Every ingredient in the combo lacks a ceiling — `bestSuffix` is empty
     // and the second line is just the last-dose text, with no "% of daily

@@ -25,12 +25,7 @@ struct PRNQuantityPickerView: View {
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "PRNLogging")
 
-  /// Cap on the free-form stepper shown when a PRN product has no preset
-  /// quantities configured. Wider than `PRNFormSection.quantityRange` (1...10)
-  /// because that's the *configuration* range — a user typing a custom one-off
-  /// on the watch can go above the curated set without re-editing the form.
-  /// 20 is arbitrary-but-deliberate: covers the widest known PRN regimen
-  /// without inviting fat-finger fives like "take 99".
+  /// Watch-side stepper cap when no preset quantities are configured; wider than `PRNFormSection.quantityRange` (1...10) which is the *configuration* cap.
   private static let fallbackQuantityRange = 1 ... 20
 
   init(medication: Medication, onLogged: @escaping () -> Void) {
