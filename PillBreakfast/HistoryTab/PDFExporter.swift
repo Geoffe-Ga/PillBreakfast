@@ -118,6 +118,10 @@ enum PDFExporter {
   ///   sole production caller is `collectBlocks`, which uses
   ///   `SortDescriptor(\DoseEvent.takenAt)` in its fetch.
   static func aggregateIngredients(in events: [DoseEvent]) -> [LoggedIngredientAmount] {
+    assert(
+      events == events.sorted(by: { $0.takenAt < $1.takenAt }),
+      "aggregateIngredients precondition: events must be sorted ascending by takenAt"
+    )
     var totalsByID: [UUID: LoggedIngredientAmount] = [:]
     for event in events where event.status == .taken {
       for amount in event.ingredientAmounts {
@@ -144,24 +148,32 @@ enum PDFExporter {
 
   // MARK: - Rendering
 
+  // Fixed black / gray (not `UIColor.label` / `.secondaryLabel`). The PDF
+  // context has no trait collection, so adaptive colors resolve in the
+  // *device's* current style — a dark-mode iPhone would render white text on
+  // a white PDF background and ship a blank document to the doctor. Pin to
+  // print-correct values.
+  private static let primaryInkColor = UIColor.black
+  private static let secondaryInkColor = UIColor(white: 0.4, alpha: 1)
+
   private static let titleAttributes: [NSAttributedString.Key: Any] = [
     .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
-    .foregroundColor: UIColor.label,
+    .foregroundColor: primaryInkColor,
   ]
 
   private static let bodyAttributes: [NSAttributedString.Key: Any] = [
     .font: UIFont.systemFont(ofSize: 11, weight: .regular),
-    .foregroundColor: UIColor.label,
+    .foregroundColor: primaryInkColor,
   ]
 
   private static let secondaryAttributes: [NSAttributedString.Key: Any] = [
     .font: UIFont.systemFont(ofSize: 10, weight: .regular),
-    .foregroundColor: UIColor.secondaryLabel,
+    .foregroundColor: secondaryInkColor,
   ]
 
   private static let footerAttributes: [NSAttributedString.Key: Any] = [
     .font: UIFont.systemFont(ofSize: 9, weight: .regular),
-    .foregroundColor: UIColor.secondaryLabel,
+    .foregroundColor: secondaryInkColor,
   ]
 
   /// Precondition: `blocks` were partitioned by `PDFPaginator.paginate` so
@@ -249,7 +261,7 @@ enum PDFExporter {
     )
     let pageAttributes: [NSAttributedString.Key: Any] = [
       .font: UIFont.systemFont(ofSize: 9, weight: .regular),
-      .foregroundColor: UIColor.secondaryLabel,
+      .foregroundColor: secondaryInkColor,
       .paragraphStyle: rightAlignedParagraphStyle,
     ]
     pageCounter.draw(in: pageRect, withAttributes: pageAttributes)

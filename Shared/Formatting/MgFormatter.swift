@@ -9,6 +9,10 @@ import Foundation
 /// - A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
 /// - Guards against non-finite inputs that would otherwise trap the
 ///   `Int(...)` cast.
+/// `nonisolated` is load-bearing here: the project sets default-MainActor
+/// isolation, so without this annotation `format` becomes MainActor-isolated
+/// and call sites from any non-MainActor context (Swift Testing's default,
+/// the PDF renderer's potential future detach) fail to compile.
 public nonisolated enum MgFormatter {
   public static func format(_ mg: Double) -> String {
     guard mg.isFinite else { return "— mg" }
