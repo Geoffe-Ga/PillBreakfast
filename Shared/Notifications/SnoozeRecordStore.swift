@@ -15,11 +15,14 @@ public enum SnoozeRecordStore {
     try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar)?.count ?? 0
   }
 
-  /// How many days of `SnoozeRecord` history we keep. The fourth-snooze
-  /// warning only reads *today's* row, so 1 would be functionally enough —
-  /// the extra week is debugging headroom (a row visible in the store the
-  /// morning after a regression is much easier to reason about than one
-  /// already pruned) and a buffer for DST / timezone shifts around midnight.
+  /// Rows whose `calendarDay` is strictly older than `today - staleHorizonDays`
+  /// are deleted; a row at exactly that boundary is **kept**. The retained
+  /// window is therefore `staleHorizonDays + 1` days (today plus the prior
+  /// `staleHorizonDays`). The fourth-snooze warning only reads today's row, so
+  /// 1 would be functionally enough — the extra week is debugging headroom (a
+  /// row visible in the store the morning after a regression is much easier to
+  /// reason about than one already pruned) and a buffer for DST / timezone
+  /// shifts around midnight.
   public static let staleHorizonDays: Int = 7
 
   /// Bumps the occurrence's count by one (creating the record if needed) and
@@ -70,7 +73,13 @@ public enum SnoozeRecordStore {
     in context: ModelContext,
     calendar: Calendar
   ) throws {
-    guard let cutoff = calendar.date(byAdding: .day, value: -staleHorizonDays, to: referenceDay) else { return }
+    guard let cutoff = calendar.date(byAdding: .day, value: -staleHorizonDays, to: referenceDay) else {
+      // Day arithmetic on a valid calendar can't produce nil here; assert in
+      // debug so a SDK regression surfaces in tests rather than silently
+      // skipping prune in release.
+      assertionFailure("calendar.date(byAdding: .day, value: -\(staleHorizonDays), to: \(referenceDay)) returned nil")
+      return
+    }
     try context.delete(model: SnoozeRecord.self, where: #Predicate { $0.calendarDay < cutoff })
   }
 
