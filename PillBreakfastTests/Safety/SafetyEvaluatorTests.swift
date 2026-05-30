@@ -173,6 +173,52 @@ struct SafetyEvaluatorTests {
     #expect(try SafetyEvaluator.violationsIfTaken(med, quantity: 1, at: now, in: context, calendar: calendar).isEmpty)
   }
 
+  @Test func duplicateIngredientComponentsAggregateBeforeCeilingCheck() throws {
+    // EPIC_05_ISSUE_06 combo-product setup: one med carrying the same
+    // ingredient in two components (two acetaminophen sources, e.g. a brand
+    // dose plus a generic filler). The under-count failure mode would be
+    // each component evaluated independently — 250 × 4 = 1000mg per
+    // component, both below the 1000mg ceiling. The correct safety-aware
+    // answer aggregates first: 2 × 250 × 4 = 2000mg, well above the
+    // ceiling, exactly one `.ceiling` violation produced.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 1000, in: context)
+    let combo = Medication(displayName: "Combo APAP", unitForm: .tablet, kind: .prn)
+    combo.components = [
+      MedicationComponent(ingredient: apap, dosagePerUnitMg: 250),
+      MedicationComponent(ingredient: apap, dosagePerUnitMg: 250),
+    ]
+    context.insert(combo)
+    try context.save()
+
+    let violations = try SafetyEvaluator.violationsIfTaken(combo, quantity: 4, at: now, in: context, calendar: calendar)
+    #expect(violations.count == 1)
+    let summary = try #require(ceilingViolation(in: violations))
+    #expect(summary.proposed == 2000)
+    #expect(summary.current == 0)
+    #expect(summary.ceiling == 1000)
+  }
+
+  @Test func duplicateIngredientComponentsProduceSingleTooSoonViolation() throws {
+    // Same combo-product shape; this time the ingredient just took a recent
+    // dose. Per-component evaluation would emit *two* `.tooSoon` entries for
+    // the same ingredient — aggregation collapses them to one.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", interval: 240, in: context)
+    let combo = Medication(displayName: "Combo APAP", unitForm: .tablet, kind: .prn)
+    combo.components = [
+      MedicationComponent(ingredient: apap, dosagePerUnitMg: 250),
+      MedicationComponent(ingredient: apap, dosagePerUnitMg: 250),
+    ]
+    context.insert(combo)
+    logDose(apap.id, mg: 500, at: now.addingTimeInterval(-3600), in: context) // 1h ago, < 240min interval
+    try context.save()
+
+    let violations = try SafetyEvaluator.violationsIfTaken(combo, quantity: 1, at: now, in: context, calendar: calendar)
+    #expect(violations.count == 1)
+    #expect(hasTooSoon(in: violations))
+  }
+
   @Test func ceilingAndIntervalStackOnWorstCaseDose() throws {
     let context = try makeContext()
     let apap = makeIngredient("Acetaminophen", ceiling: 4000, interval: 240, in: context)

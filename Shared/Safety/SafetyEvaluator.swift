@@ -21,19 +21,14 @@ public enum SafetyEvaluator {
   ) throws -> [Violation] {
     var violations: [Violation] = []
 
-    // Assumes one component per ingredient (the form enforces this today). If
-    // combo editing (EPIC_05_ISSUE_06) ever allows the same ingredient in two
-    // components, this must aggregate addedMg per ingredient before the ceiling
-    // check, or it would under-count the proposed dose (#109).
-    for component in medication.components {
-      guard let ingredient = component.ingredient else {
-        // A component with no ingredient is a data-integrity fault. Log it loudly:
-        // for a safety gate, a check that silently doesn't fire because data is
-        // missing is worse than a false positive.
-        logger.warning("Component \(component.id, privacy: .public) has no ingredient; cannot safety-check it.")
-        continue
-      }
-      let addedMg = Double(quantity) * component.dosagePerUnitMg
+    // Aggregate added-mg per ingredient before evaluating thresholds. Combo
+    // products (EPIC_05_ISSUE_06) may carry the same ingredient in two
+    // components — say a brand acetaminophen alongside an APAP filler — and
+    // summing the contributions first is the only way to avoid the
+    // safety-relevant under-count of evaluating each component independently.
+    for aggregate in aggregatedByIngredient(medication, quantity: quantity) {
+      let ingredient = aggregate.ingredient
+      let addedMg = aggregate.addedMg
 
       // Daily ceiling: today's logged total (across all products) plus the dose
       // we're about to take. `>` so a dose landing exactly on the ceiling is allowed.
@@ -46,6 +41,9 @@ public enum SafetyEvaluator {
       }
 
       // Minimum interval: how long since this ingredient was last taken.
+      // Dose-amount-independent, so the per-ingredient grouping doesn't change
+      // its semantics — but evaluating once per ingredient prevents a duplicate
+      // `.tooSoon` entry when the same ingredient appears in two components.
       if let minInterval = ingredient.minIntervalMinutes,
          let lastDose = try IngredientQueries.lastDoseTime(ingredient: ingredient, in: context, atOrBefore: now),
          now.timeIntervalSince(lastDose) < Double(minInterval * 60)
@@ -55,5 +53,42 @@ public enum SafetyEvaluator {
     }
 
     return violations
+  }
+
+  /// Per-ingredient bundle: the canonical `Ingredient` reference plus the
+  /// summed `quantity × dosagePerUnitMg` across every component of
+  /// `medication` that points at that ingredient.
+  private struct IngredientAggregate {
+    let ingredient: Ingredient
+    let addedMg: Double
+  }
+
+  /// Group `medication.components` by `ingredient.id`, summing the
+  /// contributions. A component without an ingredient is a data-integrity
+  /// fault — logged loudly and skipped, because for a safety gate a check
+  /// that silently doesn't fire because of missing data is worse than a
+  /// false positive.
+  ///
+  /// Returned in ingredient-name order so the resulting `Violation` list is
+  /// deterministic across runs (existing tests don't lean on order, but a
+  /// stable order is the cheaper invariant).
+  private static func aggregatedByIngredient(
+    _ medication: Medication,
+    quantity: Int
+  ) -> [IngredientAggregate] {
+    var sumByID: [UUID: Double] = [:]
+    var ingredientByID: [UUID: Ingredient] = [:]
+    for component in medication.components {
+      guard let ingredient = component.ingredient else {
+        logger.warning("Component \(component.id, privacy: .public) has no ingredient; cannot safety-check it.")
+        continue
+      }
+      sumByID[ingredient.id, default: 0] += Double(quantity) * component.dosagePerUnitMg
+      ingredientByID[ingredient.id] = ingredient
+    }
+    return sumByID.compactMap { id, sum -> IngredientAggregate? in
+      guard let ingredient = ingredientByID[id] else { return nil }
+      return IngredientAggregate(ingredient: ingredient, addedMg: sum)
+    }.sorted { $0.ingredient.name < $1.ingredient.name }
   }
 }
