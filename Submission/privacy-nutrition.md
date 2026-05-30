@@ -25,10 +25,13 @@ are **not transmitted off-device by PillBreakfast** (see
     entry on the iPhone Regimen tab.
   - Storage: SwiftData store in the App Group container on the user's iPhone;
     mirrored to the paired Apple Watch via `WCSession`.
-  - Off-device transmission: **None.**
-  - Reason for "Linked to User": the data lives on the user's device under
-    their iCloud-bound App Group container; Apple's questionnaire treats
-    device-bound data as linked to the user even without an explicit account.
+  - Off-device transmission: **None.** `WCSession` transfers regimen data
+    between the user's own iPhone and their paired Apple Watch — no external
+    server, no third-party endpoint, no iCloud sync at this time.
+  - Reason for "Linked to User": the data lives on the user's device in a
+    local App Group container shared between the iPhone app and the watch
+    app. Apple's questionnaire treats on-device data that is personally
+    identifiable and not anonymized as linked to the user.
   - Reason for "App Functionality": the regimen is what the app exists to
     track; without it the surface is empty.
 
@@ -113,7 +116,7 @@ Store Connect privacy questionnaire is answered **"No"** across the board.
 
 | Key | Present? | Disclosure above |
 |---|---|---|
-| `NSHealthShareUsageDescription` | ✅ `PillBreakfast/Info.plist:5` | Covered by **Health & Fitness → Health**. |
+| `NSHealthShareUsageDescription` | ✅ `PillBreakfast/Info.plist` | Covered by **Health & Fitness → Health**. |
 | `NSHealthUpdateUsageDescription` | ❌ (intentional — read-only per SPEC §3.2 / CLAUDE.md) | n/a. Documenting absence so a future engineer doesn't add a write surface without re-doing this audit. |
 | `NSUserNotificationsUsageDescription` | ❌ (system handles this for the watch's local notifications, no prompt key required) | n/a. |
 | `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSContactsUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersUsageDescription`, `NSBluetoothAlwaysUsageDescription`, `NSMotionUsageDescription` | ❌ (intentional) | n/a. None of these surfaces are used; their absence matches the **Not Collected** rows above. |
