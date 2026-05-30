@@ -174,16 +174,20 @@ struct PDFExporterTests {
     let morningRow = try #require(block.rows.first)
     let eveningRow = try #require(block.rows.last)
     // The row carries everything the renderer needs; no relationship
-    // traversal beyond the collect phase.
+    // traversal beyond the collect phase. Assertions stay on the
+    // timezone-independent tokens (med name, quantity, status) so the
+    // test runs identically in UTC and in a developer's local zone —
+    // `eventRow` formats the time in the device's current TZ.
     #expect(morningRow.displayLine.contains("Lithium"))
     #expect(morningRow.displayLine.contains("2 pills"))
     #expect(morningRow.displayLine.contains("Taken"))
     #expect(eveningRow.displayLine.contains("1 pill"))
     // Sort-order contract from collectBlocks: rows reflect ascending
     // takenAt — same invariant `aggregateIngredients`'s precondition
-    // depends on. Morning ("8 AM") sorts before evening ("8 PM").
-    #expect(morningRow.displayLine.contains("8:00"))
-    #expect(eveningRow.displayLine.contains("8:00 PM"))
+    // depends on. The morning dose has `quantity: 2` and the evening
+    // dose has `quantity: 1`, so the two `contains` checks above also
+    // pin the order: a reversal would make both fail.
+    //
     // The roll-up sums per-event mg by ingredient name — look the row
     // up rather than `totals.first` so an ordering bug fails clearly
     // (the snapshot sorts by name today; future changes shouldn't make

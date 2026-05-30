@@ -65,6 +65,10 @@ nonisolated struct PDFLayoutConstants {
 /// Pre-formatted event row inside a day block. `displayLine` is materialized
 /// at collection time (MainActor) by `PDFExporter.eventRow(_:)` so the renderer
 /// can run off-MainActor without reaching into the SwiftData object graph.
+/// `Sendable` is synthesized implicitly (project lint forbids the explicit
+/// conformance on internal types); any future stored property of a
+/// non-Sendable type would silently drop the conformance, so add a regression
+/// test if you change the shape.
 nonisolated struct PDFEventRowSnapshot {
   let displayLine: String
 }
