@@ -45,10 +45,12 @@ struct HighRiskConfirmButton: View {
     )
     .accessibilityLabel(hint)
     .accessibilityAddTraits(.isButton)
-    // Known gap: VoiceOver can't drive a LongPressGesture, so an assistive-tech
-    // user can't yet confirm a high-risk dose. A proper accessible path (a
-    // confirm-dialog action that can't trivially bypass the safety hold) is
-    // tracked separately for EPIC 04. See follow-up issue.
+    // VoiceOver can't drive a `LongPressGesture`, so the press-and-hold ring
+    // is unreachable for assistive-tech users without an alternate path.
+    // The action lives on the rotor (not on the default double-tap) so the
+    // 2-step safety pattern survives: the user must intentionally select
+    // "Confirm dose" from the rotor rather than fire it from a stray tap.
+    .accessibilityAction(named: "Confirm dose") { confirmOnce() }
     .onDisappear {
       // Stop the haptic checkpoints if the screen goes away mid-hold, so clicks
       // don't fire after the view is gone.
