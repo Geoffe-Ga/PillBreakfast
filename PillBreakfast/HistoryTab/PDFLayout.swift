@@ -65,7 +65,7 @@ nonisolated struct PDFLayoutConstants {
 /// Pre-formatted event row inside a day block. `displayLine` is materialized
 /// at collection time (MainActor) by `PDFExporter.eventRow(_:)` so the renderer
 /// can run off-MainActor without reaching into the SwiftData object graph.
-nonisolated struct PDFEventRowSnapshot: Hashable {
+nonisolated struct PDFEventRowSnapshot {
   let displayLine: String
 }
 
@@ -74,7 +74,7 @@ nonisolated struct PDFEventRowSnapshot: Hashable {
 /// from the MainActor collect phase to the detached render. Stores
 /// pre-formatted rows plus the day's ingredient totals; pagination only has
 /// to ask each block for its height once.
-nonisolated struct PDFDayBlockSnapshot: Identifiable, Hashable {
+nonisolated struct PDFDayBlockSnapshot: Identifiable {
   let date: Date
   let rows: [PDFEventRowSnapshot]
   let ingredientTotals: [LoggedIngredientAmount]
