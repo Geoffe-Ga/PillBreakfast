@@ -290,6 +290,15 @@ struct PDFExporterTests {
     #expect(row.contains("Unknown medication"))
   }
 
+  @Test func statusLabelMatchesEachCase() {
+    // The status switch is exhaustive at the compiler level, but the user-
+    // facing strings are what the doctor reads. Pin each case so a typo
+    // ("Snoozed" → "Snoozed.") trips the suite instead of slipping through.
+    #expect(PDFExporter.statusLabel(.taken) == "Taken")
+    #expect(PDFExporter.statusLabel(.skipped) == "Skipped")
+    #expect(PDFExporter.statusLabel(.snoozed) == "Snoozed")
+  }
+
   @Test func eventRowSingularPluralPhrasing() {
     // The `quantity == 1 ? "1 pill" : "\(n) pills"` branch deserves its own
     // assertion — both halves matter for an export a doctor reads.

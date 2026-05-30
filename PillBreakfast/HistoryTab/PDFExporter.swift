@@ -69,6 +69,9 @@ enum PDFExporter {
         }
       }
     }
+    // `.public` is safe here — the export filename has no PHI and the page
+    // count is structural metadata, not patient data.
+    logger.info("Exported 30-day PDF: \(totalPages, privacy: .public) page(s)")
     return url
   }
 
@@ -120,6 +123,12 @@ enum PDFExporter {
   /// - Note: the in-method `assert` is elided in release. Production callers
   ///   are responsible for honoring the precondition.
   static func aggregateIngredients(in events: [DoseEvent]) -> [LoggedIngredientAmount] {
+    // `DoseEvent` is a `PersistentModel` class, so `==` is identity (not value
+    // equality). That's what we want: `sorted` returns the same instances in
+    // a possibly-reordered array, so a per-position identity comparison
+    // detects unsorted input. A value-equality override on `DoseEvent` would
+    // break this assert by treating two semantically-equal-but-distinct rows
+    // as equal — not a real concern given the model isn't `Equatable`-by-value.
     assert(
       events == events.sorted(by: { $0.takenAt < $1.takenAt }),
       "aggregateIngredients precondition: events must be sorted ascending by takenAt"
