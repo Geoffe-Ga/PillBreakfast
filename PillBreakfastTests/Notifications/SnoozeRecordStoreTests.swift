@@ -60,28 +60,37 @@ struct SnoozeRecordStoreTests {
     let staleDay = try #require(
       calendar.date(byAdding: .day, value: -(SnoozeRecordStore.staleHorizonDays + 1), to: today)
     )
+    // Exact boundary: a row whose calendarDay equals `today - staleHorizonDays`
+    // is kept (the predicate is strictly `<`, not `<=`). Tested explicitly so
+    // an accidental flip to `<=` in a future edit trips this suite.
+    let boundaryDay = try #require(
+      calendar.date(byAdding: .day, value: -SnoozeRecordStore.staleHorizonDays, to: today)
+    )
     let edgeKeptDay = try #require(
       calendar.date(byAdding: .day, value: -(SnoozeRecordStore.staleHorizonDays - 1), to: today)
     )
 
-    // Seed two pre-existing rows, both for different occurrences.
+    // Seed three pre-existing rows, all for different occurrences.
     let staleID = UUID()
+    let boundaryID = UUID()
     let keptID = UUID()
     context.insert(SnoozeRecord(scheduledDoseID: staleID, calendarDay: staleDay, count: 1, lastSnoozedAt: staleDay))
+    context.insert(SnoozeRecord(scheduledDoseID: boundaryID, calendarDay: boundaryDay, count: 1, lastSnoozedAt: boundaryDay))
     context.insert(SnoozeRecord(scheduledDoseID: keptID, calendarDay: edgeKeptDay, count: 1, lastSnoozedAt: edgeKeptDay))
     try context.save()
-    #expect(try context.fetchCount(FetchDescriptor<SnoozeRecord>()) == 2)
+    #expect(try context.fetchCount(FetchDescriptor<SnoozeRecord>()) == 3)
 
     // Today's increment fires the prune.
     #expect(
       try SnoozeRecordStore.increment(scheduledDoseID: UUID(), on: today, at: today, in: context, calendar: calendar) == 1
     )
 
-    // Stale row is gone; the edge-kept row and today's row both remain.
+    // Stale row is gone; boundary, edge-kept, and today's row all remain.
     let remaining = try context.fetch(FetchDescriptor<SnoozeRecord>())
     let surviving = Set(remaining.map(\.scheduledDoseID))
     #expect(!surviving.contains(staleID))
+    #expect(surviving.contains(boundaryID))
     #expect(surviving.contains(keptID))
-    #expect(remaining.count == 2)
+    #expect(remaining.count == 3)
   }
 }
