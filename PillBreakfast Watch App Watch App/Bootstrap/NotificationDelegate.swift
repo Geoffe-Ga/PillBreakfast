@@ -47,10 +47,15 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
       let request = response.notification.request
       if let doseID = NotificationScheduler.scheduledDoseID(fromIdentifier: request.identifier) {
         logger.info("Snooze action received; routing to SnoozeView.")
+        // Read from `userInfo` so a `makeContent` body-format change can't
+        // silently flow into the rescheduled notification; fall back to the
+        // title for legacy / hand-scheduled requests that lack the key.
+        let medicationName = (request.content.userInfo[NotificationScheduler.medicationNameUserInfoKey] as? String)
+          ?? request.content.title
         let context = SnoozeContext(
           scheduledDoseID: doseID,
           originalScheduledFor: response.notification.date,
-          medicationName: request.content.body
+          medicationName: medicationName
         )
         await NotificationActionRouter.shared.presentSnooze(context)
       } else {

@@ -99,4 +99,25 @@ struct NotificationSchedulerTests {
     let body = try #require(requests.first?.content.body)
     #expect(body == "Aspirin · Lithium · +2 more") // names sorted, first two + overflow
   }
+
+  @Test func medicationNameRoundTripsThroughUserInfo() throws {
+    // The snooze action recovers the medication name from `userInfo`, not the
+    // display body — so reformatting the body (e.g. "Time to take Vitamin D")
+    // can't silently flow back into the rescheduled notification. Pin the
+    // schedule-time write so a regression on `makeContent` trips the suite.
+    let dose = ScheduledDoseDTO(id: UUID(), hour: 8, minute: 0, quantity: 1, daysOfWeek: [])
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [medicationDTO(name: "Vitamin D", schedule: [dose])]
+    )
+
+    let request = try #require(NotificationScheduler.makeRequests(from: snapshot).first)
+    let stored = request.content.userInfo[NotificationScheduler.medicationNameUserInfoKey] as? String
+    // Currently the user-info string is the same display body the user reads,
+    // but the assertion is on the key being populated and matching the body —
+    // future refactors that diverge them must update this expectation
+    // intentionally.
+    #expect(stored == request.content.body)
+    #expect(stored == "Vitamin D")
+  }
 }

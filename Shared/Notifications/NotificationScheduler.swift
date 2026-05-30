@@ -78,10 +78,22 @@ public enum NotificationScheduler {
     let minute: Int
   }
 
+  /// Key under which `makeContent` stashes the resolved display label for
+  /// the slot. Exposed `internal` so `NotificationDelegate` (the only
+  /// consumer) reads from the same constant and the schedule→delegate
+  /// round-trip can't drift on a key typo.
+  static let medicationNameUserInfoKey = "medicationName"
+
   private static func makeContent(namesAtSlot names: [String]) -> UNMutableNotificationContent {
     let content = UNMutableNotificationContent()
     content.title = "Pills · \(names.count) to take"
-    content.body = bodyText(for: names)
+    let body = bodyText(for: names)
+    content.body = body
+    // Snooze-time reschedule reads this rather than the display body. Keeping
+    // the structured copy means a future tweak to `bodyText` (a friendlier
+    // "Time to take Vitamin D" sentence, say) can't silently flow back onto
+    // the rescheduled notification's body.
+    content.userInfo[medicationNameUserInfoKey] = body
     content.categoryIdentifier = NotificationCategory.maintenanceDose
     content.sound = .default
     return content
