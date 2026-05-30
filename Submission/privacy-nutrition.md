@@ -128,6 +128,10 @@ sentry-cocoa escape hatch if MetricKit's 24-hour batch latency becomes
 unacceptable. Adding sentry-cocoa (or any other third-party SDK) **changes
 the answer** in at least the **Diagnostics → Crash Data** row (almost
 certainly **Collected → Not Linked to You → App Functionality**) and may
-add an **Identifiers → User ID** row depending on configuration. This
-document must be revised and the App Store Connect entries updated
+add an **Identifiers → Device ID or User ID** row depending on Sentry
+configuration (the SDK's default reads `identifierForVendor` for the device
+field; the documented "clean App Group identifier" mitigation reduces the
+user-id risk but does not remove the device-id row by itself). This
+document **and** `Submission/marketing-copy.md` (per the crash-reporting
+ADR) must both be revised and the App Store Connect entries updated
 **before** the next submission that ships the SDK.
