@@ -170,15 +170,26 @@ struct PDFExporterTests {
 
     let blocks = try PDFExporter.collectBlocks(in: context, now: now, calendar: cal)
     let block = try #require(blocks.first)
-    let row = try #require(block.rows.first)
+    #expect(block.rows.count == 2)
+    let morningRow = try #require(block.rows.first)
+    let eveningRow = try #require(block.rows.last)
     // The row carries everything the renderer needs; no relationship
     // traversal beyond the collect phase.
-    #expect(row.displayLine.contains("Lithium"))
-    #expect(row.displayLine.contains("2 pills"))
-    #expect(row.displayLine.contains("Taken"))
-    // The roll-up sums per-event mg: 300 + 300 = 600 mg.
-    let totals = block.ingredientTotals
-    #expect(totals.first?.totalMg == 600)
+    #expect(morningRow.displayLine.contains("Lithium"))
+    #expect(morningRow.displayLine.contains("2 pills"))
+    #expect(morningRow.displayLine.contains("Taken"))
+    #expect(eveningRow.displayLine.contains("1 pill"))
+    // Sort-order contract from collectBlocks: rows reflect ascending
+    // takenAt — same invariant `aggregateIngredients`'s precondition
+    // depends on. Morning ("8 AM") sorts before evening ("8 PM").
+    #expect(morningRow.displayLine.contains("8:00"))
+    #expect(eveningRow.displayLine.contains("8:00 PM"))
+    // The roll-up sums per-event mg by ingredient name — look the row
+    // up rather than `totals.first` so an ordering bug fails clearly
+    // (the snapshot sorts by name today; future changes shouldn't make
+    // this test pass on the wrong column).
+    let lithiumTotal = try #require(block.ingredientTotals.first { $0.ingredientName == "Lithium Carbonate" })
+    #expect(lithiumTotal.totalMg == 600)
   }
 
   // MARK: - Ingredient aggregation

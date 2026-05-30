@@ -145,10 +145,7 @@ private struct HistoryContent: View {
   /// renders today's.
   @State private var exportedURL: URL?
   @State private var exportError: String?
-  /// In-flight guard for `generateExport`. The alert's "Try Again" button
-  /// spawns an unstructured `Task`; without this, rapid retaps could race
-  /// two concurrent exports, with the last write to `exportedURL` winning
-  /// and the earlier PDF orphaned in `tmp/`.
+  /// In-flight guard against two concurrent `generateExport` calls.
   @State private var isExporting = false
   private let referenceDate: Date
   private let calendar: Calendar
@@ -252,6 +249,13 @@ private struct HistoryContent: View {
     // Drop redundant calls so rapid "Try Again" taps (or a `.task(id:)`
     // restart racing with a pending alert action) can't spawn concurrent
     // exports and leak a PDF into `tmp/` whichever one finishes second.
+    //
+    // Known limitation: if `.task(id: referenceDate)` fires at midnight
+    // while an export is in flight, the post-midnight re-export is
+    // swallowed and the share-sheet PDF stays anchored on the prior
+    // window until the user re-enters the tab or taps Try Again.
+    // Acceptable for v1; the alternative (cancellable export with
+    // structured cancellation) is tracked in #153.
     if isExporting { return }
     isExporting = true
     defer { isExporting = false }
