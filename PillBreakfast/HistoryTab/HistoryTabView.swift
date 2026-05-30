@@ -1,3 +1,4 @@
+import os
 import SwiftData
 import SwiftUI
 
@@ -8,13 +9,25 @@ struct HistoryTabView: View {
   /// calendar so the right-hand cell is "today" wherever the device is.
   static let windowDays = 30
 
+  @Environment(\.modelContext) private var modelContext
   @Query private var doseEvents: [DoseEvent]
   /// All medications including archived — archived meds still need to be
   /// reachable in the filter so the user can review their history.
   @Query(sort: \Medication.displayName) private var medications: [Medication]
   @State private var filterMedicationID: UUID?
+  /// Generated on tab appear so the toolbar `ShareLink` is one tap. The
+  /// export ignores the medication filter for v1 — the share button always
+  /// covers the full 30-day window per SPEC §6.2. A scoped export is
+  /// possible follow-up work.
+  @State private var exportedURL: URL?
+  @State private var exportError: String?
   private let referenceDate: Date
   private let calendar: Calendar
+
+  private static let logger = Logger(
+    subsystem: "com.creekmasons.pillbreakfast",
+    category: "HistoryExport"
+  )
 
   /// `referenceDate` is frozen at init; a session past midnight keeps the prior window until the density follow-up wires live refresh.
   init(referenceDate: Date = .now, calendar: Calendar = .current) {
@@ -43,6 +56,25 @@ struct HistoryTabView: View {
             selection: $filterMedicationID
           )
         }
+        ToolbarItem(placement: .secondaryAction) {
+          if let exportedURL {
+            ShareLink(
+              item: exportedURL,
+              preview: SharePreview(
+                "PillBreakfast — last 30 days",
+                image: Image(systemName: "doc.text")
+              )
+            ) {
+              Label("Export 30 days as PDF", systemImage: "square.and.arrow.up")
+            }
+          } else {
+            // Spinner placeholder while the export runs (typically < 100 ms
+            // at the 12-doses-per-day budget). Suppressed entirely if the
+            // export errored; the alert surfaces the failure instead.
+            ProgressView()
+              .opacity(exportError == nil ? 1 : 0)
+          }
+        }
       }
       .navigationDestination(for: HistoryDayRoute.self) { route in
         DayDrillDownView(
@@ -51,6 +83,37 @@ struct HistoryTabView: View {
           filterMedicationID: filterMedicationID
         )
       }
+      .task { await generateExport() }
+      .alert(
+        "Export failed",
+        isPresented: Binding(
+          get: { exportError != nil },
+          set: { if !$0 { exportError = nil } }
+        )
+      ) {
+        Button("OK", role: .cancel) { exportError = nil }
+      } message: {
+        Text(exportError ?? "")
+      }
+    }
+  }
+
+  private func generateExport() async {
+    do {
+      exportedURL = try PDFExporter.exportLast30Days(
+        from: modelContext,
+        now: referenceDate,
+        calendar: calendar
+      )
+      exportError = nil
+    } catch {
+      // `.private` redaction — the underlying error can carry SwiftData
+      // model summaries that include medication names (PHI).
+      Self.logger.error(
+        "PDF export failed: \(error.localizedDescription, privacy: .private)"
+      )
+      exportedURL = nil
+      exportError = "Couldn't generate the export. Please try again."
     }
   }
 
