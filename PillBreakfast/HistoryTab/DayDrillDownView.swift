@@ -47,7 +47,7 @@ struct DayDrillDownView: View {
             HStack {
               Text(amount.ingredientName)
               Spacer()
-              Text(Self.formatMg(amount.totalMg))
+              Text(MgFormatter.format(amount.totalMg))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             }
@@ -89,15 +89,6 @@ struct DayDrillDownView: View {
         summary = nil
       }
     }
-  }
-
-  /// Round to whole mg — adequate precision for ceilings (e.g. 2400 mg/day Lithium).
-  /// Guards against non-finite inputs: `Int(.nan)` / `Int(.infinity)` would trap.
-  /// Trusted SwiftData rows shouldn't produce non-finite totals, but the guard
-  /// removes the crash surface for free.
-  static func formatMg(_ mg: Double) -> String {
-    guard mg.isFinite else { return "— mg" }
-    return "\(Int(mg.rounded())) mg"
   }
 }
 
