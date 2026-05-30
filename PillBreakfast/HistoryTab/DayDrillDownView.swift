@@ -7,6 +7,7 @@ import SwiftUI
 /// Read-only — the iPhone never offers a retroactive log surface.
 struct DayDrillDownView: View {
   let date: Date
+  let filterMedicationID: UUID?
 
   @Environment(\.modelContext) private var modelContext
   @Query private var events: [DoseEvent]
@@ -17,12 +18,18 @@ struct DayDrillDownView: View {
     category: "HistoryDrillDown"
   )
 
-  init(date: Date, calendar: Calendar = .current) {
+  init(date: Date, calendar: Calendar = .current, filterMedicationID: UUID? = nil) {
     self.date = date
+    self.filterMedicationID = filterMedicationID
     let startOfDay = calendar.startOfDay(for: date)
     let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+    let medicationID = filterMedicationID
     _events = Query(
-      filter: #Predicate<DoseEvent> { $0.takenAt >= startOfDay && $0.takenAt < nextDay },
+      filter: #Predicate<DoseEvent> {
+        $0.takenAt >= startOfDay
+          && $0.takenAt < nextDay
+          && (medicationID == nil || $0.medication?.id == medicationID)
+      },
       sort: [SortDescriptor(\DoseEvent.takenAt)]
     )
   }
@@ -66,9 +73,13 @@ struct DayDrillDownView: View {
     // events arrive mid-view: `@Query` re-renders reactively, but this
     // `.task` only re-runs when `date` changes. Acceptable for a read-only
     // history surface.
-    .task(id: date) {
+    .task(id: SummaryTaskID(date: date, medicationID: filterMedicationID)) {
       do {
-        summary = try HistoryQueries.dailySummary(in: modelContext, day: date)
+        summary = try HistoryQueries.dailySummary(
+          in: modelContext,
+          day: date,
+          medicationID: filterMedicationID
+        )
       } catch {
         // `.private` redaction — SwiftData error descriptions can embed model
         // summaries that include medication names (PHI).
@@ -88,6 +99,14 @@ struct DayDrillDownView: View {
     guard mg.isFinite else { return "— mg" }
     return "\(Int(mg.rounded())) mg"
   }
+}
+
+/// Compound `.task(id:)` key — re-fires the summary fetch whenever the date
+/// or the filter changes. SwiftUI's `.task(id:)` accepts any `Equatable`, so
+/// the synthesized conformance does the work.
+private struct SummaryTaskID: Equatable {
+  let date: Date
+  let medicationID: UUID?
 }
 
 private struct DayEventRow: View {

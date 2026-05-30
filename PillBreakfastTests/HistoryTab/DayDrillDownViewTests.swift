@@ -18,6 +18,13 @@ struct DayDrillDownViewTests {
     _ = DayDrillDownView(date: .now, calendar: calendar)
   }
 
+  @Test func viewConstructsWithFilterMedicationID() {
+    // `nil` and a concrete UUID must both compile through the @Query
+    // predicate's optional comparison.
+    _ = DayDrillDownView(date: .now, filterMedicationID: nil)
+    _ = DayDrillDownView(date: .now, filterMedicationID: UUID())
+  }
+
   // MARK: - mg formatting
 
   @Test func formatMgRoundsToWholeMilligrams() {

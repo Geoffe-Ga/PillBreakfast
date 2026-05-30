@@ -31,7 +31,8 @@ struct HistoryQueriesTests {
 
   /// Inserts a `DoseEvent` carrying an `ingredientAmounts` snapshot — matches
   /// the pattern in `IngredientQueriesTests` so the query is exercised against
-  /// the frozen denormalized snapshot, not a live product graph.
+  /// the frozen denormalized snapshot, not a live product graph. The optional
+  /// `medication` link is what the medicationID filter checks against.
   @discardableResult
   private func insertDose(
     _ context: ModelContext,
@@ -40,9 +41,11 @@ struct HistoryQueriesTests {
     mg: Double,
     at takenAt: Date,
     status: DoseStatus = .taken,
-    quantity: Int = 1
+    quantity: Int = 1,
+    medication: Medication? = nil
   ) -> DoseEvent {
     let event = DoseEvent(
+      medication: medication,
       takenAt: takenAt,
       quantity: quantity,
       status: status,
@@ -170,6 +173,77 @@ struct HistoryQueriesTests {
     let summary = try HistoryQueries.dailySummary(in: context, day: target, calendar: cal)
     #expect(summary.totalCount == 2)
     #expect(summary.ingredientTotals.first?.totalMg == 110)
+  }
+
+  // MARK: - medication filter
+
+  @Test func dailySummaryWithoutFilterIncludesAllMedications() throws {
+    let cal = try utcCalendar()
+    let context = try makeContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    context.insert(lithium)
+    context.insert(tylenol)
+    let morning = try date(2026, 5, 29, 8, 0, in: cal)
+    let evening = try date(2026, 5, 29, 20, 0, in: cal)
+    insertDose(context, name: "Lithium Carbonate", ingredientID: UUID(), mg: 300, at: morning, medication: lithium)
+    insertDose(context, name: "Acetaminophen", ingredientID: UUID(), mg: 500, at: evening, medication: tylenol)
+    try context.save()
+
+    let summary = try HistoryQueries.dailySummary(in: context, day: morning, calendar: cal)
+    #expect(summary.totalCount == 2)
+    #expect(summary.ingredientTotals.count == 2)
+  }
+
+  @Test func dailySummaryWithFilterScopesToOneMedication() throws {
+    let cal = try utcCalendar()
+    let context = try makeContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    context.insert(lithium)
+    context.insert(tylenol)
+    let morning = try date(2026, 5, 29, 8, 0, in: cal)
+    let evening = try date(2026, 5, 29, 20, 0, in: cal)
+    insertDose(context, name: "Lithium Carbonate", ingredientID: UUID(), mg: 300, at: morning, medication: lithium)
+    insertDose(context, name: "Acetaminophen", ingredientID: UUID(), mg: 500, at: evening, medication: tylenol)
+    try context.save()
+
+    let lithiumOnly = try HistoryQueries.dailySummary(in: context, day: morning, calendar: cal, medicationID: lithium.id)
+    #expect(lithiumOnly.totalCount == 1)
+    #expect(lithiumOnly.takenCount == 1)
+    #expect(lithiumOnly.ingredientTotals.count == 1)
+    #expect(lithiumOnly.ingredientTotals.first?.ingredientName == "Lithium Carbonate")
+  }
+
+  @Test func dailySummaryWithFilterIgnoresEventsWithNoMedicationLink() throws {
+    let cal = try utcCalendar()
+    let context = try makeContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    context.insert(lithium)
+    let morning = try date(2026, 5, 29, 8, 0, in: cal)
+    // Event with no medication relationship (e.g. orphaned after the product
+    // was hard-deleted in an old schema). A filtered query must skip it.
+    insertDose(context, name: "Mystery", ingredientID: UUID(), mg: 100, at: morning, medication: nil)
+    insertDose(context, name: "Lithium Carbonate", ingredientID: UUID(), mg: 300, at: morning, medication: lithium)
+    try context.save()
+
+    let summary = try HistoryQueries.dailySummary(in: context, day: morning, calendar: cal, medicationID: lithium.id)
+    #expect(summary.totalCount == 1)
+    #expect(summary.ingredientTotals.first?.ingredientName == "Lithium Carbonate")
+  }
+
+  @Test func dailySummaryWithUnknownMedicationIDIsEmpty() throws {
+    let cal = try utcCalendar()
+    let context = try makeContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    context.insert(lithium)
+    let morning = try date(2026, 5, 29, 8, 0, in: cal)
+    insertDose(context, name: "Lithium Carbonate", ingredientID: UUID(), mg: 300, at: morning, medication: lithium)
+    try context.save()
+
+    let summary = try HistoryQueries.dailySummary(in: context, day: morning, calendar: cal, medicationID: UUID())
+    #expect(summary.totalCount == 0)
+    #expect(summary.ingredientTotals.isEmpty)
   }
 
   // MARK: - day normalization
