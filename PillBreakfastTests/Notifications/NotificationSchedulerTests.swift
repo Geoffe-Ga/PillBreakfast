@@ -119,5 +119,24 @@ struct NotificationSchedulerTests {
     // intentionally.
     #expect(stored == request.content.body)
     #expect(stored == "Vitamin D")
+    // And the resolver returns the same string for a freshly-scheduled request.
+    #expect(NotificationScheduler.medicationName(from: request.content) == "Vitamin D")
+  }
+
+  @Test func medicationNameFallsBackToBodyWhenUserInfoMissing() {
+    // Legacy / hand-scheduled requests without the userInfo key should keep
+    // showing the body (which is the medication label) rather than the
+    // aggregate "Pills · N to take" title.
+    let content = UNMutableNotificationContent()
+    content.title = "Pills · 1 to take"
+    content.body = "Vitamin D"
+    #expect(NotificationScheduler.medicationName(from: content) == "Vitamin D")
+  }
+
+  @Test func medicationNameFallsBackToTitleWhenBodyAndUserInfoMissing() {
+    // Last-resort fallback: better to show the title than an empty string.
+    let content = UNMutableNotificationContent()
+    content.title = "Pills · 1 to take"
+    #expect(NotificationScheduler.medicationName(from: content) == "Pills · 1 to take")
   }
 }
