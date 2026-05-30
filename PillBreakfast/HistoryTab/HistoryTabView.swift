@@ -39,13 +39,19 @@ struct HistoryTabView: View {
       referenceDate = .now
     }
     while !Task.isCancelled {
-      guard let nextMidnight = Self.nextDayBoundary(after: .now, calendar: calendar) else { return }
+      guard let nextMidnight = Self.nextDayBoundary(after: .now, calendar: calendar) else {
+        // Day arithmetic on a valid calendar can't fail in practice; assert
+        // in debug so an SDK regression surfaces in tests rather than the
+        // loop silently exiting in release.
+        assertionFailure("nextDayBoundary returned nil — day arithmetic should not fail on a valid calendar")
+        return
+      }
       let secondsUntilMidnight = nextMidnight.timeIntervalSinceNow
       if secondsUntilMidnight > 0 {
         do {
           try await Task.sleep(for: .seconds(secondsUntilMidnight))
         } catch {
-          return // cancelled — view disappeared
+          return // cancelled
         }
       }
       referenceDate = .now

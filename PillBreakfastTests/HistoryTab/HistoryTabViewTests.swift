@@ -16,6 +16,10 @@ struct HistoryTabViewTests {
     return calendar
   }
 
+  /// Midday UTC for the given Y/M/D — `12:00` so a test reference is well
+  /// inside the day and doesn't accidentally straddle the local-vs-UTC
+  /// startOfDay boundary. Use `DateComponents(...)` directly when you need
+  /// an exact `00:00` reference (e.g. the spin-guard test).
   private func reference(_ year: Int, _ month: Int, _ day: Int) -> Date {
     let components = DateComponents(timeZone: TimeZone(identifier: "UTC"), year: year, month: month, day: day, hour: 12)
     return Self.utcCalendar().date(from: components) ?? .distantPast
