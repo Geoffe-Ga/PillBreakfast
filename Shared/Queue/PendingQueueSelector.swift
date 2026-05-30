@@ -103,13 +103,13 @@ public struct PendingQueueSelector: Sendable {
   /// — `event.scheduledFor != nil && event.scheduledFor! >= …` compiles but
   /// fails at fetch time with `unsupportedPredicate` on iOS 26's SwiftData.
   ///
-  /// The takenAt window is ±1 day around `startOfDay` so a proactively-
-  /// logged dose (taken late yesterday for today's slot, or taken in the
-  /// early morning for the next-day rollover edge) is still captured. At the
-  /// documented ~12 pills/day budget the worst-case fetch is ~36 events,
-  /// which is the bound the SPEC §5.2 cascading-fetch hazard demands.
-  /// `scheduledFor` is then filtered in memory to today's window before
-  /// building the SlotKey index.
+  /// The takenAt window spans `[yesterday-start, day-after-tomorrow-start)`
+  /// so a proactively-logged dose (taken late yesterday for today's slot, or
+  /// taken in the early morning for the next-day rollover edge) is still
+  /// captured. At the documented ~12 pills/day budget the worst-case fetch is
+  /// ~36 events, which is the bound the SPEC §5.2 cascading-fetch hazard
+  /// demands. `scheduledFor` is then filtered in memory to today's window
+  /// before building the SlotKey index.
   @MainActor
   private static func loggedSlotKeys(
     in context: ModelContext,

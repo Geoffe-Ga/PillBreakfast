@@ -149,6 +149,34 @@ struct PendingQueueSelectorTests {
     #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
   }
 
+  @Test func proactivelyLoggedYesterdayIsSuppressedToday() throws {
+    // takenAt is late yesterday (23:00), but scheduledFor is today's 8 AM
+    // slot — the user pre-logged the slot at the end of the previous day.
+    // The selector running today at 8:05 must read this as "already logged"
+    // and suppress the slot; otherwise a duplicate-log is the silent
+    // failure mode the wider takenAt window is meant to prevent.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+    let yesterdayLateNight = try #require(
+      cal.date(byAdding: .hour, value: -1, to: cal.startOfDay(for: todayAt8))
+    ) // 23:00 yesterday
+
+    context.insert(DoseEvent(
+      medication: med,
+      scheduledFor: todayAt8,
+      takenAt: yesterdayLateNight,
+      quantity: 1,
+      status: .taken,
+      loggedOn: .watch
+    ))
+    try context.save()
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
+  }
+
   @Test func outOfWindowHistoryDoesNotAffectResult() throws {
     // Regression guard: the old per-slot `med.doseEvents.contains(...)`
     // hydrated every historical event. The bounded fetch must not count
