@@ -119,6 +119,10 @@ private struct HistoryContent: View {
   /// All medications including archived — archived meds still need to be
   /// reachable in the filter so the user can review their history.
   @Query(sort: \Medication.displayName) private var medications: [Medication]
+  /// Preserved across a midnight rollover: SwiftUI keeps `@State` when the
+  /// view's structural identity is unchanged, and the parent always renders
+  /// `HistoryContent(...)` in the same position. Only `@Query` re-establishes,
+  /// and only because its predicate is captured at `init`.
   @State private var filterMedicationID: UUID?
   /// Regenerated whenever `referenceDate` changes so the share-sheet PDF
   /// covers the same window the heatmap is showing — without this, a session
