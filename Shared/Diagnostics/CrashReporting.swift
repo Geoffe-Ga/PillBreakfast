@@ -26,7 +26,8 @@ public final class CrashReporting: NSObject {
   )
 
   /// Override-point for tests: the directory the persistence pass writes into.
-  /// Defaults to the App Group's `Diagnostics/` folder.
+  /// Defaults to the App Group's `Diagnostics/` folder. Default visibility
+  /// (`internal`) is intentional — tests reach it via `@testable import`.
   let directory: URL
 
   public nonisolated init(directory: URL = CrashReporting.defaultDiagnosticsDirectory) {
@@ -35,14 +36,18 @@ public final class CrashReporting: NSObject {
   }
 
   /// Register with `MXMetricManager` so payloads start arriving. Called once
-  /// from the owning App's init.
+  /// from the owning App's init. The instance lives for the process lifetime
+  /// — no `deinit { stop() }` because `MXMetricManager.remove` has been
+  /// observed to crash in parallel-test harnesses when called on subscribers
+  /// added across concurrent test cases.
   public nonisolated func start() {
     #if canImport(MetricKit)
     MXMetricManager.shared.add(self)
     #endif
   }
 
-  /// Unregister; primarily for test teardown.
+  /// Unregister; provided for explicit teardown but the App-lifetime
+  /// ownership pattern is the documented contract.
   public nonisolated func stop() {
     #if canImport(MetricKit)
     MXMetricManager.shared.remove(self)
@@ -51,11 +56,22 @@ public final class CrashReporting: NSObject {
 
   /// Computed once on first access — App Group container lookup is cheap, but
   /// computing it lazily lets the tests inject their own override.
+  ///
+  /// If the App Group entitlement is misconfigured, `containerURL(for:)`
+  /// returns `nil` and we fall back to the process temp directory so the
+  /// subscriber still works in development — but the fallback is logged at
+  /// `.fault` level since payloads written to `tmp/` are lost on next launch
+  /// and that failure is otherwise invisible in the field.
   public nonisolated static let defaultDiagnosticsDirectory: URL = {
-    let containerURL = FileManager.default.containerURL(
+    if let containerURL = FileManager.default.containerURL(
       forSecurityApplicationGroupIdentifier: PersistenceController.appGroupIdentifier
-    ) ?? FileManager.default.temporaryDirectory
-    return containerURL.appendingPathComponent("Diagnostics", isDirectory: true)
+    ) {
+      return containerURL.appendingPathComponent("Diagnostics", isDirectory: true)
+    }
+    logger.fault(
+      "App Group container unavailable; MetricKit payloads will land in tmp and be lost on next launch. Verify entitlements."
+    )
+    return FileManager.default.temporaryDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
   }()
 
   /// Write payload bytes to disk under the chosen `directory`. Pure / static so
@@ -65,11 +81,10 @@ public final class CrashReporting: NSObject {
     payloads: [Data],
     kind: String,
     in directory: URL,
-    now: Date = .now,
-    fileManager: FileManager = .default
+    now: Date = .now
   ) throws {
     if !payloads.isEmpty {
-      try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
     let stamp = Int(now.timeIntervalSince1970)
     for data in payloads {
