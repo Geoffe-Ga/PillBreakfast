@@ -59,7 +59,7 @@ struct PDFExporterTests {
 
   // MARK: - End-to-end
 
-  @Test func exportProducesNonEmptyPDFForFixture() throws {
+  @Test func exportProducesNonEmptyPDFForFixture() async throws {
     let cal = try utcCalendar()
     let now = try date(2026, 5, 30, in: cal)
     let context = try makeContext()
@@ -71,7 +71,8 @@ struct PDFExporterTests {
     insertDose(context, medication: lithium, ingredientName: "Lithium Carbonate", mg: 300, at: morning29)
     try context.save()
 
-    let url = try PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
+    // Exercises the full async path (collect → snapshot → detached render).
+    let url = try await PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
     defer { try? FileManager.default.removeItem(at: url) }
 
     // Non-zero size.
@@ -85,12 +86,12 @@ struct PDFExporterTests {
 
   // MARK: - Empty window
 
-  @Test func exportProducesSinglePagePDFWithDisclaimerWhenNoDoses() throws {
+  @Test func exportProducesSinglePagePDFWithDisclaimerWhenNoDoses() async throws {
     let cal = try utcCalendar()
     let now = try date(2026, 5, 30, in: cal)
     let context = try makeContext()
 
-    let url = try PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
+    let url = try await PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
     defer { try? FileManager.default.removeItem(at: url) }
 
     let document = try #require(PDFDocument(url: url))
@@ -104,7 +105,7 @@ struct PDFExporterTests {
 
   // MARK: - Structural snapshot
 
-  @Test func exportContainsADayHeaderForEachLoggedDay() throws {
+  @Test func exportContainsADayHeaderForEachLoggedDay() async throws {
     let cal = try utcCalendar()
     let now = try date(2026, 5, 30, in: cal)
     let context = try makeContext()
@@ -116,7 +117,7 @@ struct PDFExporterTests {
     insertDose(context, at: morning28)
     try context.save()
 
-    let url = try PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
+    let url = try await PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
     defer { try? FileManager.default.removeItem(at: url) }
 
     let document = try #require(PDFDocument(url: url))
@@ -131,7 +132,7 @@ struct PDFExporterTests {
 
   // MARK: - Footer disclaimer
 
-  @Test func exportFooterCarriesSeededIngredientDisclaimer() throws {
+  @Test func exportFooterCarriesSeededIngredientDisclaimer() async throws {
     let cal = try utcCalendar()
     let now = try date(2026, 5, 30, in: cal)
     let context = try makeContext()
@@ -139,7 +140,7 @@ struct PDFExporterTests {
     insertDose(context, at: morning)
     try context.save()
 
-    let url = try PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
+    let url = try await PDFExporter.exportLast30Days(from: context, now: now, calendar: cal)
     defer { try? FileManager.default.removeItem(at: url) }
 
     let document = try #require(PDFDocument(url: url))
@@ -148,6 +149,36 @@ struct PDFExporterTests {
     // text without breaking the assertion on whitespace.
     #expect(text.contains("starting points only"))
     #expect(text.contains("NOT medical advice"))
+  }
+
+  // MARK: - Snapshot collection (MainActor; detached-render seam)
+
+  @Test func collectBlocksPopulatesPreFormattedRowSnapshots() throws {
+    let cal = try utcCalendar()
+    let now = try date(2026, 5, 30, in: cal)
+    let context = try makeContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    context.insert(lithium)
+    let morning = try date(2026, 5, 30, 8, 0, in: cal)
+    // Two events with the *same* ingredientID so the roll-up sums them;
+    // `insertDose` stores `totalMg: mg` regardless of `quantity`.
+    let lithiumIngredientID = UUID()
+    insertDose(context, medication: lithium, ingredientName: "Lithium Carbonate", ingredientID: lithiumIngredientID, mg: 300, at: morning, quantity: 2)
+    let evening = try date(2026, 5, 30, 20, 0, in: cal)
+    insertDose(context, medication: lithium, ingredientName: "Lithium Carbonate", ingredientID: lithiumIngredientID, mg: 300, at: evening, quantity: 1)
+    try context.save()
+
+    let blocks = try PDFExporter.collectBlocks(in: context, now: now, calendar: cal)
+    let block = try #require(blocks.first)
+    let row = try #require(block.rows.first)
+    // The row carries everything the renderer needs; no relationship
+    // traversal beyond the collect phase.
+    #expect(row.displayLine.contains("Lithium"))
+    #expect(row.displayLine.contains("2 pills"))
+    #expect(row.displayLine.contains("Taken"))
+    // The roll-up sums per-event mg: 300 + 300 = 600 mg.
+    let totals = block.ingredientTotals
+    #expect(totals.first?.totalMg == 600)
   }
 
   // MARK: - Ingredient aggregation
@@ -216,7 +247,7 @@ struct PDFExporterTests {
   @Test func paginatorEmitsOnePageForFewerBlocksThanFit() {
     let layout = PDFLayoutConstants.letter
     let blocks = (0 ..< 3).map { offset in
-      PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
+      PDFDayBlockSnapshot(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), rows: [], ingredientTotals: [])
     }
     let pages = PDFPaginator.paginate(blocks, layout: layout)
     #expect(pages.count == 1)
@@ -241,7 +272,7 @@ struct PDFExporterTests {
       footerLineHeight: 12
     )
     let blocks = (0 ..< 3).map { offset in
-      PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
+      PDFDayBlockSnapshot(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), rows: [], ingredientTotals: [])
     }
     let pages = PDFPaginator.paginate(blocks, layout: layout)
     // Each block consumes ≈ half the body, so 3 blocks → exactly 2 pages.
@@ -266,7 +297,7 @@ struct PDFExporterTests {
       footerLineHeight: 12
     )
     let blocks = (0 ..< 2).map { offset in
-      PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
+      PDFDayBlockSnapshot(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), rows: [], ingredientTotals: [])
     }
     let pages = PDFPaginator.paginate(blocks, layout: layout)
     #expect(pages.count == 2)

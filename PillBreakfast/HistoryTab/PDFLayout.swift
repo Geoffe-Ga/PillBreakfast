@@ -4,7 +4,11 @@ import Foundation
 /// US-Letter portrait sizing for the doctor-export PDF. Constants are pulled
 /// out so the pagination algorithm can be exercised against arbitrary block
 /// sizes in tests without rendering.
-struct PDFLayoutConstants {
+///
+/// `nonisolated` so the detached `PDFExporter.render` (and its helpers) can
+/// read layout constants without hopping back to the MainActor — the values
+/// are immutable `Sendable` primitives.
+nonisolated struct PDFLayoutConstants {
   let pageWidth: CGFloat
   let pageHeight: CGFloat
   let margin: CGFloat
@@ -58,12 +62,21 @@ struct PDFLayoutConstants {
   }
 }
 
-/// One calendar day in the 30-day export window. Carries the events to render
-/// plus the pre-computed ingredient totals so pagination only has to ask each
-/// block for its height once.
-struct PDFDayBlock: Identifiable {
+/// Pre-formatted event row inside a day block. `displayLine` is materialized
+/// at collection time (MainActor) by `PDFExporter.eventRow(_:)` so the renderer
+/// can run off-MainActor without reaching into the SwiftData object graph.
+nonisolated struct PDFEventRowSnapshot: Hashable {
+  let displayLine: String
+}
+
+/// One calendar day in the 30-day export window — `Sendable` projection of
+/// the underlying `DoseEvent`s so the snapshot can cross the actor boundary
+/// from the MainActor collect phase to the detached render. Stores
+/// pre-formatted rows plus the day's ingredient totals; pagination only has
+/// to ask each block for its height once.
+nonisolated struct PDFDayBlockSnapshot: Identifiable, Hashable {
   let date: Date
-  let events: [DoseEvent]
+  let rows: [PDFEventRowSnapshot]
   let ingredientTotals: [LoggedIngredientAmount]
 
   var id: Date {
@@ -72,21 +85,21 @@ struct PDFDayBlock: Identifiable {
 
   func height(layout: PDFLayoutConstants) -> CGFloat {
     layout.dayHeaderHeight
-      + CGFloat(events.count) * layout.eventRowHeight
+      + CGFloat(rows.count) * layout.eventRowHeight
       + CGFloat(ingredientTotals.count) * layout.summaryRowHeight
       + layout.sectionPadding
   }
 }
 
-enum PDFPaginator {
+nonisolated enum PDFPaginator {
   /// Partition `blocks` into pages. A block never splits across a page — at
   /// 12 doses/day the worst-case block height stays well under one page, so
   /// the simpler atomic-block algorithm is enough. An oversized block (would
   /// only happen with a fixture much taller than US Letter) still gets its
   /// own page rather than being silently dropped.
-  static func paginate(_ blocks: [PDFDayBlock], layout: PDFLayoutConstants) -> [[PDFDayBlock]] {
-    var pages: [[PDFDayBlock]] = []
-    var current: [PDFDayBlock] = []
+  static func paginate(_ blocks: [PDFDayBlockSnapshot], layout: PDFLayoutConstants) -> [[PDFDayBlockSnapshot]] {
+    var pages: [[PDFDayBlockSnapshot]] = []
+    var current: [PDFDayBlockSnapshot] = []
     var consumed: CGFloat = 0
     let budget = layout.bodyHeight
 
