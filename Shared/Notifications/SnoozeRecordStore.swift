@@ -15,9 +15,11 @@ public enum SnoozeRecordStore {
     try record(scheduledDoseID: scheduledDoseID, on: day, in: context, calendar: calendar)?.count ?? 0
   }
 
-  /// How many days of `SnoozeRecord` history we keep. The count only matters
-  /// for *today's* occurrence — anything older than this many days is dead
-  /// weight from the perspective of the fourth-snooze warning.
+  /// How many days of `SnoozeRecord` history we keep. The fourth-snooze
+  /// warning only reads *today's* row, so 1 would be functionally enough —
+  /// the extra week is debugging headroom (a row visible in the store the
+  /// morning after a regression is much easier to reason about than one
+  /// already pruned) and a buffer for DST / timezone shifts around midnight.
   public static let staleHorizonDays: Int = 7
 
   /// Bumps the occurrence's count by one (creating the record if needed) and
@@ -61,9 +63,8 @@ public enum SnoozeRecordStore {
     try context.save()
   }
 
-  /// Deletes every `SnoozeRecord` whose `calendarDay` is more than
-  /// `staleHorizonDays` before `referenceDay`. Uses SwiftData's bulk
-  /// `delete(model:where:)` so the rows aren't materialized.
+  /// Bulk `delete(model:where:)` so stale rows never materialize into the
+  /// store's working set.
   private static func pruneStaleRecords(
     asOf referenceDay: Date,
     in context: ModelContext,
