@@ -93,11 +93,18 @@ public final class CrashReporting: NSObject {
     return FileManager.default.temporaryDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
   }()
 
-  /// Write payload bytes to disk under the chosen `directory`. Pure / static so
-  /// it's testable without touching MetricKit and so it can run on whatever
-  /// queue MetricKit chose without capturing actor-isolated state.
-  // TODO(#138): truncate to the last N files per kind so the diagnostics
-  // folder doesn't grow unbounded across a daily-use install.
+  /// Retention budget per kind. MetricKit delivers at most one batch per day,
+  /// so 30 keeps roughly a month of history per kind — long enough for the
+  /// EPIC 10 soak window and for normal post-mortem investigations without
+  /// the App Group container growing unbounded across a daily-use install.
+  /// `nonisolated` because `prune` (which uses this as a default arg) is
+  /// nonisolated to run off MetricKit's internal queue.
+  public nonisolated static let retainPerKind: Int = 30
+
+  /// Write payload bytes to disk under the chosen `directory`, then truncate
+  /// the `<kind>-…` files there to the most recent `retainPerKind`. Pure /
+  /// static so it's testable without touching MetricKit and so it can run on
+  /// whatever queue MetricKit chose without capturing actor-isolated state.
   ///
   /// Throws only when directory creation fails — without a writable directory
   /// nothing else can succeed. Per-file write failures are best-effort: the
@@ -122,6 +129,54 @@ public final class CrashReporting: NSObject {
       } catch {
         logger.error(
           "Failed to write \(kind, privacy: .public) payload: \(error.localizedDescription, privacy: .public)"
+        )
+      }
+    }
+    // Truncate after each successful batch write — the just-written files
+    // are guaranteed to be the newest, so the prune keeps them and evicts
+    // the oldest until we're at `retainPerKind`.
+    if !payloads.isEmpty {
+      prune(kind: kind, in: directory)
+    }
+  }
+
+  /// Delete `<kind>-…` files beyond `retainCount` under `directory`. Sorts
+  /// lexicographically — chronologically, because filenames embed a
+  /// fixed-width unix stamp (`persist` writes `Int(now.timeIntervalSince1970)`,
+  /// which stays 10 digits until year 2286). Files that don't match the
+  /// kind prefix are left alone; the prune is intentionally scoped to what
+  /// `persist` produces.
+  ///
+  /// Internal so tests can exercise the truncation independently of a
+  /// write; production callers are expected to go through `persist`, which
+  /// invokes this on the just-written kind.
+  nonisolated static func prune(
+    kind: String,
+    in directory: URL,
+    retainCount: Int = retainPerKind
+  ) {
+    let contents: [String]
+    do {
+      contents = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+    } catch {
+      // Missing directory is the natural no-op (no payloads ever written) —
+      // listing returns an error rather than an empty array, so swallow it
+      // rather than surfacing a stack trace for the expected first-launch
+      // path.
+      return
+    }
+    let prefix = "\(kind)-"
+    let matching = contents
+      .filter { $0.hasPrefix(prefix) }
+      .sorted(by: >) // descending → newest first
+    if matching.count <= retainCount { return }
+    for stale in matching.dropFirst(retainCount) {
+      let url = directory.appendingPathComponent(stale)
+      do {
+        try FileManager.default.removeItem(at: url)
+      } catch {
+        logger.warning(
+          "Failed to prune stale \(kind, privacy: .public) payload \(stale, privacy: .public): \(error.localizedDescription, privacy: .public)"
         )
       }
     }
