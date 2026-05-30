@@ -91,6 +91,25 @@ struct PRNRowSummaryBuilderTests {
     #expect(summary.highlightedIngredientID == apap.id)
   }
 
+  @Test func comboVariantWithNoCeilingsOmitsUtilizationSuffix() throws {
+    // Every ingredient in the combo lacks a ceiling — `bestSuffix` is empty
+    // and the second line is just the last-dose text, with no "% of daily
+    // limit" suffix to hang utilization on.
+    let context = try makeContext()
+    let aspirin = makeIngredient("Aspirin", in: context) // no ceiling
+    let caffeine = makeIngredient("Caffeine", in: context) // no ceiling
+    let med = makeMed("Plain Combo", components: [(aspirin, 250), (caffeine, 65)], in: context)
+    logProductDose(med, ingredientID: aspirin.id, name: "Aspirin", mg: 250, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.firstLine == "Plain Combo")
+    // Last-dose text is present; no "% of daily limit" suffix.
+    #expect(summary.secondLine.contains("last "))
+    #expect(!summary.secondLine.contains("% of daily limit"))
+    #expect(summary.highlightedIngredientID == nil)
+  }
+
   @Test func noDosesYetWhenProductNeverTaken() throws {
     let context = try makeContext()
     let apap = makeIngredient("Acetaminophen", ceiling: 4000, in: context)

@@ -25,6 +25,12 @@ struct PRNQuantityPickerView: View {
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "PRNLogging")
 
+  /// Cap on the free-form stepper shown when a PRN product has no preset
+  /// quantities configured. Wider than `PRNFormSection.quantityRange` (1...10)
+  /// because that's the *configuration* range — a user typing a custom one-off
+  /// on the watch can go above the curated set without re-editing the form.
+  private static let fallbackQuantityRange = 1 ... 20
+
   init(medication: Medication, onLogged: @escaping () -> Void) {
     self.medication = medication
     self.onLogged = onLogged
@@ -58,7 +64,7 @@ struct PRNQuantityPickerView: View {
 
       if medication.prnAvailableQuantities.isEmpty {
         // Not configured with preset quantities — let the user pick, but flag it.
-        Stepper("Take \(quantity)", value: $quantity, in: 1 ... 20)
+        Stepper("Take \(quantity)", value: $quantity, in: Self.fallbackQuantityRange)
         LiquidGlassTheme.Typography.caption("No preset quantities — set them on the iPhone.")
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       } else {
