@@ -163,10 +163,17 @@ public struct PendingQueueSelector {
 
   /// Defensive ceiling on the today-window fetch. Reachable only via schema
   /// drift or pathological test seeding; the production budget (~36 events
-  /// in 3 days) is two orders of magnitude below this.
-  static let fetchLimit = 200
+  /// in 3 days) is two orders of magnitude below this. Exposed `public` so
+  /// callers — and the test suite — can reason about the boundary without
+  /// duplicating the constant.
+  public static let fetchLimit: Int = 200
 
-  enum CalendarError: Error {
+  /// `public` so call sites outside `Shared/` can switch on the case rather
+  /// than falling back to an opaque `Error` catch — the watch app might want
+  /// to surface a "history too large, contact support" message on
+  /// `fetchLimitReached` distinct from the silent retry on
+  /// `windowComputationFailed`.
+  public enum CalendarError: Error {
     /// `Calendar.date(byAdding: .day, …)` returned `nil` for the day-boundary
     /// math. Effectively impossible on the watchOS 26 Gregorian calendar, but
     /// throwing rather than falling back keeps a degenerate-window from

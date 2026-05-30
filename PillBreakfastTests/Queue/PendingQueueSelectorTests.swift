@@ -178,10 +178,12 @@ struct PendingQueueSelectorTests {
   }
 
   @Test func fetchLimitHitThrowsRatherThanReturnsTruncated() throws {
-    // Seed enough in-window events to trip `fetchLimit` (200). The selector
-    // must throw rather than return a truncated "already logged" set — a
-    // silent truncation would resurface previously-logged slots as still
-    // pending, opening a duplicate-log path on safety-critical meds.
+    // Seeds *exactly* `fetchLimit` events (not N+1) — the guard is
+    // `events.count >= Self.fetchLimit`, so `==` already trips the throw.
+    // The selector must throw rather than return a truncated "already
+    // logged" set; silent truncation would resurface previously-logged
+    // slots as still pending, opening a duplicate-log path on safety-
+    // critical meds.
     let cal = try calendar("America/New_York")
     let context = try makeContext()
     let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
