@@ -61,6 +61,20 @@ struct PRNRowSummaryBuilderTests {
     #expect(summary.highlightedIngredientID == gabapentin.id)
   }
 
+  @Test func displayedMgRoundsHalfAwayFromZero() throws {
+    // Pins the rounding (not truncation) direction. 325.5mg must render as
+    // "326 mg", not the old "325 mg" — guards against an accidental revert
+    // to `Int(total)` which would silently truncate.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 4000, in: context)
+    let med = makeMed("Tylenol", components: [(apap, 500)], in: context)
+    logProductDose(med, ingredientID: apap.id, name: "Acetaminophen", mg: 325.5, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.secondLine.contains("326 mg acetaminophen today"))
+  }
+
   @Test func singleIngredientOTCVariant() throws {
     // Product name differs from ingredient → "N mg acetaminophen today".
     let context = try makeContext()
