@@ -61,6 +61,20 @@ struct PRNRowSummaryBuilderTests {
     #expect(summary.highlightedIngredientID == gabapentin.id)
   }
 
+  @Test func displayedMgRoundsHalfAwayFromZero() throws {
+    // Pins the rounding (not truncation) direction. 325.5mg must render as
+    // "326 mg", not the old "325 mg" — guards against an accidental revert
+    // to `Int(total)` which would silently truncate.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 4000, in: context)
+    let med = makeMed("Tylenol", components: [(apap, 500)], in: context)
+    logProductDose(med, ingredientID: apap.id, name: "Acetaminophen", mg: 325.5, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.secondLine.contains("326 mg acetaminophen today"))
+  }
+
   @Test func singleIngredientOTCVariant() throws {
     // Product name differs from ingredient → "N mg acetaminophen today".
     let context = try makeContext()
@@ -89,6 +103,44 @@ struct PRNRowSummaryBuilderTests {
     #expect(summary.firstLine == "Excedrin Extra Strength")
     #expect(summary.secondLine.contains("acetaminophen 25% of daily limit"))
     #expect(summary.highlightedIngredientID == apap.id)
+  }
+
+  @Test func comboPercentRoundsHalfAwayFromZero() throws {
+    // Pins the safety-adjacent rounding: 99.5% of ceiling must render as
+    // "100% of daily limit", not "99%". Errs toward alerting; raw percent
+    // still governs the actual safety gate.
+    let context = try makeContext()
+    let apap = makeIngredient("Acetaminophen", ceiling: 1000, in: context)
+    let aspirin = makeIngredient("Aspirin", in: context) // combo shape needs ≥ 2 components
+    let med = makeMed("Combo", components: [(apap, 250), (aspirin, 100)], in: context)
+    // 995mg apap so far today = 99.5% of the 1000 ceiling.
+    logProductDose(med, ingredientID: apap.id, name: "Acetaminophen", mg: 995, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.secondLine.contains("acetaminophen 100% of daily limit"))
+  }
+
+  @Test func comboVariantWithNoCeilingsOmitsUtilizationSuffix() throws {
+    // Every ingredient in the combo lacks a ceiling — `bestSuffix` is empty
+    // and the second line is just the last-dose text, with no "% of daily
+    // limit" suffix to hang utilization on.
+    let context = try makeContext()
+    let aspirin = makeIngredient("Aspirin", in: context) // no ceiling
+    let caffeine = makeIngredient("Caffeine", in: context) // no ceiling
+    let med = makeMed("Plain Combo", components: [(aspirin, 250), (caffeine, 65)], in: context)
+    // Only Aspirin's dose is logged — caffeine deliberately untouched. We're
+    // verifying the no-ceiling branch is reached at all, not which ingredient
+    // is highlighted (there's no highlight since neither has a ceiling).
+    logProductDose(med, ingredientID: aspirin.id, name: "Aspirin", mg: 250, at: now.addingTimeInterval(-3600), in: context)
+    try context.save()
+
+    let summary = try PRNRowSummaryBuilder.summary(for: med, at: now, in: context, calendar: calendar)
+    #expect(summary.firstLine == "Plain Combo")
+    // Last-dose text starts the line; no "% of daily limit" suffix.
+    #expect(summary.secondLine.hasPrefix("last "))
+    #expect(!summary.secondLine.contains("% of daily limit"))
+    #expect(summary.highlightedIngredientID == nil)
   }
 
   @Test func noDosesYetWhenProductNeverTaken() throws {

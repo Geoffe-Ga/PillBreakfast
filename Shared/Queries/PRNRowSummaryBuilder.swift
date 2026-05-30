@@ -2,11 +2,10 @@ import Foundation
 import SwiftData
 
 /// One PRN product's row content for the watch PRN list. Two lines: the product
-/// name, and a today-total / last-dose summary whose shape depends on the product
-/// variant (SPEC §7.3).
+/// name (`firstLine`), and a today-total / last-dose summary (`secondLine`)
+/// whose shape depends on the product variant (SPEC §7.3).
 public struct PRNRowSummary: Sendable, Hashable, Identifiable {
   public let medicationID: UUID
-  public let displayName: String
   public let firstLine: String
   public let secondLine: String
   /// The ingredient the second line is "about" (the single ingredient, or the
@@ -19,13 +18,11 @@ public struct PRNRowSummary: Sendable, Hashable, Identifiable {
 
   public init(
     medicationID: UUID,
-    displayName: String,
     firstLine: String,
     secondLine: String,
     highlightedIngredientID: UUID?
   ) {
     self.medicationID = medicationID
-    self.displayName = displayName
     self.firstLine = firstLine
     self.secondLine = secondLine
     self.highlightedIngredientID = highlightedIngredientID
@@ -57,11 +54,10 @@ public enum PRNRowSummaryBuilder {
     {
       let total = try IngredientQueries.totalToday(ingredient: ingredient, in: context, at: now, calendar: calendar)
       let totalLabel = ingredient.name == medication.displayName
-        ? "\(Int(total)) mg today"
-        : "\(Int(total)) mg \(ingredient.name.lowercased()) today"
+        ? "\(Int(total.rounded())) mg today"
+        : "\(Int(total.rounded())) mg \(ingredient.name.lowercased()) today"
       return PRNRowSummary(
         medicationID: medication.id,
-        displayName: medication.displayName,
         firstLine: medication.displayName,
         secondLine: "\(totalLabel) · \(lastDoseText)",
         highlightedIngredientID: ingredient.id
@@ -76,10 +72,13 @@ public enum PRNRowSummaryBuilder {
       let percent = today / ceiling
       if percent > (best?.percent ?? -1) { best = (ingredient, percent) }
     }
-    let bestSuffix = best.map { " · \($0.ingredient.name.lowercased()) \(Int($0.percent * 100))% of daily limit" } ?? ""
+    // Rounding (vs. truncating) means 99.5% reads as "100% of daily limit"
+    // — errs on the side of alerting for a safety-adjacent surface. The raw
+    // `percent` (and the underlying mg total) governs every actual safety
+    // decision; only the displayed integer rolls.
+    let bestSuffix = best.map { " · \($0.ingredient.name.lowercased()) \(Int(($0.percent * 100).rounded()))% of daily limit" } ?? ""
     return PRNRowSummary(
       medicationID: medication.id,
-      displayName: medication.displayName,
       firstLine: medication.displayName,
       secondLine: "\(lastDoseText)\(bestSuffix)",
       highlightedIngredientID: best?.ingredient.id

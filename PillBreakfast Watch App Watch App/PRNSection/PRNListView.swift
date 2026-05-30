@@ -58,7 +58,6 @@ struct PRNListView: View {
   private func placeholder(for medication: Medication) -> PRNRowSummary {
     PRNRowSummary(
       medicationID: medication.id,
-      displayName: medication.displayName,
       firstLine: medication.displayName,
       secondLine: "…",
       highlightedIngredientID: nil
