@@ -26,10 +26,10 @@ struct HistoryTabView: View {
 
   var body: some View {
     NavigationStack {
-      HeatmapStubView(days: Self.days(from: doseEvents, reference: referenceDate, calendar: calendar))
+      HeatmapView(days: Self.days(from: doseEvents, reference: referenceDate, calendar: calendar))
         .navigationTitle("History")
         .navigationDestination(for: HistoryDayRoute.self) { route in
-          DayDrillDownStubView(date: route.date)
+          DayDrillDownView(date: route.date, calendar: calendar)
         }
     }
   }
