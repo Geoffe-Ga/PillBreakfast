@@ -23,6 +23,13 @@ struct MgFormatterTests {
     #expect(MgFormatter.format(0.001) == "0.001 mg")
   }
 
+  @Test func formatGuardsAgainstNegativeValues() {
+    // A negative total can't come from the data model, but the guard
+    // surfaces the contract violation rather than rendering "-2 mg".
+    #expect(MgFormatter.format(-2) == "— mg")
+    #expect(MgFormatter.format(-0.5) == "— mg")
+  }
+
   @Test func formatGuardsAgainstNonFiniteInputs() {
     // `Int(Double.nan)` and `Int(Double.infinity)` trap at runtime; the
     // guard turns them into a legible placeholder instead.

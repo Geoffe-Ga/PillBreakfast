@@ -17,6 +17,10 @@ import Foundation
 public nonisolated enum MgFormatter {
   public static func format(_ mg: Double) -> String {
     guard mg.isFinite else { return "— mg" }
+    // Negative totals can't arise from real SwiftData rows (mg accumulates
+    // from `LoggedIngredientAmount.totalMg` which is always non-negative),
+    // but a guard closes the "-2 mg" surface in case the contract ever slips.
+    guard mg >= 0 else { return "— mg" }
     if mg == 0 || mg.magnitude >= 1 {
       return "\(Int(mg.rounded())) mg"
     }

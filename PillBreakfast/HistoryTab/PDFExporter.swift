@@ -201,6 +201,9 @@ enum PDFExporter {
   /// export, silently obscuring the footer is a worse outcome than failing.
   private static func drawBody(blocks: [PDFDayBlock], layout: PDFLayoutConstants, calendar: Calendar) {
     let totalHeight = blocks.reduce(CGFloat(0)) { $0 + $1.height(layout: layout) }
+    // `+ 1` tolerance absorbs the floating-point accumulation across the
+    // per-block height sums; without it a paginator-correct page can fail
+    // this guard by a fractional pt.
     if totalHeight > layout.bodyHeight + 1 {
       preconditionFailure(
         "drawBody received un-paginated blocks (\(totalHeight) > \(layout.bodyHeight)) — call PDFPaginator.paginate first"
@@ -211,6 +214,10 @@ enum PDFExporter {
       let header = block.date.formatted(dayHeaderFormatStyle)
       header.draw(at: CGPoint(x: layout.contentLeft, y: y), withAttributes: titleAttributes)
       y += layout.dayHeaderHeight
+      // Intentional split: every event is rendered (a skipped lithium dose
+      // is medically relevant for the doctor's read), but only `.taken`
+      // events contribute to the ingredient roll-up in `aggregateIngredients`
+      // — those are the ones that reached the body.
       for event in block.events {
         let row = eventRow(event)
         row.draw(at: CGPoint(x: layout.contentLeft + layout.rowIndent, y: y), withAttributes: bodyAttributes)
