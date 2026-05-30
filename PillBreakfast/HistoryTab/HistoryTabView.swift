@@ -18,6 +18,11 @@ struct HistoryTabView: View {
   @State private var referenceDate: Date
   private let calendar: Calendar
 
+  private static let rolloverLogger = Logger(
+    subsystem: "com.creekmasons.pillbreakfast",
+    category: "HistoryRollover"
+  )
+
   init(referenceDate: Date = .now, calendar: Calendar = .current) {
     _referenceDate = State(initialValue: referenceDate)
     self.calendar = calendar
@@ -31,6 +36,11 @@ struct HistoryTabView: View {
   /// Long-running task: keep the window anchored on today as the calendar
   /// day rolls over while the tab is foregrounded. Cancelled on view
   /// disappear (tab switch, app background) — re-establishes on re-appear.
+  ///
+  /// `@MainActor` is explicit so the isolation contract is visible at the
+  /// declaration site; the body mutates `@State referenceDate`, which has
+  /// to happen on the main actor.
+  @MainActor
   private func advanceAcrossMidnight() async {
     // First, catch up if the tab re-appears after the system rolled over
     // while we were off-screen (e.g. user switched tabs through midnight).
@@ -41,12 +51,17 @@ struct HistoryTabView: View {
     while !Task.isCancelled {
       guard let nextMidnight = Self.nextDayBoundary(after: .now, calendar: calendar) else {
         // Day arithmetic on a valid calendar can't fail in practice; assert
-        // in debug so an SDK regression surfaces in tests rather than the
-        // loop silently exiting in release.
+        // in debug so an SDK regression surfaces in tests, and log at .fault
+        // so a release-build silent-exit leaves a breadcrumb in OSLog.
         assertionFailure("nextDayBoundary returned nil — day arithmetic should not fail on a valid calendar")
+        Self.rolloverLogger.fault("nextDayBoundary returned nil — day arithmetic failed; rollover task exiting")
         return
       }
       let secondsUntilMidnight = nextMidnight.timeIntervalSinceNow
+      // `> 0` only: scheduler jitter can wake us slightly after midnight,
+      // in which case we skip the sleep, advance the anchor immediately,
+      // and the next iteration sleeps until the *following* midnight. The
+      // exact-midnight case is pinned by `nextDayBoundaryFromExactMidnight…`.
       if secondsUntilMidnight > 0 {
         do {
           try await Task.sleep(for: .seconds(secondsUntilMidnight))
