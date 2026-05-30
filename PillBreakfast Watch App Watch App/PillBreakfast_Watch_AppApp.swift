@@ -7,6 +7,8 @@ struct PillBreakfast_Watch_App_Watch_AppApp: App {
 
   init() {
     WatchConnectivityCoordinator.shared.activate()
+    // See `CrashReporting.shared` for the single-registration rationale.
+    _ = CrashReporting.shared
   }
 
   var body: some Scene {
