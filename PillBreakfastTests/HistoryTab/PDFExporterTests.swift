@@ -197,8 +197,9 @@ struct PDFExporterTests {
   }
 
   @Test func paginatorBreaksWhenABlockWouldOverflow() {
-    // Construct a layout where each block consumes exactly half the body —
-    // three blocks must produce two pages.
+    // Each block consumes ~300 / 672 ≈ 45 % of the body, so two blocks fit
+    // (~600 pt) and three blocks (~900 pt) cannot — exercising the overflow
+    // path exactly once.
     let layout = PDFLayoutConstants(
       pageWidth: 612,
       pageHeight: 792,
@@ -209,7 +210,8 @@ struct PDFExporterTests {
       summaryRowHeight: 0,
       sectionPadding: 0,
       rowIndent: 12,
-      footerLineSpacing: 14
+      footerLineSpacing: 14,
+      footerLineHeight: 12
     )
     let blocks = (0 ..< 3).map { offset in
       PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
@@ -233,7 +235,8 @@ struct PDFExporterTests {
       summaryRowHeight: 0,
       sectionPadding: 0,
       rowIndent: 12,
-      footerLineSpacing: 14
+      footerLineSpacing: 14,
+      footerLineHeight: 12
     )
     let blocks = (0 ..< 2).map { offset in
       PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
@@ -266,21 +269,6 @@ struct PDFExporterTests {
     #expect(row.contains("Unknown medication"))
   }
 
-  @Test func formatMgGuardsAgainstNonFinite() {
-    #expect(PDFExporter.formatMg(.nan) == "— mg")
-    #expect(PDFExporter.formatMg(.infinity) == "— mg")
-    #expect(PDFExporter.formatMg(2400) == "2400 mg")
-  }
-
-  @Test func formatMgRendersSubMilligramDosesWithDecimals() {
-    // Levothyroxine ships as 25 / 50 / 100 / 200 mcg — the integer-only
-    // truncation would render every one of these as "0 mg" and silently mis-
-    // inform the export's reader.
-    #expect(PDFExporter.formatMg(0.025) == "0.025 mg")
-    #expect(PDFExporter.formatMg(0.2) == "0.200 mg")
-    // A clean zero stays as "0 mg" — no noisy "0.000 mg".
-    #expect(PDFExporter.formatMg(0) == "0 mg")
-    // ≥ 1 mg still uses integer rounding.
-    #expect(PDFExporter.formatMg(199.6) == "200 mg")
-  }
+  // mg formatting is centralized in `MgFormatter` and covered by
+  // `MgFormatterTests`. No per-call-site duplication of those assertions here.
 }

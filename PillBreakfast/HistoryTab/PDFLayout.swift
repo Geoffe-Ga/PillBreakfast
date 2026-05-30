@@ -4,7 +4,7 @@ import Foundation
 /// US-Letter portrait sizing for the doctor-export PDF. Constants are pulled
 /// out so the pagination algorithm can be exercised against arbitrary block
 /// sizes in tests without rendering.
-struct PDFLayoutConstants: Hashable {
+struct PDFLayoutConstants {
   let pageWidth: CGFloat
   let pageHeight: CGFloat
   let margin: CGFloat
@@ -20,6 +20,9 @@ struct PDFLayoutConstants: Hashable {
   /// counter and generation timestamp). Tied to the footer font's line
   /// height; centralized here so tweaks move together.
   let footerLineSpacing: CGFloat
+  /// Height of a single right-aligned footer text row. Sized for the 9pt
+  /// footer font with a hair of breathing room.
+  let footerLineHeight: CGFloat
 
   /// Default US-Letter portrait sizing — 612×792 pt at 72 dpi.
   static let letter = PDFLayoutConstants(
@@ -32,7 +35,8 @@ struct PDFLayoutConstants: Hashable {
     summaryRowHeight: 14,
     sectionPadding: 8,
     rowIndent: 12,
-    footerLineSpacing: 14
+    footerLineSpacing: 14,
+    footerLineHeight: 12
   )
 
   var contentTop: CGFloat {

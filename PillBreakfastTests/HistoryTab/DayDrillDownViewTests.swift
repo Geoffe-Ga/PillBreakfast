@@ -27,30 +27,7 @@ struct DayDrillDownViewTests {
 
   // MARK: - mg formatting
 
-  @Test func formatMgRoundsToWholeMilligrams() {
-    #expect(DayDrillDownView.formatMg(0) == "0 mg")
-    #expect(DayDrillDownView.formatMg(200) == "200 mg")
-    #expect(DayDrillDownView.formatMg(199.4) == "199 mg")
-    #expect(DayDrillDownView.formatMg(199.6) == "200 mg")
-    // Lithium daily ceiling — the call-site precision target.
-    #expect(DayDrillDownView.formatMg(2400) == "2400 mg")
-  }
-
-  @Test func formatMgRendersDashForNonFiniteInputs() {
-    // `Int(Double.nan)` and `Int(Double.infinity)` would trap; the guard
-    // turns them into a legible placeholder instead.
-    #expect(DayDrillDownView.formatMg(.nan) == "— mg")
-    #expect(DayDrillDownView.formatMg(.infinity) == "— mg")
-    #expect(DayDrillDownView.formatMg(-.infinity) == "— mg")
-  }
-
-  @Test func formatMgRendersSubMilligramDosesWithDecimals() {
-    // Levothyroxine ships as 25 / 50 / 100 / 200 mcg — the integer-only
-    // truncation would render every one of these as "0 mg" in the
-    // drill-down's "Ingredient totals" section.
-    #expect(DayDrillDownView.formatMg(0.025) == "0.025 mg")
-    #expect(DayDrillDownView.formatMg(0.2) == "0.200 mg")
-    // A clean zero stays as "0 mg".
-    #expect(DayDrillDownView.formatMg(0) == "0 mg")
-  }
+  // mg formatting is centralized in `MgFormatter` and covered by
+  // `MgFormatterTests`. The drill-down's "Ingredient totals" section now
+  // reads from the same source as the PDF export.
 }

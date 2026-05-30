@@ -126,7 +126,7 @@ enum PDFExporter {
     return totalsByID.values.sorted { $0.ingredientName < $1.ingredientName }
   }
 
-  static func temporaryURL(now: Date) -> URL {
+  private static func temporaryURL(now: Date) -> URL {
     // Suffix the timestamp so repeated exports in the same session don't
     // collide (and Mail's preview cache distinguishes them).
     let stamp = Int(now.timeIntervalSince1970)
@@ -160,6 +160,11 @@ enum PDFExporter {
   /// the cumulative height stays within `layout.bodyHeight`. Drawing
   /// un-paginated blocks here would overflow into the footer band.
   private static func drawBody(blocks: [PDFDayBlock], layout: PDFLayoutConstants, calendar: Calendar) {
+    let totalHeight = blocks.reduce(CGFloat(0)) { $0 + $1.height(layout: layout) }
+    assert(
+      totalHeight <= layout.bodyHeight + 1,
+      "drawBody received un-paginated blocks (\(totalHeight) > \(layout.bodyHeight)) — call PDFPaginator.paginate first"
+    )
     var y = layout.contentTop
     for block in blocks {
       let header = block.date.formatted(date: .complete, time: .omitted)
@@ -171,7 +176,7 @@ enum PDFExporter {
         y += layout.eventRowHeight
       }
       for amount in block.ingredientTotals {
-        let row = "\(amount.ingredientName): \(formatMg(amount.totalMg))"
+        let row = "\(amount.ingredientName): \(MgFormatter.format(amount.totalMg))"
         row.draw(at: CGPoint(x: layout.contentLeft + layout.rowIndent, y: y), withAttributes: secondaryAttributes)
         y += layout.summaryRowHeight
       }
@@ -196,19 +201,6 @@ enum PDFExporter {
     case .skipped: "Skipped"
     case .snoozed: "Snoozed"
     }
-  }
-
-  /// Renders a dose total. Integer-rounded for ≥ 1 mg (e.g. 2400 mg/day
-  /// Lithium); three decimal places below 1 mg so sub-mg products like
-  /// levothyroxine (typically 0.025–0.2 mg) don't truncate to "0 mg".
-  /// A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
-  /// Guards against non-finite inputs that would trap the `Int(...)` cast.
-  static func formatMg(_ mg: Double) -> String {
-    guard mg.isFinite else { return "— mg" }
-    if mg == 0 || mg.magnitude >= 1 {
-      return "\(Int(mg.rounded())) mg"
-    }
-    return String(format: "%.3f mg", mg)
   }
 
   /// Footer band: seeded-ingredient disclaimer on the left, page counter on
@@ -242,7 +234,7 @@ enum PDFExporter {
       x: rightRect.minX,
       y: footerY,
       width: rightWidth,
-      height: 12
+      height: layout.footerLineHeight
     )
     let pageAttributes: [NSAttributedString.Key: Any] = [
       .font: UIFont.systemFont(ofSize: 9, weight: .regular),
@@ -255,7 +247,7 @@ enum PDFExporter {
       x: rightRect.minX,
       y: footerY + layout.footerLineSpacing,
       width: rightWidth,
-      height: 12
+      height: layout.footerLineHeight
     )
     stamp.draw(in: stampRect, withAttributes: pageAttributes)
   }

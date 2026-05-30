@@ -47,7 +47,7 @@ struct DayDrillDownView: View {
             HStack {
               Text(amount.ingredientName)
               Spacer()
-              Text(Self.formatMg(amount.totalMg))
+              Text(MgFormatter.format(amount.totalMg))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             }
@@ -89,19 +89,6 @@ struct DayDrillDownView: View {
         summary = nil
       }
     }
-  }
-
-  /// Renders a dose total. Integer-rounded for ≥ 1 mg (e.g. 2400 mg/day
-  /// Lithium); three decimal places below 1 mg so sub-mg products like
-  /// levothyroxine (typically 0.025–0.2 mg) don't truncate to "0 mg".
-  /// A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
-  /// Guards against non-finite inputs that would trap the `Int(...)` cast.
-  static func formatMg(_ mg: Double) -> String {
-    guard mg.isFinite else { return "— mg" }
-    if mg == 0 || mg.magnitude >= 1 {
-      return "\(Int(mg.rounded())) mg"
-    }
-    return String(format: "%.3f mg", mg)
   }
 }
 
