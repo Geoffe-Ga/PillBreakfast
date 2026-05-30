@@ -9,6 +9,11 @@ import UIKit
 /// `UIKit` / `CoreGraphics`-only and never touches the network. The output
 /// file lives in the user's temporary directory; the share sheet (issue #57)
 /// picks up the URL.
+///
+/// TODO(#57): `UIGraphicsPDFRenderer.writePDF` blocks the calling actor. The
+/// SwiftData fetch needs MainActor, but the render pass does not — when the
+/// share-sheet host lands, split `collectBlocks` (MainActor) from a
+/// `Task.detached` render so a long export doesn't stall the UI.
 @MainActor
 enum PDFExporter {
   /// Window matches the History tab: 30 days inclusive (today + 29 prior).
@@ -69,6 +74,11 @@ enum PDFExporter {
   /// day, and roll up `.taken` event `ingredientAmounts` into per-day
   /// totals. Reads the denormalized snapshot, never the live product graph
   /// (SPEC §5.3 / CLAUDE.md).
+  ///
+  /// Visibility note: this stays `internal` (not `private`) so it can be
+  /// exercised from `@testable` tests and split out for the async boundary
+  /// in #57 — `collectBlocks` is the MainActor-bound piece, the renderer
+  /// can run detached.
   static func collectBlocks(
     in context: ModelContext,
     now: Date,
@@ -146,6 +156,9 @@ enum PDFExporter {
     .foregroundColor: UIColor.secondaryLabel,
   ]
 
+  /// Precondition: `blocks` were partitioned by `PDFPaginator.paginate` so
+  /// the cumulative height stays within `layout.bodyHeight`. Drawing
+  /// un-paginated blocks here would overflow into the footer band.
   private static func drawBody(blocks: [PDFDayBlock], layout: PDFLayoutConstants, calendar: Calendar) {
     var y = layout.contentTop
     for block in blocks {
@@ -154,12 +167,12 @@ enum PDFExporter {
       y += layout.dayHeaderHeight
       for event in block.events {
         let row = eventRow(event)
-        row.draw(at: CGPoint(x: layout.contentLeft + 12, y: y), withAttributes: bodyAttributes)
+        row.draw(at: CGPoint(x: layout.contentLeft + layout.rowIndent, y: y), withAttributes: bodyAttributes)
         y += layout.eventRowHeight
       }
       for amount in block.ingredientTotals {
         let row = "\(amount.ingredientName): \(formatMg(amount.totalMg))"
-        row.draw(at: CGPoint(x: layout.contentLeft + 12, y: y), withAttributes: secondaryAttributes)
+        row.draw(at: CGPoint(x: layout.contentLeft + layout.rowIndent, y: y), withAttributes: secondaryAttributes)
         y += layout.summaryRowHeight
       }
       y += layout.sectionPadding
@@ -167,6 +180,10 @@ enum PDFExporter {
   }
 
   static func eventRow(_ event: DoseEvent) -> String {
+    // Formats in the device's current timezone — a dose logged while
+    // traveling shows in the user's current timezone, not the timezone where
+    // it was taken. Acceptable for v1 (the export is a summary doctors read
+    // at home); don't reflex-fix to UTC.
     let time = event.takenAt.formatted(date: .omitted, time: .shortened)
     let med = event.medication?.displayName ?? "Unknown medication"
     let qty = event.quantity == 1 ? "1 pill" : "\(event.quantity) pills"
@@ -181,9 +198,17 @@ enum PDFExporter {
     }
   }
 
+  /// Renders a dose total. Integer-rounded for ≥ 1 mg (e.g. 2400 mg/day
+  /// Lithium); three decimal places below 1 mg so sub-mg products like
+  /// levothyroxine (typically 0.025–0.2 mg) don't truncate to "0 mg".
+  /// A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
+  /// Guards against non-finite inputs that would trap the `Int(...)` cast.
   static func formatMg(_ mg: Double) -> String {
     guard mg.isFinite else { return "— mg" }
-    return "\(Int(mg.rounded())) mg"
+    if mg == 0 || mg.magnitude >= 1 {
+      return "\(Int(mg.rounded())) mg"
+    }
+    return String(format: "%.3f mg", mg)
   }
 
   /// Footer band: seeded-ingredient disclaimer on the left, page counter on
@@ -222,24 +247,24 @@ enum PDFExporter {
     let pageAttributes: [NSAttributedString.Key: Any] = [
       .font: UIFont.systemFont(ofSize: 9, weight: .regular),
       .foregroundColor: UIColor.secondaryLabel,
-      .paragraphStyle: rightAlignedParagraphStyle(),
+      .paragraphStyle: rightAlignedParagraphStyle,
     ]
     pageCounter.draw(in: pageRect, withAttributes: pageAttributes)
     let stamp = "Generated \(generatedAt.formatted(date: .abbreviated, time: .shortened))"
     let stampRect = CGRect(
       x: rightRect.minX,
-      y: footerY + 14,
+      y: footerY + layout.footerLineSpacing,
       width: rightWidth,
       height: 12
     )
     stamp.draw(in: stampRect, withAttributes: pageAttributes)
   }
 
-  private static func rightAlignedParagraphStyle() -> NSParagraphStyle {
+  private static let rightAlignedParagraphStyle: NSParagraphStyle = {
     let style = NSMutableParagraphStyle()
     style.alignment = .right
     return style
-  }
+  }()
 
   /// "No doses logged" surface for an empty 30-day window. Still renders the
   /// disclaimer so a doctor unsure why the export is blank sees the

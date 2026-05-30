@@ -91,13 +91,17 @@ struct DayDrillDownView: View {
     }
   }
 
-  /// Round to whole mg — adequate precision for ceilings (e.g. 2400 mg/day Lithium).
-  /// Guards against non-finite inputs: `Int(.nan)` / `Int(.infinity)` would trap.
-  /// Trusted SwiftData rows shouldn't produce non-finite totals, but the guard
-  /// removes the crash surface for free.
+  /// Renders a dose total. Integer-rounded for ≥ 1 mg (e.g. 2400 mg/day
+  /// Lithium); three decimal places below 1 mg so sub-mg products like
+  /// levothyroxine (typically 0.025–0.2 mg) don't truncate to "0 mg".
+  /// A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
+  /// Guards against non-finite inputs that would trap the `Int(...)` cast.
   static func formatMg(_ mg: Double) -> String {
     guard mg.isFinite else { return "— mg" }
-    return "\(Int(mg.rounded())) mg"
+    if mg == 0 || mg.magnitude >= 1 {
+      return "\(Int(mg.rounded())) mg"
+    }
+    return String(format: "%.3f mg", mg)
   }
 }
 

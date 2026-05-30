@@ -207,14 +207,17 @@ struct PDFExporterTests {
       dayHeaderHeight: 300,
       eventRowHeight: 0,
       summaryRowHeight: 0,
-      sectionPadding: 0
+      sectionPadding: 0,
+      rowIndent: 12,
+      footerLineSpacing: 14
     )
     let blocks = (0 ..< 3).map { offset in
       PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
     }
     let pages = PDFPaginator.paginate(blocks, layout: layout)
-    #expect(pages.count >= 2)
-    #expect(pages.flatMap(\.self).count == 3)
+    // Each block consumes ≈ half the body, so 3 blocks → exactly 2 pages.
+    #expect(pages.count == 2)
+    #expect(pages.reduce(0) { $0 + $1.count } == 3)
   }
 
   @Test func paginatorAllowsOversizedBlockToStandAlone() {
@@ -228,7 +231,9 @@ struct PDFExporterTests {
       dayHeaderHeight: 1000, // intentionally exceeds the page body
       eventRowHeight: 0,
       summaryRowHeight: 0,
-      sectionPadding: 0
+      sectionPadding: 0,
+      rowIndent: 12,
+      footerLineSpacing: 14
     )
     let blocks = (0 ..< 2).map { offset in
       PDFDayBlock(date: Date(timeIntervalSinceReferenceDate: TimeInterval(offset * 86400)), events: [], ingredientTotals: [])
@@ -265,5 +270,17 @@ struct PDFExporterTests {
     #expect(PDFExporter.formatMg(.nan) == "— mg")
     #expect(PDFExporter.formatMg(.infinity) == "— mg")
     #expect(PDFExporter.formatMg(2400) == "2400 mg")
+  }
+
+  @Test func formatMgRendersSubMilligramDosesWithDecimals() {
+    // Levothyroxine ships as 25 / 50 / 100 / 200 mcg — the integer-only
+    // truncation would render every one of these as "0 mg" and silently mis-
+    // inform the export's reader.
+    #expect(PDFExporter.formatMg(0.025) == "0.025 mg")
+    #expect(PDFExporter.formatMg(0.2) == "0.200 mg")
+    // A clean zero stays as "0 mg" — no noisy "0.000 mg".
+    #expect(PDFExporter.formatMg(0) == "0 mg")
+    // ≥ 1 mg still uses integer rounding.
+    #expect(PDFExporter.formatMg(199.6) == "200 mg")
   }
 }

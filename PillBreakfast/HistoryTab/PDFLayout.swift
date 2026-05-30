@@ -13,6 +13,13 @@ struct PDFLayoutConstants: Hashable {
   let eventRowHeight: CGFloat
   let summaryRowHeight: CGFloat
   let sectionPadding: CGFloat
+  /// Indent applied to event and ingredient-total rows so the day header
+  /// reads as the section title.
+  let rowIndent: CGFloat
+  /// Vertical spacing between the two right-aligned footer lines (page
+  /// counter and generation timestamp). Tied to the footer font's line
+  /// height; centralized here so tweaks move together.
+  let footerLineSpacing: CGFloat
 
   /// Default US-Letter portrait sizing — 612×792 pt at 72 dpi.
   static let letter = PDFLayoutConstants(
@@ -23,7 +30,9 @@ struct PDFLayoutConstants: Hashable {
     dayHeaderHeight: 24,
     eventRowHeight: 16,
     summaryRowHeight: 14,
-    sectionPadding: 8
+    sectionPadding: 8,
+    rowIndent: 12,
+    footerLineSpacing: 14
   )
 
   var contentTop: CGFloat {
