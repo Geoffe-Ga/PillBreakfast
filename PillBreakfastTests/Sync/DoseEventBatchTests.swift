@@ -62,7 +62,8 @@ struct DoseEventBatchTests {
     let second = try DoseEventBatchMerger.merge(batch, into: context)
 
     #expect(second.inserted == 0)
-    #expect(second.updated == 1)
+    // A nil → nil re-send is a pure no-op: no row dirtied, no counter bumped.
+    #expect(second.updated == 0)
     #expect(try context.fetch(FetchDescriptor<DoseEvent>()).count == 1) // no duplicate
   }
 

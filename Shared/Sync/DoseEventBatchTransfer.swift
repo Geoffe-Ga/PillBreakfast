@@ -88,10 +88,15 @@ public enum DoseEventBatchMerger {
       ).first
 
       if let existing {
-        // A re-sent event is immutable history except notes. Don't clobber an
-        // existing note with nil — a re-send carrying no note shouldn't erase one.
-        existing.notes = dto.notes ?? existing.notes
-        updated += 1
+        // A re-sent event is immutable history except notes. Only write — and
+        // only count `updated` — when the re-send actually carries a different
+        // note. A `nil`-on-re-send doesn't erase the existing note, and a
+        // same-value re-send doesn't dirty the SwiftData row or inflate the
+        // merge log.
+        if let newNotes = dto.notes, newNotes != existing.notes {
+          existing.notes = newNotes
+          updated += 1
+        }
       } else {
         let medicationID = dto.medicationID
         guard let medication = try context.fetch(
