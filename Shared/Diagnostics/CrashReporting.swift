@@ -93,17 +93,9 @@ public final class CrashReporting: NSObject {
     return FileManager.default.temporaryDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
   }()
 
-  /// Retention budget per kind. MetricKit delivers at most one batch per day,
-  /// so 30 keeps roughly a month of history per kind — long enough for the
-  /// EPIC 10 soak window and for normal post-mortem investigations without
-  /// the App Group container growing unbounded across a daily-use install.
-  ///
-  /// `nonisolated` is load-bearing here, not decorative: under the module's
-  /// `-default-isolation MainActor` setting, `final class CrashReporting`
-  /// inherits MainActor — so without the annotation this constant is
-  /// MainActor-isolated and can't appear as a default arg in `prune(...)`
-  /// (which is itself `nonisolated`). Dropping the annotation reintroduces
-  /// "main actor-isolated default value in a nonisolated context" at build.
+  /// Per-kind retention; ~1 month at one MetricKit batch/day. `nonisolated`
+  /// is required so this constant can default an arg of `nonisolated prune`
+  /// despite the class inheriting MainActor under `-default-isolation`.
   public nonisolated static let retainPerKind: Int = 30
 
   /// Write payload bytes to disk under the chosen `directory`, then truncate
@@ -152,29 +144,21 @@ public final class CrashReporting: NSObject {
   /// kind prefix are left alone; the prune is intentionally scoped to what
   /// `persist` produces.
   ///
-  /// Internal so tests can exercise the truncation independently of a
-  /// write; production callers are expected to go through `persist`, which
-  /// invokes this on the just-written kind.
-  ///
-  /// Not file-coordinated: MetricKit delivers at most one batch per day,
-  /// so concurrent `prune` calls aren't expected. If that contract ever
-  /// changes (e.g. a second writer in `Diagnostics/`), this needs a
-  /// `NSFileCoordinator` or process-wide lock around the read+delete.
+  /// Delete `<kind>-…` files in `directory` beyond `retainCount`; missing
+  /// directory is a silent no-op. Not file-coordinated — assumes
+  /// single-writer (MetricKit, once-per-day).
   nonisolated static func prune(
     kind: String,
     in directory: URL,
     retainCount: Int = retainPerKind
   ) {
-    // First-launch case: the directory hasn't been created yet (no payload
-    // has ever been written). That's a clean no-op, not a failure — split
-    // it from the catch so unexpected `contentsOfDirectory` failures
-    // (permissions, sandbox, corrupted entries) surface at `.warning`
-    // rather than getting silently swallowed alongside the expected path.
     if !FileManager.default.fileExists(atPath: directory.path) { return }
     let contents: [String]
     do {
       contents = try FileManager.default.contentsOfDirectory(atPath: directory.path)
     } catch {
+      // Real failure (permissions, sandbox, corrupted entries) — not a
+      // missing directory; surface so an investigator has a breadcrumb.
       logger.warning(
         "prune skipped — could not list \(directory.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
       )
