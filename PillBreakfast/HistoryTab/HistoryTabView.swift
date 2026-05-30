@@ -145,6 +145,8 @@ private struct HistoryContent: View {
   /// renders today's.
   @State private var exportedURL: URL?
   @State private var exportError: String?
+  /// In-flight guard against two concurrent `generateExport` calls.
+  @State private var isExporting = false
   private let referenceDate: Date
   private let calendar: Calendar
 
@@ -220,7 +222,7 @@ private struct HistoryContent: View {
         }
         // `.task(id:)` rather than plain `.task` so the export regenerates
         // when the window slides forward across midnight.
-        .task(id: referenceDate) { generateExport() }
+        .task(id: referenceDate) { await generateExport() }
         .alert(
           "Export failed",
           isPresented: Binding(
@@ -230,7 +232,7 @@ private struct HistoryContent: View {
         ) {
           Button("Try Again") {
             exportError = nil
-            generateExport()
+            Task { await generateExport() }
           }
           Button("Cancel", role: .cancel) { exportError = nil }
         } message: {
@@ -239,11 +241,24 @@ private struct HistoryContent: View {
     }
   }
 
-  /// Runs on `.task` and on the alert's Try Again. Synchronous because
-  /// `PDFExporter.exportLast30Days` is `@MainActor` synchronous — wrapping
-  /// it in `async` would imply it's safe to await off-actor, which it isn't
-  /// until the detached-render work tracked by the `TODO(#57)` lands.
-  private func generateExport() {
+  /// Runs on `.task` and on the alert's Try Again. `async` because
+  /// `PDFExporter.exportLast30Days` is async — the collect phase stays on
+  /// the MainActor (this view's isolation), but the render runs on a
+  /// detached `userInitiated` task so a dense export doesn't stall the UI.
+  private func generateExport() async {
+    // Drop redundant calls so rapid "Try Again" taps (or a `.task(id:)`
+    // restart racing with a pending alert action) can't spawn concurrent
+    // exports and leak a PDF into `tmp/` whichever one finishes second.
+    //
+    // Known limitation: if `.task(id: referenceDate)` fires at midnight
+    // while an export is in flight, the post-midnight re-export is
+    // swallowed and the share-sheet PDF stays anchored on the prior
+    // window until the user re-enters the tab or taps Try Again.
+    // Acceptable for v1; the alternative (cancellable export with
+    // structured cancellation) is tracked in #153.
+    if isExporting { return }
+    isExporting = true
+    defer { isExporting = false }
     // Delete the previous export before writing a new one so a busy History
     // session (open tab → drill down → back → re-export) doesn't accumulate
     // orphaned UUID-suffixed PDFs in `tmp/` until iOS sweeps it.
@@ -252,7 +267,7 @@ private struct HistoryContent: View {
       exportedURL = nil
     }
     do {
-      exportedURL = try PDFExporter.exportLast30Days(
+      exportedURL = try await PDFExporter.exportLast30Days(
         from: modelContext,
         now: referenceDate,
         calendar: calendar
