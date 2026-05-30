@@ -21,11 +21,7 @@ public enum SafetyEvaluator {
   ) throws -> [Violation] {
     var violations: [Violation] = []
 
-    // Aggregate added-mg per ingredient before evaluating thresholds. Combo
-    // products (EPIC_05_ISSUE_06) may carry the same ingredient in two
-    // components — say a brand acetaminophen alongside an APAP filler — and
-    // summing the contributions first is the only way to avoid the
-    // safety-relevant under-count of evaluating each component independently.
+    // Aggregate per ingredient so combo products (#109) don't under-count.
     for aggregate in aggregatedByIngredient(medication, quantity: quantity) {
       let ingredient = aggregate.ingredient
       let addedMg = aggregate.addedMg
@@ -63,32 +59,29 @@ public enum SafetyEvaluator {
     let addedMg: Double
   }
 
-  /// Group `medication.components` by `ingredient.id`, summing the
-  /// contributions. A component without an ingredient is a data-integrity
-  /// fault — logged loudly and skipped, because for a safety gate a check
-  /// that silently doesn't fire because of missing data is worse than a
-  /// false positive.
-  ///
-  /// Returned in ingredient-name order so the resulting `Violation` list is
-  /// deterministic across runs (existing tests don't lean on order, but a
-  /// stable order is the cheaper invariant).
+  /// Group components by ingredient and sum their contributions; sorted by ingredient name for deterministic violation order.
   private static func aggregatedByIngredient(
     _ medication: Medication,
     quantity: Int
   ) -> [IngredientAggregate] {
-    var sumByID: [UUID: Double] = [:]
-    var ingredientByID: [UUID: Ingredient] = [:]
+    var aggregates: [UUID: IngredientAggregate] = [:]
     for component in medication.components {
       guard let ingredient = component.ingredient else {
+        // For a safety gate a check that silently doesn't fire because of
+        // missing data is worse than a false positive — log loudly + skip.
         logger.warning("Component \(component.id, privacy: .public) has no ingredient; cannot safety-check it.")
         continue
       }
-      sumByID[ingredient.id, default: 0] += Double(quantity) * component.dosagePerUnitMg
-      ingredientByID[ingredient.id] = ingredient
+      let addedMg = Double(quantity) * component.dosagePerUnitMg
+      if let existing = aggregates[ingredient.id] {
+        aggregates[ingredient.id] = IngredientAggregate(
+          ingredient: existing.ingredient,
+          addedMg: existing.addedMg + addedMg
+        )
+      } else {
+        aggregates[ingredient.id] = IngredientAggregate(ingredient: ingredient, addedMg: addedMg)
+      }
     }
-    return sumByID.compactMap { id, sum -> IngredientAggregate? in
-      guard let ingredient = ingredientByID[id] else { return nil }
-      return IngredientAggregate(ingredient: ingredient, addedMg: sum)
-    }.sorted { $0.ingredient.name < $1.ingredient.name }
+    return aggregates.values.sorted { $0.ingredient.name < $1.ingredient.name }
   }
 }
