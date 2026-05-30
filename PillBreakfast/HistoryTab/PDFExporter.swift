@@ -55,7 +55,7 @@ enum PDFExporter {
     try renderer.writePDF(to: url) { ctx in
       if pages.isEmpty {
         ctx.beginPage()
-        drawEmptyState(layout: layout, pageIndex: 0, totalPages: 1, generatedAt: now)
+        drawEmptyState(layout: layout, pageIndex: 0, totalPages: totalPages, generatedAt: now)
       } else {
         for (pageIndex, page) in pages.enumerated() {
           ctx.beginPage()
@@ -117,6 +117,8 @@ enum PDFExporter {
   ///   order, so an unsorted slice would silently pick the wrong name. The
   ///   sole production caller is `collectBlocks`, which uses
   ///   `SortDescriptor(\DoseEvent.takenAt)` in its fetch.
+  /// - Note: the in-method `assert` is elided in release. Production callers
+  ///   are responsible for honoring the precondition.
   static func aggregateIngredients(in events: [DoseEvent]) -> [LoggedIngredientAmount] {
     assert(
       events == events.sorted(by: { $0.takenAt < $1.takenAt }),
@@ -176,6 +178,13 @@ enum PDFExporter {
     .foregroundColor: secondaryInkColor,
   ]
 
+  /// Locale pinned to US English for the doctor export — a CI runner or
+  /// device set to a non-English locale would otherwise produce "30 mai 2026"
+  /// in the day headers and slip test assertions. The PDF is a US-Letter
+  /// English-language document; the formatter follows.
+  private static let dayHeaderFormatStyle = Date.FormatStyle(date: .complete, time: .omitted)
+    .locale(Locale(identifier: "en_US"))
+
   /// Precondition: `blocks` were partitioned by `PDFPaginator.paginate` so
   /// the cumulative height stays within `layout.bodyHeight`. Drawing
   /// un-paginated blocks here would overflow into the footer band. Enforced
@@ -190,7 +199,7 @@ enum PDFExporter {
     }
     var y = layout.contentTop
     for block in blocks {
-      let header = block.date.formatted(date: .complete, time: .omitted)
+      let header = block.date.formatted(dayHeaderFormatStyle)
       header.draw(at: CGPoint(x: layout.contentLeft, y: y), withAttributes: titleAttributes)
       y += layout.dayHeaderHeight
       for event in block.events {

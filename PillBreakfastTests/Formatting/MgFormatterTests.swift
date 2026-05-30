@@ -15,8 +15,11 @@ struct MgFormatterTests {
   @Test func formatRendersSubMilligramDosesWithDecimals() {
     // Levothyroxine ships as 25 / 50 / 100 / 200 mcg → 0.025–0.2 mg. Integer
     // truncation would render every one as "0 mg" and mis-inform a doctor.
+    // Trailing zeros are stripped so the prescription label and the export
+    // agree: "0.2 mg" not "0.200 mg".
     #expect(MgFormatter.format(0.025) == "0.025 mg")
-    #expect(MgFormatter.format(0.2) == "0.200 mg")
+    #expect(MgFormatter.format(0.2) == "0.2 mg")
+    #expect(MgFormatter.format(0.5) == "0.5 mg")
     #expect(MgFormatter.format(0.001) == "0.001 mg")
   }
 

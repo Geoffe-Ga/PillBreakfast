@@ -4,8 +4,9 @@ import Foundation
 /// export PDF. Single source of truth so the two surfaces don't drift.
 ///
 /// - Integer-rounded for ≥ 1 mg (e.g. 2400 mg/day Lithium).
-/// - Three decimal places below 1 mg so sub-mg products like levothyroxine
-///   (typically 0.025–0.2 mg) don't truncate to "0 mg".
+/// - Below 1 mg, up to 3 decimal places, with trailing zeros stripped so
+///   sub-mg products like levothyroxine read as `"0.2 mg"` (matching the
+///   prescription label) rather than `"0.200 mg"`.
 /// - A clean integer zero stays as "0 mg" rather than the noisy "0.000 mg".
 /// - Guards against non-finite inputs that would otherwise trap the
 ///   `Int(...)` cast.
@@ -19,6 +20,13 @@ public nonisolated enum MgFormatter {
     if mg == 0 || mg.magnitude >= 1 {
       return "\(Int(mg.rounded())) mg"
     }
-    return String(format: "%.3f mg", mg)
+    var rendered = String(format: "%.3f", mg)
+    while rendered.hasSuffix("0") {
+      rendered.removeLast()
+    }
+    if rendered.hasSuffix(".") {
+      rendered.removeLast()
+    }
+    return "\(rendered) mg"
   }
 }

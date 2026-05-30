@@ -290,6 +290,15 @@ struct PDFExporterTests {
     #expect(row.contains("Unknown medication"))
   }
 
+  @Test func eventRowSingularPluralPhrasing() {
+    // The `quantity == 1 ? "1 pill" : "\(n) pills"` branch deserves its own
+    // assertion — both halves matter for an export a doctor reads.
+    let single = DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone)
+    let row = PDFExporter.eventRow(single)
+    #expect(row.contains("1 pill"))
+    #expect(!row.contains("1 pills"))
+  }
+
   // mg formatting is centralized in `MgFormatter` and covered by
   // `MgFormatterTests`. No per-call-site duplication of those assertions here.
 }
