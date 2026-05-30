@@ -40,87 +40,79 @@ struct HistoryTabView: View {
     self.calendar = calendar
   }
 
-  /// Total events in the 30-day window after the optional medication filter
-  /// — drives the "No history yet" empty state when the heatmap would render
-  /// 30 zero-shade cells.
-  private var scopedEventCount: Int {
+  var body: some View {
+    // Compute the cells once and share them between the heatmap and the
+    // empty-state overlay; a computed property here would still be evaluated
+    // twice per render pass.
     let cells = Self.days(
       from: doseEvents,
       reference: referenceDate,
       calendar: calendar,
       filterMedicationID: filterMedicationID
     )
-    return cells.reduce(0) { $0 + $1.eventCount }
-  }
-
-  var body: some View {
-    NavigationStack {
-      HeatmapView(days: Self.days(
-        from: doseEvents,
-        reference: referenceDate,
-        calendar: calendar,
-        filterMedicationID: filterMedicationID
-      ))
-      .overlay {
-        if scopedEventCount == 0 {
-          ContentUnavailableView(
-            "No history yet",
-            systemImage: "tray",
-            description: Text(Self.emptyDescription(forFilter: filterMedicationID, in: medications))
-          )
-        }
-      }
-      .navigationTitle("History")
-      .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-          MedicationFilterMenu(
-            medications: medications,
-            selection: $filterMedicationID
-          )
-        }
-        ToolbarItem(placement: .secondaryAction) {
-          if let exportedURL {
-            ShareLink(
-              item: exportedURL,
-              preview: SharePreview(
-                "PillBreakfast — last 30 days",
-                image: Image(systemName: "doc.text")
-              )
-            ) {
-              Label("Export 30 days as PDF", systemImage: "square.and.arrow.up")
-            }
-          } else {
-            // Spinner placeholder while the export runs (typically < 100 ms
-            // at the 12-doses-per-day budget). Suppressed entirely if the
-            // export errored; the alert surfaces the failure instead.
-            ProgressView()
-              .opacity(exportError == nil ? 1 : 0)
+    let totalEvents = cells.reduce(0) { $0 + $1.eventCount }
+    return NavigationStack {
+      HeatmapView(days: cells)
+        .overlay {
+          if totalEvents == 0 {
+            ContentUnavailableView(
+              "No history yet",
+              systemImage: "tray",
+              description: Text(Self.emptyDescription(forFilter: filterMedicationID, in: medications))
+            )
           }
         }
-      }
-      .navigationDestination(for: HistoryDayRoute.self) { route in
-        DayDrillDownView(
-          date: route.date,
-          calendar: calendar,
-          filterMedicationID: filterMedicationID
-        )
-      }
-      .task { generateExport() }
-      .alert(
-        "Export failed",
-        isPresented: Binding(
-          get: { exportError != nil },
-          set: { if !$0 { exportError = nil } }
-        )
-      ) {
-        Button("Try Again") {
-          exportError = nil
-          generateExport()
+        .navigationTitle("History")
+        .toolbar {
+          ToolbarItem(placement: .primaryAction) {
+            MedicationFilterMenu(
+              medications: medications,
+              selection: $filterMedicationID
+            )
+          }
+          ToolbarItem(placement: .secondaryAction) {
+            if let exportedURL {
+              ShareLink(
+                item: exportedURL,
+                preview: SharePreview(
+                  "PillBreakfast — last 30 days",
+                  image: Image(systemName: "doc.text")
+                )
+              ) {
+                Label("Export 30 days as PDF", systemImage: "square.and.arrow.up")
+              }
+            } else {
+              // Spinner placeholder while the export runs (typically < 100 ms
+              // at the 12-doses-per-day budget). Suppressed entirely if the
+              // export errored; the alert surfaces the failure instead.
+              ProgressView()
+                .opacity(exportError == nil ? 1 : 0)
+            }
+          }
         }
-        Button("Cancel", role: .cancel) { exportError = nil }
-      } message: {
-        Text(exportError ?? "")
-      }
+        .navigationDestination(for: HistoryDayRoute.self) { route in
+          DayDrillDownView(
+            date: route.date,
+            calendar: calendar,
+            filterMedicationID: filterMedicationID
+          )
+        }
+        .task { generateExport() }
+        .alert(
+          "Export failed",
+          isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+          )
+        ) {
+          Button("Try Again") {
+            exportError = nil
+            generateExport()
+          }
+          Button("Cancel", role: .cancel) { exportError = nil }
+        } message: {
+          Text(exportError ?? "")
+        }
     }
   }
 

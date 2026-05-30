@@ -57,8 +57,10 @@ struct AddMedicationView: View {
       // ingredients) so autosave can't flush a half-built graph.
       modelContext.rollback()
       InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
-      // Sheet stays open so the user can fix the input and retry rather than
-      // staring at an unchanged screen wondering whether Save did anything.
+      // Sheet stays open so the user can fix the input and tap Save again
+      // rather than staring at an unchanged screen wondering whether Save
+      // did anything. The alert button is a plain dismiss — the user
+      // initiates the next save attempt by tapping Save themselves.
       saveError = "The medication couldn't be saved. Please try again."
       return
     }
