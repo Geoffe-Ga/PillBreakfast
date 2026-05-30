@@ -25,7 +25,8 @@ public struct PendingDose: Sendable, Hashable, Identifiable {
 /// Deterministic by design: the caller supplies `now` and the `Calendar`, so the
 /// result depends only on its inputs and the store state — never on `Date.now`
 /// or `Calendar.current` read internally. That is the testing contract.
-public struct PendingQueueSelector: Sendable {
+@MainActor
+public struct PendingQueueSelector {
   /// Half-width of the "due now" window in minutes, on each side of the
   /// scheduled time. Default 60 per SPEC §7.1 ("within ± 60 min").
   public let windowMinutes: Int
@@ -38,7 +39,6 @@ public struct PendingQueueSelector: Sendable {
     self.calendar = calendar
   }
 
-  @MainActor
   public func pendingDoses(at now: Date, in context: ModelContext) throws -> [PendingDose] {
     let todayISOWeekday = Self.isoWeekday(fromCalendar: calendar.component(.weekday, from: now))
     let startOfDay = calendar.startOfDay(for: now)
@@ -110,7 +110,6 @@ public struct PendingQueueSelector: Sendable {
   /// ~36 events, which is the bound the SPEC §5.2 cascading-fetch hazard
   /// demands. `scheduledFor` is then filtered in memory to today's window
   /// before building the SlotKey index.
-  @MainActor
   private static func loggedSlotKeys(
     in context: ModelContext,
     startOfDay: Date,
@@ -131,8 +130,16 @@ public struct PendingQueueSelector: Sendable {
         event.takenAt >= yesterday && event.takenAt < dayAfter
       }
     )
-    descriptor.fetchLimit = 200
+    descriptor.fetchLimit = Self.fetchLimit
     let events = try context.fetch(descriptor)
+    // Fail closed on a truncated fetch: silently returning a partial set
+    // would mark previously-logged slots as "not yet logged" and the watch
+    // would re-suggest them — a duplicate-log risk on safety-critical meds
+    // like lithium. Caller (`pendingDoses`) catches and surfaces as
+    // "no pending" via `RightNowView.reload()`'s error path.
+    if events.count >= Self.fetchLimit {
+      throw CalendarError.fetchLimitReached
+    }
     var keys: Set<SlotKey> = []
     for event in events {
       guard let scheduledFor = event.scheduledFor,
@@ -154,12 +161,22 @@ public struct PendingQueueSelector: Sendable {
     let minute: Int
   }
 
+  /// Defensive ceiling on the today-window fetch. Reachable only via schema
+  /// drift or pathological test seeding; the production budget (~36 events
+  /// in 3 days) is two orders of magnitude below this.
+  static let fetchLimit = 200
+
   enum CalendarError: Error {
     /// `Calendar.date(byAdding: .day, …)` returned `nil` for the day-boundary
     /// math. Effectively impossible on the watchOS 26 Gregorian calendar, but
     /// throwing rather than falling back keeps a degenerate-window from
     /// silently resurfacing every slot.
     case windowComputationFailed
+    /// The today-window fetch returned `fetchLimit` events. The result set
+    /// would be truncated; throwing prevents a partial "already logged"
+    /// lookup from silently surfacing duplicate-log opportunities on
+    /// safety-critical meds.
+    case fetchLimitReached
   }
 
   /// `Calendar`'s `.weekday` is Gregorian (Sun = 1 … Sat = 7); the schedule stores

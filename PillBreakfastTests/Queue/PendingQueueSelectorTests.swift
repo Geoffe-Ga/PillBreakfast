@@ -177,6 +177,37 @@ struct PendingQueueSelectorTests {
     #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
   }
 
+  @Test func fetchLimitHitThrowsRatherThanReturnsTruncated() throws {
+    // Seed enough in-window events to trip `fetchLimit` (200). The selector
+    // must throw rather than return a truncated "already logged" set — a
+    // silent truncation would resurface previously-logged slots as still
+    // pending, opening a duplicate-log path on safety-critical meds.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+
+    for offset in 0 ..< PendingQueueSelector.fetchLimit {
+      let takenAt = try #require(
+        cal.date(byAdding: .minute, value: offset, to: cal.startOfDay(for: todayAt8))
+      )
+      context.insert(DoseEvent(
+        medication: med,
+        scheduledFor: todayAt8,
+        takenAt: takenAt,
+        quantity: 1,
+        status: .taken,
+        loggedOn: .watch
+      ))
+    }
+    try context.save()
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    #expect(throws: PendingQueueSelector.CalendarError.fetchLimitReached) {
+      _ = try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context)
+    }
+  }
+
   @Test func outOfWindowHistoryDoesNotAffectResult() throws {
     // Regression guard: the old per-slot `med.doseEvents.contains(...)`
     // hydrated every historical event. The bounded fetch must not count
