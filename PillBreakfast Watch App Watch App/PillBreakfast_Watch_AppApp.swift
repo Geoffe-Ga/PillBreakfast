@@ -4,12 +4,11 @@ import SwiftUI
 @main
 struct PillBreakfast_Watch_App_Watch_AppApp: App {
   @WKApplicationDelegateAdaptor private var notificationDelegate: NotificationDelegate
-  /// Owned for the process lifetime so MetricKit keeps a live subscriber.
-  private let crashReporting = CrashReporting()
 
   init() {
     WatchConnectivityCoordinator.shared.activate()
-    crashReporting.start()
+    // See `CrashReporting.shared` for the single-registration rationale.
+    _ = CrashReporting.shared
   }
 
   var body: some Scene {

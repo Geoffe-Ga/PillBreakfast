@@ -1,5 +1,10 @@
 import Foundation
 import os
+
+// `canImport` instead of `os(iOS) || os(watchOS)` so the type still compiles
+// on a macOS test host that builds the Shared module without an iOS SDK
+// available. On the locked iOS 26 / watchOS 26 deployment targets MetricKit
+// is always importable; the guard is purely a build-environment defense.
 #if canImport(MetricKit)
 import MetricKit
 #endif
@@ -25,6 +30,18 @@ public final class CrashReporting: NSObject {
     category: "CrashReporting"
   )
 
+  /// Process-wide singleton that registers with `MXMetricManager` exactly
+  /// once. `@main App` is a value type and SwiftUI is documented to allow
+  /// multiple constructions of the App struct, so an instance-per-init
+  /// pattern risks adding duplicate subscribers; the lazy `static let`
+  /// initializer runs once for the process, so `start()` is called at most
+  /// once. The App's init just references `Self.shared` to force the lazy.
+  public static let shared: CrashReporting = {
+    let instance = CrashReporting()
+    instance.start()
+    return instance
+  }()
+
   /// Override-point for tests: the directory the persistence pass writes into.
   /// Defaults to the App Group's `Diagnostics/` folder. Default visibility
   /// (`internal`) is intentional — tests reach it via `@testable import`.
@@ -35,11 +52,10 @@ public final class CrashReporting: NSObject {
     super.init()
   }
 
-  /// Register with `MXMetricManager` so payloads start arriving. Called once
-  /// from the owning App's init. The instance lives for the process lifetime
-  /// — no `deinit { stop() }` because `MXMetricManager.remove` has been
-  /// observed to crash in parallel-test harnesses when called on subscribers
-  /// added across concurrent test cases.
+  /// Register with `MXMetricManager`. The production caller is the lazy
+  /// `shared` initializer, which guarantees a single invocation. The method
+  /// stays `nonisolated` so test helpers can call it on their own instances
+  /// without involving the shared singleton.
   public nonisolated func start() {
     #if canImport(MetricKit)
     MXMetricManager.shared.add(self)
