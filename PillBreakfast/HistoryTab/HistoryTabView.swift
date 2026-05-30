@@ -41,20 +41,20 @@ struct HistoryTabView: View {
   }
 
   var body: some View {
-    // Compute the cells once and share them between the heatmap and the
-    // empty-state overlay; a computed property here would still be evaluated
-    // twice per render pass.
+    // Hoist `Self.days(...)` into a single local so the heatmap init and the
+    // overlay's emptiness check don't each call it. A computed property
+    // wouldn't help — SwiftUI evaluates them per access, not per render.
     let cells = Self.days(
       from: doseEvents,
       reference: referenceDate,
       calendar: calendar,
       filterMedicationID: filterMedicationID
     )
-    let totalEvents = cells.reduce(0) { $0 + $1.eventCount }
+    let isEmpty = cells.allSatisfy { $0.eventCount == 0 }
     return NavigationStack {
       HeatmapView(days: cells)
         .overlay {
-          if totalEvents == 0 {
+          if isEmpty {
             ContentUnavailableView(
               "No history yet",
               systemImage: "tray",
