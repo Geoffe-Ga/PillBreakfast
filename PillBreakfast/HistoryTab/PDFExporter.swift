@@ -13,7 +13,11 @@ import UIKit
 /// TODO(#57): `UIGraphicsPDFRenderer.writePDF` blocks the calling actor. The
 /// SwiftData fetch needs MainActor, but the render pass does not — when the
 /// share-sheet host lands, split `collectBlocks` (MainActor) from a
-/// `Task.detached` render so a long export doesn't stall the UI.
+/// `Task.detached` render so a long export doesn't stall the UI. Note that
+/// `PDFDayBlock.events` currently holds live `DoseEvent` instances; the
+/// detach will need a value-type projection (e.g. a `PDFDayBlockSnapshot`
+/// with name/qty/time materialized) so the renderer doesn't reach into the
+/// model context off-actor.
 @MainActor
 enum PDFExporter {
   /// Window matches the History tab: 30 days inclusive (today + 29 prior).
@@ -36,7 +40,7 @@ enum PDFExporter {
   ) throws -> URL {
     let blocks = try collectBlocks(in: context, now: now, calendar: calendar)
     let pages = PDFPaginator.paginate(blocks, layout: layout)
-    let url = temporaryURL(now: now)
+    let url = temporaryURL()
     let metadata: [String: Any] = [
       kCGPDFContextCreator as String: "PillBreakfast",
       kCGPDFContextTitle as String: "PillBreakfast — last 30 days",
@@ -105,9 +109,14 @@ enum PDFExporter {
   }
 
   /// Per-day ingredient roll-up: sum mg by `ingredientID`, keep the earliest
-  /// snapshot's name (`events` is fetched ascending so the first event seen
-  /// is the earliest of the day), and sort alphabetically for stable display.
-  /// Only `.taken` events contribute, matching `HistoryQueries.dailySummary`.
+  /// snapshot's name, and sort alphabetically for stable display. Only
+  /// `.taken` events contribute, matching `HistoryQueries.dailySummary`.
+  ///
+  /// - Precondition: `events` is sorted ascending by `takenAt`. The
+  ///   "earliest-name wins" rule reads the first occurrence in the iteration
+  ///   order, so an unsorted slice would silently pick the wrong name. The
+  ///   sole production caller is `collectBlocks`, which uses
+  ///   `SortDescriptor(\DoseEvent.takenAt)` in its fetch.
   static func aggregateIngredients(in events: [DoseEvent]) -> [LoggedIngredientAmount] {
     var totalsByID: [UUID: LoggedIngredientAmount] = [:]
     for event in events where event.status == .taken {
@@ -126,12 +135,11 @@ enum PDFExporter {
     return totalsByID.values.sorted { $0.ingredientName < $1.ingredientName }
   }
 
-  private static func temporaryURL(now: Date) -> URL {
-    // Suffix the timestamp so repeated exports in the same session don't
-    // collide (and Mail's preview cache distinguishes them).
-    let stamp = Int(now.timeIntervalSince1970)
-    return FileManager.default.temporaryDirectory
-      .appendingPathComponent("PillBreakfast-\(stamp).pdf")
+  private static func temporaryURL() -> URL {
+    // UUID-suffixed so repeated exports in the same second never collide
+    // (and Mail's preview cache distinguishes them by URL).
+    FileManager.default.temporaryDirectory
+      .appendingPathComponent("PillBreakfast-\(UUID().uuidString).pdf")
   }
 
   // MARK: - Rendering
@@ -158,13 +166,16 @@ enum PDFExporter {
 
   /// Precondition: `blocks` were partitioned by `PDFPaginator.paginate` so
   /// the cumulative height stays within `layout.bodyHeight`. Drawing
-  /// un-paginated blocks here would overflow into the footer band.
+  /// un-paginated blocks here would overflow into the footer band. Enforced
+  /// with `preconditionFailure` (not `assert`) because for a medical
+  /// export, silently obscuring the footer is a worse outcome than failing.
   private static func drawBody(blocks: [PDFDayBlock], layout: PDFLayoutConstants, calendar: Calendar) {
     let totalHeight = blocks.reduce(CGFloat(0)) { $0 + $1.height(layout: layout) }
-    assert(
-      totalHeight <= layout.bodyHeight + 1,
-      "drawBody received un-paginated blocks (\(totalHeight) > \(layout.bodyHeight)) — call PDFPaginator.paginate first"
-    )
+    if totalHeight > layout.bodyHeight + 1 {
+      preconditionFailure(
+        "drawBody received un-paginated blocks (\(totalHeight) > \(layout.bodyHeight)) — call PDFPaginator.paginate first"
+      )
+    }
     var y = layout.contentTop
     for block in blocks {
       let header = block.date.formatted(date: .complete, time: .omitted)
