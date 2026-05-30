@@ -55,7 +55,8 @@ public enum HistoryQueries {
   public static func dailySummary(
     in context: ModelContext,
     day: Date,
-    calendar: Calendar = .current
+    calendar: Calendar = .current,
+    medicationID: UUID? = nil
   ) throws -> DailySummary {
     let startOfDay = calendar.startOfDay(for: day)
     guard let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
@@ -64,7 +65,11 @@ public enum HistoryQueries {
     // `takenAt` ascending so the aggregation loop's "first-seen ingredient
     // name wins" rule is deterministic across fetches.
     let descriptor = FetchDescriptor<DoseEvent>(
-      predicate: #Predicate { $0.takenAt >= startOfDay && $0.takenAt < nextDay },
+      predicate: #Predicate {
+        $0.takenAt >= startOfDay
+          && $0.takenAt < nextDay
+          && (medicationID == nil || $0.medication?.id == medicationID)
+      },
       sortBy: [SortDescriptor(\DoseEvent.takenAt)]
     )
     let events = try context.fetch(descriptor)

@@ -29,8 +29,9 @@ struct HistoryTabViewTests {
     return ModelContext(container)
   }
 
-  private func insertEvent(at takenAt: Date, into context: ModelContext) {
+  private func insertEvent(at takenAt: Date, into context: ModelContext, medication: Medication? = nil) {
     context.insert(DoseEvent(
+      medication: medication,
       takenAt: takenAt,
       quantity: 1,
       status: .taken,
@@ -135,6 +136,93 @@ struct HistoryTabViewTests {
     // Only the in-window May 15 event is counted; the April 1 one has no
     // matching bucket key and is silently dropped.
     #expect(total == 1)
+  }
+
+  // MARK: - days(...) medication filter
+
+  @Test func daysWithoutFilterCountsEveryEvent() throws {
+    let ref = reference(2026, 5, 30)
+    let context = try makeInMemoryContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    context.insert(lithium)
+    context.insert(tylenol)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: lithium)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: tylenol)
+    try context.save()
+    let descriptor = FetchDescriptor<DoseEvent>(sortBy: [SortDescriptor(\.takenAt)])
+    let events = try context.fetch(descriptor)
+    let cells = HistoryTabView.days(
+      from: events,
+      reference: ref,
+      calendar: Self.utcCalendar()
+    )
+    let total = cells.reduce(0) { $0 + $1.eventCount }
+    #expect(total == 2)
+  }
+
+  @Test func daysWithFilterScopesToOneMedication() throws {
+    let ref = reference(2026, 5, 30)
+    let context = try makeInMemoryContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let tylenol = Medication(displayName: "Tylenol", unitForm: .tablet, kind: .prn)
+    context.insert(lithium)
+    context.insert(tylenol)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: lithium)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: lithium)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: tylenol)
+    try context.save()
+    let descriptor = FetchDescriptor<DoseEvent>(sortBy: [SortDescriptor(\.takenAt)])
+    let events = try context.fetch(descriptor)
+    let cells = HistoryTabView.days(
+      from: events,
+      reference: ref,
+      calendar: Self.utcCalendar(),
+      filterMedicationID: lithium.id
+    )
+    let total = cells.reduce(0) { $0 + $1.eventCount }
+    // Only the two Lithium events count toward the heatmap intensity; the
+    // Tylenol event is silently excluded.
+    #expect(total == 2)
+  }
+
+  @Test func daysWithFilterDropsOrphanedEvents() throws {
+    let ref = reference(2026, 5, 30)
+    let context = try makeInMemoryContext()
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    context.insert(lithium)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: lithium)
+    insertEvent(at: reference(2026, 5, 30), into: context, medication: nil)
+    try context.save()
+    let descriptor = FetchDescriptor<DoseEvent>(sortBy: [SortDescriptor(\.takenAt)])
+    let events = try context.fetch(descriptor)
+    let cells = HistoryTabView.days(
+      from: events,
+      reference: ref,
+      calendar: Self.utcCalendar(),
+      filterMedicationID: lithium.id
+    )
+    let total = cells.reduce(0) { $0 + $1.eventCount }
+    #expect(total == 1)
+  }
+
+  // MARK: - MedicationFilterMenu label
+
+  @Test func filterMenuLabelIsAllMedicationsWhenSelectionIsNil() {
+    #expect(MedicationFilterMenu.labelText(for: nil, in: []) == "All medications")
+  }
+
+  @Test func filterMenuLabelIsMedicationNameWhenSelected() {
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    #expect(MedicationFilterMenu.labelText(for: lithium.id, in: [lithium]) == "Lithium")
+  }
+
+  @Test func filterMenuLabelFallsBackToAllWhenSelectionMissing() {
+    // A selection that doesn't match any current medication (e.g. the med was
+    // hard-deleted) falls back to "All medications" rather than rendering an
+    // empty label or trapping.
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    #expect(MedicationFilterMenu.labelText(for: UUID(), in: [lithium]) == "All medications")
   }
 
   // MARK: - view construction smoke test
