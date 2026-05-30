@@ -149,6 +149,90 @@ struct PendingQueueSelectorTests {
     #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
   }
 
+  @Test func proactivelyLoggedYesterdayIsSuppressedToday() throws {
+    // takenAt is late yesterday (23:00), but scheduledFor is today's 8 AM
+    // slot — the user pre-logged the slot at the end of the previous day.
+    // The selector running today at 8:05 must read this as "already logged"
+    // and suppress the slot; otherwise a duplicate-log is the silent
+    // failure mode the wider takenAt window is meant to prevent.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+    let yesterdayLateNight = try #require(
+      cal.date(byAdding: .hour, value: -1, to: cal.startOfDay(for: todayAt8))
+    ) // 23:00 yesterday
+
+    context.insert(DoseEvent(
+      medication: med,
+      scheduledFor: todayAt8,
+      takenAt: yesterdayLateNight,
+      quantity: 1,
+      status: .taken,
+      loggedOn: .watch
+    ))
+    try context.save()
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
+  }
+
+  @Test func fetchLimitHitThrowsRatherThanReturnsTruncated() throws {
+    // Seeds *exactly* `fetchLimit` events (not N+1) — the guard is
+    // `events.count >= Self.fetchLimit`, so `==` already trips the throw.
+    // The selector must throw rather than return a truncated "already
+    // logged" set; silent truncation would resurface previously-logged
+    // slots as still pending, opening a duplicate-log path on safety-
+    // critical meds.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+
+    for offset in 0 ..< PendingQueueSelector.fetchLimit {
+      let takenAt = try #require(
+        cal.date(byAdding: .minute, value: offset, to: cal.startOfDay(for: todayAt8))
+      )
+      context.insert(DoseEvent(
+        medication: med,
+        scheduledFor: todayAt8,
+        takenAt: takenAt,
+        quantity: 1,
+        status: .taken,
+        loggedOn: .watch
+      ))
+    }
+    try context.save()
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    #expect(throws: PendingQueueSelector.CalendarError.fetchLimitReached) {
+      _ = try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context)
+    }
+  }
+
+  @Test func outOfWindowHistoryDoesNotAffectResult() throws {
+    // Regression guard: the old per-slot `med.doseEvents.contains(...)`
+    // hydrated every historical event. The bounded fetch must not count
+    // out-of-window events as "already logged" — today's slot must still
+    // surface even when the same slot has been filled on 60 prior days.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+
+    // Seed via `Calendar.date(byAdding:)` rather than negative `day:`
+    // components, which can roll in surprising ways across short months.
+    for daysAgo in 1 ... 60 {
+      let priorDay = try #require(cal.date(byAdding: .day, value: -daysAgo, to: todayAt8))
+      try logDose(med, scheduledFor: priorDay, in: context)
+    }
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    let result = try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context)
+    #expect(result.count == 1)
+    #expect(try #require(result.first).scheduledFor == todayAt8)
+  }
+
   @Test func loggingOneSlotDoesNotSuppressAnotherSlot() throws {
     // A twice-daily med with both slots inside the window: logging the 8:00 dose
     // must not hide the 8:30 dose. (A coarse same-day match would wrongly drop both.)
