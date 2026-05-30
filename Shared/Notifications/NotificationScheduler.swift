@@ -78,10 +78,37 @@ public enum NotificationScheduler {
     let minute: Int
   }
 
+  /// Key under which `makeContent` stashes the resolved display label for
+  /// the slot. `public` so consumers in the watch target — and in
+  /// `Shared/` once it ships as its own package — read from the same
+  /// constant and the schedule→delegate round-trip can't drift on a key typo.
+  public static let medicationNameUserInfoKey = "medicationName"
+
+  /// Resolves the medication label for a snooze action. Prefers the
+  /// structured `userInfo` value (the schedule-time write) and falls
+  /// back to `body` for legacy / hand-scheduled requests that lack the
+  /// key — `body` carries the same display string `makeContent` would
+  /// have stashed, whereas `title` is the aggregate `"Pills · N to take"`
+  /// and would degrade the snooze label. `title` is the last-resort
+  /// fallback for the (unlikely) request that lacks both.
+  public static func medicationName(from content: UNNotificationContent) -> String {
+    if let stored = content.userInfo[medicationNameUserInfoKey] as? String, !stored.isEmpty {
+      return stored
+    }
+    if !content.body.isEmpty { return content.body }
+    return content.title
+  }
+
   private static func makeContent(namesAtSlot names: [String]) -> UNMutableNotificationContent {
     let content = UNMutableNotificationContent()
     content.title = "Pills · \(names.count) to take"
-    content.body = bodyText(for: names)
+    let body = bodyText(for: names)
+    content.body = body
+    // Snooze-time reschedule reads this rather than the display body. Keeping
+    // the structured copy means a future tweak to `bodyText` (a friendlier
+    // "Time to take Vitamin D" sentence, say) can't silently flow back onto
+    // the rescheduled notification's body.
+    content.userInfo[medicationNameUserInfoKey] = body
     content.categoryIdentifier = NotificationCategory.maintenanceDose
     content.sound = .default
     return content

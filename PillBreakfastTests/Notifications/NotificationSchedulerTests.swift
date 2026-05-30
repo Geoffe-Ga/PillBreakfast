@@ -99,4 +99,44 @@ struct NotificationSchedulerTests {
     let body = try #require(requests.first?.content.body)
     #expect(body == "Aspirin · Lithium · +2 more") // names sorted, first two + overflow
   }
+
+  @Test func medicationNameRoundTripsThroughUserInfo() throws {
+    // The snooze action recovers the medication name from `userInfo`, not the
+    // display body — so reformatting the body (e.g. "Time to take Vitamin D")
+    // can't silently flow back into the rescheduled notification. Pin the
+    // schedule-time write so a regression on `makeContent` trips the suite.
+    let dose = ScheduledDoseDTO(id: UUID(), hour: 8, minute: 0, quantity: 1, daysOfWeek: [])
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [medicationDTO(name: "Vitamin D", schedule: [dose])]
+    )
+
+    let request = try #require(NotificationScheduler.makeRequests(from: snapshot).first)
+    let stored = request.content.userInfo[NotificationScheduler.medicationNameUserInfoKey] as? String
+    // Currently the user-info string is the same display body the user reads,
+    // but the assertion is on the key being populated and matching the body —
+    // future refactors that diverge them must update this expectation
+    // intentionally.
+    #expect(stored == request.content.body)
+    #expect(stored == "Vitamin D")
+    // And the resolver returns the same string for a freshly-scheduled request.
+    #expect(NotificationScheduler.medicationName(from: request.content) == "Vitamin D")
+  }
+
+  @Test func medicationNameFallsBackToBodyWhenUserInfoMissing() {
+    // Legacy / hand-scheduled requests without the userInfo key should keep
+    // showing the body (which is the medication label) rather than the
+    // aggregate "Pills · N to take" title.
+    let content = UNMutableNotificationContent()
+    content.title = "Pills · 1 to take"
+    content.body = "Vitamin D"
+    #expect(NotificationScheduler.medicationName(from: content) == "Vitamin D")
+  }
+
+  @Test func medicationNameFallsBackToTitleWhenBodyAndUserInfoMissing() {
+    // Last-resort fallback: better to show the title than an empty string.
+    let content = UNMutableNotificationContent()
+    content.title = "Pills · 1 to take"
+    #expect(NotificationScheduler.medicationName(from: content) == "Pills · 1 to take")
+  }
 }

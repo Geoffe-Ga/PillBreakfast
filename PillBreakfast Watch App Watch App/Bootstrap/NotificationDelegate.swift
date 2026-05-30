@@ -50,7 +50,7 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
         let context = SnoozeContext(
           scheduledDoseID: doseID,
           originalScheduledFor: response.notification.date,
-          medicationName: request.content.body
+          medicationName: NotificationScheduler.medicationName(from: request.content)
         )
         await NotificationActionRouter.shared.presentSnooze(context)
       } else {
