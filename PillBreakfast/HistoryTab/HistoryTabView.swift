@@ -41,64 +41,76 @@ struct HistoryTabView: View {
   }
 
   var body: some View {
+    // Hoist once: heatmap init and isEmpty check share the same cells.
+    let cells = Self.days(
+      from: doseEvents,
+      reference: referenceDate,
+      calendar: calendar,
+      filterMedicationID: filterMedicationID
+    )
+    let isEmpty = cells.allSatisfy { $0.eventCount == 0 }
     NavigationStack {
-      HeatmapView(days: Self.days(
-        from: doseEvents,
-        reference: referenceDate,
-        calendar: calendar,
-        filterMedicationID: filterMedicationID
-      ))
-      .navigationTitle("History")
-      .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-          MedicationFilterMenu(
-            medications: medications,
-            selection: $filterMedicationID
-          )
-        }
-        ToolbarItem(placement: .secondaryAction) {
-          if let exportedURL {
-            ShareLink(
-              item: exportedURL,
-              preview: SharePreview(
-                "PillBreakfast — last 30 days",
-                image: Image(systemName: "doc.text")
-              )
-            ) {
-              Label("Export 30 days as PDF", systemImage: "square.and.arrow.up")
-            }
-          } else {
-            // Spinner placeholder while the export runs (typically < 100 ms
-            // at the 12-doses-per-day budget). Suppressed entirely if the
-            // export errored; the alert surfaces the failure instead.
-            ProgressView()
-              .opacity(exportError == nil ? 1 : 0)
+      HeatmapView(days: cells)
+        .overlay {
+          if isEmpty {
+            ContentUnavailableView(
+              "No history yet",
+              systemImage: "tray",
+              description: Text(Self.emptyDescription(forFilter: filterMedicationID, in: medications))
+            )
           }
         }
-      }
-      .navigationDestination(for: HistoryDayRoute.self) { route in
-        DayDrillDownView(
-          date: route.date,
-          calendar: calendar,
-          filterMedicationID: filterMedicationID
-        )
-      }
-      .task { generateExport() }
-      .alert(
-        "Export failed",
-        isPresented: Binding(
-          get: { exportError != nil },
-          set: { if !$0 { exportError = nil } }
-        )
-      ) {
-        Button("Try Again") {
-          exportError = nil
-          generateExport()
+        .navigationTitle("History")
+        .toolbar {
+          ToolbarItem(placement: .primaryAction) {
+            MedicationFilterMenu(
+              medications: medications,
+              selection: $filterMedicationID
+            )
+          }
+          ToolbarItem(placement: .secondaryAction) {
+            if let exportedURL {
+              ShareLink(
+                item: exportedURL,
+                preview: SharePreview(
+                  "PillBreakfast — last 30 days",
+                  image: Image(systemName: "doc.text")
+                )
+              ) {
+                Label("Export 30 days as PDF", systemImage: "square.and.arrow.up")
+              }
+            } else {
+              // Spinner placeholder while the export runs (typically < 100 ms
+              // at the 12-doses-per-day budget). Suppressed entirely if the
+              // export errored; the alert surfaces the failure instead.
+              ProgressView()
+                .opacity(exportError == nil ? 1 : 0)
+            }
+          }
         }
-        Button("Cancel", role: .cancel) { exportError = nil }
-      } message: {
-        Text(exportError ?? "")
-      }
+        .navigationDestination(for: HistoryDayRoute.self) { route in
+          DayDrillDownView(
+            date: route.date,
+            calendar: calendar,
+            filterMedicationID: filterMedicationID
+          )
+        }
+        .task { generateExport() }
+        .alert(
+          "Export failed",
+          isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+          )
+        ) {
+          Button("Try Again") {
+            exportError = nil
+            generateExport()
+          }
+          Button("Cancel", role: .cancel) { exportError = nil }
+        } message: {
+          Text(exportError ?? "")
+        }
     }
   }
 
@@ -130,6 +142,14 @@ struct HistoryTabView: View {
       exportedURL = nil
       exportError = "Couldn't generate the export. Please try again."
     }
+  }
+
+  /// Description for the empty-history overlay; falls back to generic copy if the filter no longer matches a med.
+  static func emptyDescription(forFilter selection: UUID?, in medications: [Medication]) -> String {
+    if let id = selection, let name = medications.first(where: { $0.id == id })?.displayName {
+      return "No \(name) doses logged in the last 30 days."
+    }
+    return "Log doses on your watch and they'll appear here."
   }
 
   /// Start-of-day for the oldest cell in the 30-day window.

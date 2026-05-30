@@ -225,6 +225,32 @@ struct HistoryTabViewTests {
     #expect(MedicationFilterMenu.labelText(for: UUID(), in: [lithium]) == "All medications")
   }
 
+  // MARK: - emptyDescription
+
+  @Test func emptyDescriptionWithoutFilterNudgesUserToTheWatch() {
+    // The unfiltered empty state reads as "log doses on your watch" so the
+    // user knows where to act, not just that the screen is blank.
+    let copy = HistoryTabView.emptyDescription(forFilter: nil, in: [])
+    #expect(copy.contains("watch"))
+  }
+
+  @Test func emptyDescriptionWithFilterNamesTheMedication() {
+    // A filtered empty state names the medication so it's clear nothing was
+    // logged for *it* specifically rather than a global blank state.
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let copy = HistoryTabView.emptyDescription(forFilter: lithium.id, in: [lithium])
+    #expect(copy.contains("Lithium"))
+  }
+
+  @Test func emptyDescriptionWithMissingFilterFallsBackToGeneric() {
+    // Selection points at a medication that no longer exists (e.g. archived
+    // then hard-deleted); fall back to the generic copy rather than
+    // rendering "No  doses logged" with a hole where the name would be.
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let copy = HistoryTabView.emptyDescription(forFilter: UUID(), in: [lithium])
+    #expect(copy.contains("watch"))
+  }
+
   // MARK: - view construction smoke test
 
   @Test func viewConstructsWithoutCrashingOnEmptyStore() {
