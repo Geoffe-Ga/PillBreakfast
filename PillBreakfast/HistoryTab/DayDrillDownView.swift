@@ -72,14 +72,9 @@ struct DayDrillDownView: View {
     }
   }
 
+  /// Round to whole mg — adequate precision for ceilings (e.g. 2400 mg/day Lithium).
   static func formatMg(_ mg: Double) -> String {
-    // 1 mg precision is enough for ceilings (e.g. 2400 mg/day Lithium); strip
-    // trailing zeros so 200.0 renders as "200 mg" not "200.0 mg".
-    let rounded = (mg * 1).rounded() / 1
-    if rounded.truncatingRemainder(dividingBy: 1) == 0 {
-      return "\(Int(rounded)) mg"
-    }
-    return String(format: "%.1f mg", rounded)
+    "\(Int(mg.rounded())) mg"
   }
 }
 

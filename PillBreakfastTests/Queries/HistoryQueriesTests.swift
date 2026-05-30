@@ -125,7 +125,6 @@ struct HistoryQueriesTests {
     let cal = try utcCalendar()
     let context = try makeContext()
     let apapID = UUID()
-    let day = try date(2026, 5, 29, 12, 0, in: cal)
     let morning = try date(2026, 5, 29, 8, 0, in: cal)
     let noon = try date(2026, 5, 29, 12, 0, in: cal)
     let evening = try date(2026, 5, 29, 20, 0, in: cal)
@@ -135,7 +134,7 @@ struct HistoryQueriesTests {
     insertDose(context, name: "Acetaminophen", ingredientID: apapID, mg: 500, at: evening, status: .snoozed)
     try context.save()
 
-    let summary = try HistoryQueries.dailySummary(in: context, day: day, calendar: cal)
+    let summary = try HistoryQueries.dailySummary(in: context, day: morning, calendar: cal)
     // All three statuses count toward the per-status totals.
     #expect(summary.totalCount == 3)
     #expect(summary.takenCount == 1)
