@@ -9,23 +9,11 @@ struct MainTabView: View {
       RegimenTabHostView()
         .tabItem { Label("Regimen", systemImage: "pills") }
 
-      ComingSoonView(title: "History")
+      HistoryTabView()
         .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
 
       SettingsView()
         .tabItem { Label("Settings", systemImage: "gearshape") }
-    }
-  }
-}
-
-private struct ComingSoonView: View {
-  let title: String
-
-  var body: some View {
-    NavigationStack {
-      Text("Coming soon")
-        .foregroundStyle(.secondary)
-        .navigationTitle(title)
     }
   }
 }
