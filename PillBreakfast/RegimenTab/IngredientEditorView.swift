@@ -36,7 +36,11 @@ struct IngredientEditorView: View {
   /// Edit an existing ingredient. Preserves the prior call-site shape.
   init(ingredient: Ingredient) {
     self.mode = .edit(ingredient)
-    _nameText = State(initialValue: ingredient.name)
+    // Edit mode never surfaces a Name field (renaming would need a
+    // duplicate-name guard and migration of `stableUUID`-derived seed
+    // IDs); the `@State` is initialised empty just to satisfy the
+    // declaration.
+    _nameText = State(initialValue: "")
     _ceilingText = State(initialValue: ingredient.dailyCeilingMg.map { String(Int($0.rounded())) } ?? "")
     _intervalText = State(initialValue: ingredient.minIntervalMinutes.map(String.init) ?? "")
     _isHighRisk = State(initialValue: ingredient.isHighRisk)
@@ -193,7 +197,14 @@ struct IngredientEditorView: View {
       saveError = "The change couldn't be saved. Please try again."
       return
     }
-    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+    // Only push when an existing ingredient's thresholds actually changed —
+    // a freshly-created Ingredient has no medication assignments yet, so its
+    // insert doesn't change the `RegimenSnapshot` (which carries medications
+    // + components). The subsequent medication save will push when the
+    // ingredient gets wired into a product.
+    if case .edit = mode {
+      WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+    }
     dismiss()
   }
 }
