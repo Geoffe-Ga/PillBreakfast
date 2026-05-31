@@ -58,10 +58,13 @@ struct RightNowView: View {
       VStack(spacing: LiquidGlassTheme.Spacing.standard) {
         VStack(spacing: LiquidGlassTheme.Spacing.compact) {
           Image(systemName: "checkmark.circle")
-            .font(.title2)
-          LiquidGlassTheme.Typography.title("All caught up")
+            .font(.system(size: 44, weight: .light))
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+          LiquidGlassTheme.Typography.display("All caught up")
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
+            .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
         }
-        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
 
         // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
         NavigationLink {

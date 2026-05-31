@@ -21,17 +21,27 @@ struct MarkTakenView: View {
   }
 
   var body: some View {
-    VStack(spacing: LiquidGlassTheme.Spacing.compact) {
-      HStack(spacing: 6) {
-        if let color = Color(hex: colorHex) {
-          Circle().fill(color).frame(width: 10, height: 10)
+    VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+      // Hero card: med name + dosage in an elevated glass block so the dose
+      // identity reads as the screen's anchor before the confirm action.
+      VStack(spacing: LiquidGlassTheme.Spacing.compact) {
+        HStack(spacing: LiquidGlassTheme.Spacing.compact) {
+          if let color = Color(hex: colorHex) {
+            Circle().fill(color).frame(width: 10, height: 10)
+          }
+          LiquidGlassTheme.Typography.display(medicationName)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
         }
-        LiquidGlassTheme.Typography.medicationName(medicationName)
-          .multilineTextAlignment(.center)
-      }
 
-      LiquidGlassTheme.Typography.dosage(detail)
-        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+        LiquidGlassTheme.Typography.dosage(detail)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      }
+      .padding(LiquidGlassTheme.Spacing.standard)
+      .frame(maxWidth: .infinity)
+      .background(LiquidGlassTheme.Materials.surface)
+      .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.card))
+      .elevation(.raised)
 
       if isHighRisk {
         HighRiskConfirmButton(holdDuration: holdDuration, onConfirmed: onMarkTaken)
@@ -41,7 +51,7 @@ struct MarkTakenView: View {
 
       Button("Skip", action: onSkip)
         .buttonStyle(.bordered)
-        .font(LiquidGlassTheme.Typography.captionFont)
+        .font(LiquidGlassTheme.Typography.footnoteFont)
     }
     .padding()
     .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -23,13 +23,17 @@ struct SafetyWarningView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.standard) {
         ForEach(messages) { message in
-          VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
+          VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact / 2) {
+            HStack(spacing: LiquidGlassTheme.Spacing.compact / 2) {
               Image(systemName: "exclamationmark.triangle.fill")
-              LiquidGlassTheme.Typography.medicationName(message.title)
+                .foregroundStyle(LiquidGlassTheme.Colors.highRiskAccent)
+              LiquidGlassTheme.Typography.headline(message.title)
             }
             ForEach(message.detailLines, id: \.self) { line in
-              LiquidGlassTheme.Typography.caption(line)
+              // `footnote` (13 pt) instead of `caption` — safety detail copy
+              // matters; the next-smaller step would push it under the
+              // legibility floor on a 41 mm face.
+              LiquidGlassTheme.Typography.footnote(line)
                 .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
             }
           }

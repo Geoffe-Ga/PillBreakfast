@@ -17,8 +17,10 @@ struct SnoozeWarningView: View {
 
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
-      LiquidGlassTheme.Typography.title("Snoozed \(snoozeCount) times")
-      LiquidGlassTheme.Typography.caption("Skip instead, or take it now?")
+      LiquidGlassTheme.Typography.display("Snoozed \(snoozeCount) times")
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.8)
+      LiquidGlassTheme.Typography.footnote("Skip instead, or take it now?")
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         .multilineTextAlignment(.center)
 
