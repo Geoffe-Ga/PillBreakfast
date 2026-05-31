@@ -92,6 +92,7 @@ struct HealthKitImportSheet: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
   @Environment(\.modelContext) private var modelContext
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   // @State (not let) so the injected importer survives SwiftUI redraws; the
   // default is the live service, tests inject a fake via the initializer.
@@ -142,7 +143,9 @@ struct HealthKitImportSheet: View {
       content
         // Calm fade between authorization states — checking → loaded /
         // denied / failed reads as one flow rather than a jump cut.
-        .animation(LiquidGlassTheme.Motion.gentle, value: state)
+        // SwiftUI does not auto-skip custom `Animation` values under
+        // reduce-motion; gate explicitly.
+        .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.gentle, value: state)
         .navigationTitle("Apple Health")
         .toolbarTitleDisplayMode(.inline)
         .toolbar {

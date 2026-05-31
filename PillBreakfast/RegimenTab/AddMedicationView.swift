@@ -19,9 +19,12 @@ struct AddMedicationView: View {
         .navigationTitle("New Medication")
         .toolbarTitleDisplayMode(.inline)
         // Large-detent sheet so the form has room without dominating
-        // the iPhone screen. Drag-to-dismiss handle is included by default.
+        // the iPhone screen.
         .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        // Force exit through Cancel or Save — a drag-to-dismiss would
+        // skip `cancel()` and leave any inline-created `Ingredient`s
+        // orphaned in the store.
+        .interactiveDismissDisabled(true)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") { cancel() }

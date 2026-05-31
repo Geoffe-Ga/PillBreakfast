@@ -7,6 +7,7 @@ import SwiftUI
 struct RightNowView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(NotificationActionRouter.self) private var actionRouter
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
@@ -63,7 +64,9 @@ struct RightNowView: View {
     // Transition between "doses pending" and "all caught up" is calm —
     // the user is leaving a working state, not celebrating completion
     // (`QueueSuccessView` owns the celebration with `Motion.dramatic`).
-    .animation(LiquidGlassTheme.Motion.gentle, value: pendingDoses.isEmpty)
+    // SwiftUI does not auto-skip custom `Animation` values under
+    // reduce-motion; gate explicitly.
+    .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.gentle, value: pendingDoses.isEmpty)
   }
 
   private func reload() {
