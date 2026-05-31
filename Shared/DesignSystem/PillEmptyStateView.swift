@@ -1,16 +1,18 @@
 import SwiftUI
 
-/// House `ContentUnavailableView` shape — 44 pt thin SF Symbol hero,
-/// `displayFont` title, `footnoteFont` body. Used wherever a surface needs
-/// an empty/inert state and we want all three to feel like the same product.
-///
-/// The host typically wraps this in `.overlay { … }` on the surface that
-/// would otherwise be empty so it centres correctly rather than collapsing
-/// into a `List` row.
+/// House `ContentUnavailableView` shape — 44 pt thin SF Symbol + `displayFont`
+/// title + `footnoteFont` body. Wrap in `.overlay { … }` so it centres
+/// instead of collapsing into a `List` row.
 struct PillEmptyStateView: View {
   let title: String
   let systemImage: String
   let description: String
+
+  init(title: String, description: String, systemImage: String = "tray") {
+    self.title = title
+    self.description = description
+    self.systemImage = systemImage
+  }
 
   var body: some View {
     ContentUnavailableView {
@@ -32,7 +34,6 @@ struct PillEmptyStateView: View {
 #Preview {
   PillEmptyStateView(
     title: "No history yet",
-    systemImage: "tray",
     description: "Log doses on your watch and they'll appear here."
   )
 }

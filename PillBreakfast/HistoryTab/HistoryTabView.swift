@@ -180,7 +180,6 @@ private struct HistoryContent: View {
           if isEmpty {
             PillEmptyStateView(
               title: "No history yet",
-              systemImage: "tray",
               description: HistoryTabView.emptyDescription(forFilter: filterMedicationID, in: medications)
             )
           }

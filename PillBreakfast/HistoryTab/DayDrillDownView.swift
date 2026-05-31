@@ -67,7 +67,6 @@ struct DayDrillDownView: View {
       if events.isEmpty {
         PillEmptyStateView(
           title: "No doses logged",
-          systemImage: "tray",
           description: "Nothing was logged on this day."
         )
       }
@@ -96,8 +95,7 @@ struct DayDrillDownView: View {
     }
   }
 
-  /// Hero-card treatment for the day's ingredient totals — `CornerRadius.card`,
-  /// elevated glass, monospaced mg figures so digits don't shift between rows.
+  /// Hero card: elevated glass + `CornerRadius.card` + monospaced mg digits.
   private func ingredientSummaryCard(_ summary: DailySummary) -> some View {
     VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
       LiquidGlassTheme.Typography.headline("Ingredient totals")
@@ -129,9 +127,7 @@ private struct SummaryTaskID: Equatable {
 }
 
 private struct DayEventRow: View {
-  /// Inter-line spacing inside an event row — sub-compact on purpose so
-  /// the name and the timestamp hug as one row, matching the regimen-row
-  /// rhythm in `RegimenListView`.
+  /// Sub-compact inter-line spacing so name + timestamp hug as one row.
   static let rowLineSpacing: CGFloat = 2
 
   let event: DoseEvent

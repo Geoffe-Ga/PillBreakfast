@@ -71,4 +71,24 @@ struct HeatmapViewTests {
     }
     _ = HeatmapView(days: cells).body
   }
+
+  // MARK: - legendAccessibilityLabel
+
+  @Test func legendLabelForZeroDosesMentionsEmptyState() {
+    let label = HeatmapView.legendAccessibilityLabel(maxCount: 0)
+    #expect(label.contains("no doses"))
+    #expect(label.lowercased().contains("quiet to busy"))
+  }
+
+  @Test func legendLabelForSingleDoseUsesSingular() {
+    let label = HeatmapView.legendAccessibilityLabel(maxCount: 1)
+    #expect(label.contains("1 dose"))
+    // Pin that the plural form doesn't sneak in via substring overlap.
+    #expect(!label.contains("1 doses"))
+  }
+
+  @Test func legendLabelForMultipleDosesUsesPlural() {
+    let label = HeatmapView.legendAccessibilityLabel(maxCount: 5)
+    #expect(label.contains("5 doses"))
+  }
 }

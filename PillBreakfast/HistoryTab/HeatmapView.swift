@@ -1,16 +1,8 @@
 import SwiftUI
 
-/// 30-day calendar heatmap with monochromatic intensity. Cell shade is one hue
-/// (`.primary`) with opacity scaled by per-day dose count, normalized to the
-/// busiest day in the window so a quiet week still reads at the top end
-/// rather than washing out (SPEC §6.2; CLAUDE.md "color reserved for high-risk
-/// meds").
-///
-/// **Layout note**: the grid is row-major (first 7 cells fill the first row,
-/// regardless of weekday). A proper GitHub-style calendar heatmap — columns
-/// are weeks, rows are weekdays, with a weekday rail on the left and month
-/// markers on top — needs a layout refactor and is tracked in #178. The
-/// intensity legend below the grid stays useful in both layouts.
+/// 30-day calendar heatmap (SPEC §6.2). Monochromatic `.primary` cells scaled
+/// by per-day dose count and normalized to the window's busiest day. The grid
+/// is row-major; the GitHub-style weekday-column layout is tracked in #178.
 struct HeatmapView: View {
   let days: [HistoryDay]
 
@@ -23,9 +15,7 @@ struct HeatmapView: View {
   /// the baseline.
   static let zeroOpacity: Double = 0.05
 
-  /// Legend-swatch ratios — quiet, mid, busy. Named so the renderer doesn't
-  /// re-allocate the literal on every body pass and so future tweaks land
-  /// in one place.
+  /// Legend-swatch ratios — quiet, mid, busy.
   private static let legendRatios: [Double] = [0.25, 0.55, 0.85]
 
   private static let columnSpacing: CGFloat = 4
@@ -61,9 +51,7 @@ struct HeatmapView: View {
     .glassBackground()
   }
 
-  /// Three-step monochromatic legend ("Quiet — Busy") tied to the busiest day
-  /// in the visible window. Helps a first-time viewer see that intensity
-  /// carries meaning even when the entire month is moderate.
+  /// Three-step monochromatic legend tied to the visible window's busiest day.
   private func intensityLegend(maxCount: Int) -> some View {
     HStack(spacing: LiquidGlassTheme.Spacing.compact) {
       LiquidGlassTheme.Typography.footnote("Quiet")
@@ -85,9 +73,7 @@ struct HeatmapView: View {
     .accessibilityLabel(Self.legendAccessibilityLabel(maxCount: maxCount))
   }
 
-  /// Explicit VoiceOver copy for the legend so it reads as a coherent
-  /// sentence rather than VoiceOver concatenating "Quiet", three shapes,
-  /// "Busy", "Busiest: N doses".
+  /// Coherent-sentence VoiceOver copy for the legend.
   static func legendAccessibilityLabel(maxCount: Int) -> String {
     if maxCount == 0 {
       return "Intensity legend, quiet to busy, no doses logged in this window."
