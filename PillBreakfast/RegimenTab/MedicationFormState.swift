@@ -16,9 +16,8 @@ struct ScheduleDraft: Identifiable, Hashable {
   var hour = 8
   var minute = 0
   var quantity = 1
-  /// When non-nil, the row's hour/minute are owned by the meal (editor in
-  /// `PillMealEditorView`) and the dose's `pillMeal` relationship is wired
-  /// on save.
+  /// When non-nil, the row's hour/minute are owned by the meal; the dose's
+  /// `pillMeal` relationship is wired on save.
   var pillMealID: UUID?
 }
 
@@ -28,6 +27,8 @@ struct ScheduleDraft: Identifiable, Hashable {
 @MainActor
 @Observable
 final class MedicationFormState {
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
+
   var displayName = ""
   var unitForm: MedicationForm = .tablet
   var kind: MedicationKind = .maintenance
@@ -125,6 +126,7 @@ final class MedicationFormState {
       let allMeals = try context.fetch(FetchDescriptor<PillMeal>())
       mealsByID = Dictionary(uniqueKeysWithValues: allMeals.map { ($0.id, $0) })
     } catch {
+      Self.logger.error("Meal fetch failed during schedule apply: \(error.localizedDescription, privacy: .public)")
       throw MedicationFormError.scheduleApplyFailed
     }
     medication.schedule = schedules.map { draft in
