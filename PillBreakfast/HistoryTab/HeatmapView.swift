@@ -91,8 +91,12 @@ private struct HistoryDayCell: View {
       .fill(.primary.opacity(opacity))
       .aspectRatio(1, contentMode: .fit)
       .overlay {
+        // Day number is non-safety copy — allow it to shrink so AX5 doesn't
+        // clip "30" into "..." on the 41-pt grid cell.
         LiquidGlassTheme.Typography.caption("\(day.dayOfMonth)")
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+          .minimumScaleFactor(0.5)
+          .lineLimit(1)
       }
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(Self.accessibilityLabel(for: day))
