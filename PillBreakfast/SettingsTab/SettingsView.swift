@@ -16,8 +16,11 @@ struct SettingsView: View {
             HStack {
               Text("Hold duration")
               Spacer()
+              // Scaling to 0.8 keeps the dosage figure on one line at AX5 next to the slider.
               LiquidGlassTheme.Typography.dosage(durationLabel(store.preferences.highRiskHoldDurationSeconds))
                 .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+                .minimumScaleFactor(0.8)
+                .lineLimit(1)
             }
             Slider(
               value: $store.preferences.highRiskHoldDurationSeconds,

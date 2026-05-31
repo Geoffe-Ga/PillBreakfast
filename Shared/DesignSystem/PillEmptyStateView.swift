@@ -17,7 +17,11 @@ struct PillEmptyStateView: View {
   var body: some View {
     ContentUnavailableView {
       Label {
+        // Scale to 0.8 + lineLimit(1) so AX5 keeps a short empty-state
+        // headline on one line rather than wrapping or truncating.
         LiquidGlassTheme.Typography.display(title)
+          .minimumScaleFactor(0.8)
+          .lineLimit(1)
       } icon: {
         Image(systemName: systemImage)
           .font(.system(size: 44, weight: .light))
