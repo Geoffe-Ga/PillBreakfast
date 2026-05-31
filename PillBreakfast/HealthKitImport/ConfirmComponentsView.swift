@@ -51,16 +51,29 @@ struct ConfirmComponentsView: View {
   var body: some View {
     List {
       ForEach(drafts) { draft in
-        Section(draft.displayName) {
+        Section {
           ForEach(library) { ingredient in
             row(draft: draft, ingredient: ingredient)
           }
           addNewRow(for: draft)
+        } header: {
+          VStack(alignment: .leading, spacing: 2) {
+            LiquidGlassTheme.Typography.medicationName(draft.displayName)
+              .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+              .textCase(nil)
+            LiquidGlassTheme.Typography.footnote("Pick the ingredients this product contains.")
+              .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+              .textCase(nil)
+          }
+          .padding(.vertical, LiquidGlassTheme.Spacing.compact)
         }
       }
     }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .navigationTitle("Confirm Components")
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .cancellationAction) {
         Button("Cancel") { cancel() }
@@ -91,20 +104,22 @@ struct ConfirmComponentsView: View {
     return Button {
       toggle(ingredient: ingredient.id, for: draft.id)
     } label: {
-      HStack {
+      HStack(spacing: LiquidGlassTheme.Spacing.compact) {
         VStack(alignment: .leading, spacing: 2) {
-          Text(ingredient.name)
+          LiquidGlassTheme.Typography.headline(ingredient.name)
+            .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
           if !ingredient.aliases.isEmpty {
-            Text(ingredient.aliases.joined(separator: ", "))
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            LiquidGlassTheme.Typography.footnote(ingredient.aliases.joined(separator: ", "))
+              .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
           }
         }
         Spacer()
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-          .foregroundStyle(isSelected ? .primary : .secondary)
+          .font(.title3)
+          .foregroundStyle(isSelected ? LiquidGlassTheme.Colors.primaryText : LiquidGlassTheme.Colors.secondaryText)
           .accessibilityLabel(isSelected ? "Selected" : "Not selected")
       }
+      .padding(.vertical, LiquidGlassTheme.Spacing.compact / 2)
       .contentShape(.rect)
     }
     .buttonStyle(.plain)
