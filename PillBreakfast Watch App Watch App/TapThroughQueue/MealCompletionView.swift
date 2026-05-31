@@ -35,6 +35,10 @@ struct MealCompletionView: View {
     .task {
       visible = true
       try? await Task.sleep(for: .seconds(Self.dwellSeconds))
+      // `try?` swallows `CancellationError`, so on view teardown we'd fall
+      // through and double-advance the queue. Honour cancellation
+      // explicitly before calling back.
+      guard !Task.isCancelled else { return }
       onAdvance()
     }
   }

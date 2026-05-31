@@ -6,13 +6,13 @@ import Testing
 struct PendingDoseMealOrdinalTests {
   private func pendingDose(
     medication: UUID = UUID(),
-    secondsFromMidnight: TimeInterval,
+    timeOffset: TimeInterval,
     mealID: UUID?,
     mealName: String?
   ) -> PendingDose {
     PendingDose(
       medicationID: medication,
-      scheduledFor: Date(timeIntervalSince1970: secondsFromMidnight),
+      scheduledFor: Date(timeIntervalSince1970: timeOffset),
       quantity: 1,
       mealID: mealID,
       mealName: mealName
@@ -22,9 +22,9 @@ struct PendingDoseMealOrdinalTests {
   @Test func ordinalIsAssignedToEachDoseInOrderWithinAMeal() {
     let mealID = UUID()
     let doses = [
-      pendingDose(secondsFromMidnight: 0, mealID: mealID, mealName: "Pill Breakfast"),
-      pendingDose(secondsFromMidnight: 1, mealID: mealID, mealName: "Pill Breakfast"),
-      pendingDose(secondsFromMidnight: 2, mealID: mealID, mealName: "Pill Breakfast"),
+      pendingDose(timeOffset: 0, mealID: mealID, mealName: "Pill Breakfast"),
+      pendingDose(timeOffset: 1, mealID: mealID, mealName: "Pill Breakfast"),
+      pendingDose(timeOffset: 2, mealID: mealID, mealName: "Pill Breakfast"),
     ]
     let assigned = PendingQueueSelector.assignMealOrdinals(to: doses)
     #expect(assigned.count == 3)
@@ -36,7 +36,7 @@ struct PendingDoseMealOrdinalTests {
 
   @Test func singletonMealLeavesOrdinalNilSoHeaderDropsTheOneOfOneSuffix() {
     let mealID = UUID()
-    let doses = [pendingDose(secondsFromMidnight: 0, mealID: mealID, mealName: "Pill Dinner")]
+    let doses = [pendingDose(timeOffset: 0, mealID: mealID, mealName: "Pill Dinner")]
     let assigned = PendingQueueSelector.assignMealOrdinals(to: doses)
     #expect(assigned.first?.mealOrdinal == nil)
     #expect(assigned.first?.mealName == "Pill Dinner")
@@ -44,8 +44,8 @@ struct PendingDoseMealOrdinalTests {
 
   @Test func ungroupedDosesGetNoOrdinalAndNoMealMetadata() {
     let doses = [
-      pendingDose(secondsFromMidnight: 0, mealID: nil, mealName: nil),
-      pendingDose(secondsFromMidnight: 1, mealID: nil, mealName: nil),
+      pendingDose(timeOffset: 0, mealID: nil, mealName: nil),
+      pendingDose(timeOffset: 1, mealID: nil, mealName: nil),
     ]
     let assigned = PendingQueueSelector.assignMealOrdinals(to: doses)
     #expect(assigned.allSatisfy { $0.mealOrdinal == nil && $0.mealName == nil })
@@ -55,10 +55,10 @@ struct PendingDoseMealOrdinalTests {
     let breakfast = UUID()
     let dinner = UUID()
     let doses = [
-      pendingDose(secondsFromMidnight: 0, mealID: breakfast, mealName: "Pill Breakfast"),
-      pendingDose(secondsFromMidnight: 1, mealID: breakfast, mealName: "Pill Breakfast"),
-      pendingDose(secondsFromMidnight: 100, mealID: dinner, mealName: "Pill Dinner"),
-      pendingDose(secondsFromMidnight: 101, mealID: dinner, mealName: "Pill Dinner"),
+      pendingDose(timeOffset: 0, mealID: breakfast, mealName: "Pill Breakfast"),
+      pendingDose(timeOffset: 1, mealID: breakfast, mealName: "Pill Breakfast"),
+      pendingDose(timeOffset: 100, mealID: dinner, mealName: "Pill Dinner"),
+      pendingDose(timeOffset: 101, mealID: dinner, mealName: "Pill Dinner"),
     ]
     let assigned = PendingQueueSelector.assignMealOrdinals(to: doses)
     #expect(assigned[0].mealOrdinal == PendingDose.MealOrdinal(current: 1, total: 2))

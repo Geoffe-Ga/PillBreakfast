@@ -143,7 +143,8 @@ public struct PendingQueueSelector {
     var seen: [UUID: Int] = [:]
     return doses.map { dose in
       guard let mealID = dose.mealID, let total = totals[mealID], total > 1 else { return dose }
-      seen[mealID, default: 0] += 1
+      let current = (seen[mealID] ?? 0) + 1
+      seen[mealID] = current
       return PendingDose(
         id: dose.id,
         medicationID: dose.medicationID,
@@ -151,7 +152,7 @@ public struct PendingQueueSelector {
         quantity: dose.quantity,
         mealID: dose.mealID,
         mealName: dose.mealName,
-        mealOrdinal: PendingDose.MealOrdinal(current: seen[mealID] ?? 1, total: total)
+        mealOrdinal: PendingDose.MealOrdinal(current: current, total: total)
       )
     }
   }
