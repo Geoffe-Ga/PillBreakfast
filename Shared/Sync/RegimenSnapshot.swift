@@ -9,26 +9,29 @@ import SwiftData
 // wire format. DoseEvents flow back watch → iPhone over a separate channel (EPIC 03).
 
 public struct RegimenSnapshot: Codable, Sendable, Hashable {
-  /// v2 added `preferences`; v3 added `preferences.defaultSnoozeOffsetMinutes`. The
-  /// decode path tolerates v1 payloads (no `preferences` key) by defaulting them, and
-  /// `UserPreferences.init(from:)` defaults the snooze offset on v2 payloads — so a
-  /// not-yet-updated watch can't crash on an older snapshot.
-  public static let currentSchemaVersion = 3
+  /// v2 added `preferences`; v3 added `preferences.defaultSnoozeOffsetMinutes`;
+  /// v4 added `pillMeals` and `ScheduledDoseDTO.pillMealID`. All earlier
+  /// versions decode by defaulting the missing fields (no `pillMeals` key →
+  /// `[]`; no `pillMealID` on a dose → `nil`).
+  public static let currentSchemaVersion = 4
 
   public let schemaVersion: Int
   public let ingredients: [IngredientDTO]
   public let medications: [MedicationDTO]
+  public let pillMeals: [PillMealDTO]
   public let preferences: UserPreferences
 
   public init(
     schemaVersion: Int = RegimenSnapshot.currentSchemaVersion,
     ingredients: [IngredientDTO],
     medications: [MedicationDTO],
+    pillMeals: [PillMealDTO] = [],
     preferences: UserPreferences = UserPreferences()
   ) {
     self.schemaVersion = schemaVersion
     self.ingredients = ingredients
     self.medications = medications
+    self.pillMeals = pillMeals
     self.preferences = preferences
   }
 
@@ -37,6 +40,9 @@ public struct RegimenSnapshot: Codable, Sendable, Hashable {
     self.schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
     self.ingredients = try container.decode([IngredientDTO].self, forKey: .ingredients)
     self.medications = try container.decode([MedicationDTO].self, forKey: .medications)
+    // v3 and earlier have no `pillMeals` key — default to empty so existing
+    // payloads decode cleanly.
+    self.pillMeals = try container.decodeIfPresent([PillMealDTO].self, forKey: .pillMeals) ?? []
     // v1 snapshots have no `preferences` key — default to 0.5s (SPEC §2.1).
     self.preferences = try container.decodeIfPresent(UserPreferences.self, forKey: .preferences) ?? UserPreferences()
   }
@@ -52,6 +58,8 @@ public enum SyncError: Error, Equatable, Sendable {
   case danglingIngredientReference(componentID: UUID, ingredientID: UUID)
   /// A scheduled dose carries an out-of-range hour/minute/weekday that would silently break notification scheduling.
   case invalidSchedule(doseID: UUID)
+  /// A pill meal carries an out-of-range targetHour/targetMinute.
+  case invalidPillMeal(id: UUID)
 }
 
 public struct IngredientDTO: Codable, Sendable, Hashable {
@@ -99,13 +107,29 @@ public struct ScheduledDoseDTO: Codable, Sendable, Hashable {
   public let minute: Int
   public let quantity: Int
   public let daysOfWeek: [Int] // ISO weekdays 1...7 (Mon...Sun); empty means every day
+  /// Non-nil when the dose is assigned to a Pill Meal — the watch consolidates
+  /// matching doses into one meal-titled notification (SPEC §5.1).
+  public let pillMealID: UUID?
 
-  public init(id: UUID, hour: Int, minute: Int, quantity: Int, daysOfWeek: [Int]) {
+  public init(id: UUID, hour: Int, minute: Int, quantity: Int, daysOfWeek: [Int], pillMealID: UUID? = nil) {
     self.id = id
     self.hour = hour
     self.minute = minute
     self.quantity = quantity
     self.daysOfWeek = daysOfWeek
+    self.pillMealID = pillMealID
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(UUID.self, forKey: .id)
+    self.hour = try container.decode(Int.self, forKey: .hour)
+    self.minute = try container.decode(Int.self, forKey: .minute)
+    self.quantity = try container.decode(Int.self, forKey: .quantity)
+    self.daysOfWeek = try container.decode([Int].self, forKey: .daysOfWeek)
+    // v3 and earlier have no pillMealID — defaults to nil so legacy doses
+    // continue to fire the existing per-`TimeSlot` notification.
+    self.pillMealID = try container.decodeIfPresent(UUID.self, forKey: .pillMealID)
   }
 
   /// True when the wall-clock fields and ISO weekdays are in range. `apply(to:)`
@@ -114,6 +138,31 @@ public struct ScheduledDoseDTO: Codable, Sendable, Hashable {
     (0 ... 23).contains(hour)
       && (0 ... 59).contains(minute)
       && daysOfWeek.allSatisfy((1 ... 7).contains)
+  }
+}
+
+public struct PillMealDTO: Codable, Sendable, Hashable, Identifiable {
+  public let id: UUID
+  public let name: String
+  public let targetHour: Int
+  public let targetMinute: Int
+  public let sortOrder: Int
+  public let createdAt: Date
+
+  public init(id: UUID, name: String, targetHour: Int, targetMinute: Int, sortOrder: Int, createdAt: Date) {
+    self.id = id
+    self.name = name
+    self.targetHour = targetHour
+    self.targetMinute = targetMinute
+    self.sortOrder = sortOrder
+    self.createdAt = createdAt
+  }
+
+  /// Mirrors `ScheduledDoseDTO.isValid` — `apply(to:)` rejects out-of-range
+  /// meals before touching the store so a malformed payload can't silently
+  /// corrupt the regimen.
+  public var isValid: Bool {
+    (0 ... 23).contains(targetHour) && (0 ... 59).contains(targetMinute)
   }
 }
 
@@ -205,12 +254,30 @@ public extension RegimenSnapshot {
           return ComponentDTO(id: component.id, ingredientID: ingredientID, dosagePerUnitMg: component.dosagePerUnitMg)
         },
         schedule: medication.schedule.map {
-          ScheduledDoseDTO(id: $0.id, hour: $0.hour, minute: $0.minute, quantity: $0.quantity, daysOfWeek: $0.daysOfWeek)
+          ScheduledDoseDTO(
+            id: $0.id,
+            hour: $0.hour,
+            minute: $0.minute,
+            quantity: $0.quantity,
+            daysOfWeek: $0.daysOfWeek,
+            pillMealID: $0.pillMeal?.id
+          )
         }
       )
     }
 
-    return RegimenSnapshot(ingredients: ingredients, medications: medications, preferences: preferences)
+    let pillMeals = try context.fetch(FetchDescriptor<PillMeal>()).map { meal in
+      PillMealDTO(
+        id: meal.id,
+        name: meal.name,
+        targetHour: meal.targetHour,
+        targetMinute: meal.targetMinute,
+        sortOrder: meal.sortOrder,
+        createdAt: meal.createdAt
+      )
+    }
+
+    return RegimenSnapshot(ingredients: ingredients, medications: medications, pillMeals: pillMeals, preferences: preferences)
   }
 
   /// Writes the snapshot into a target store with upsert-by-`id` semantics.
@@ -238,9 +305,10 @@ public extension RegimenSnapshot {
     )
 
     // Validate-before-mutate: every component must resolve to an ingredient that
-    // already exists or is being inserted by this snapshot, and every scheduled
-    // dose must be in range. Checking up front means a rejected snapshot can't
-    // leave the context half-rebuilt.
+    // already exists or is being inserted by this snapshot, every scheduled
+    // dose must be in range, and every pill meal's target time must be in
+    // range. Checking up front means a rejected snapshot can't leave the
+    // context half-rebuilt.
     let resolvableIngredientIDs = Set(ingredientByID.keys).union(ingredients.map(\.id))
     for medication in medications {
       for component in medication.components where !resolvableIngredientIDs.contains(component.ingredientID) {
@@ -254,6 +322,9 @@ public extension RegimenSnapshot {
         // is the last boundary before bad data enters the store.
         throw SyncError.invalidSchedule(doseID: dose.id)
       }
+    }
+    for meal in pillMeals where !meal.isValid {
+      throw SyncError.invalidPillMeal(id: meal.id)
     }
 
     for dto in ingredients {
@@ -270,6 +341,36 @@ public extension RegimenSnapshot {
       ingredient.isHighRisk = dto.isHighRisk
       ingredient.dailyCeilingMg = dto.dailyCeilingMg
       ingredient.minIntervalMinutes = dto.minIntervalMinutes
+    }
+
+    // Pill Meals upsert (additive — never delete; the iPhone editor owns
+    // deletion via `PillMealDeletion`, and a snapshot missing a meal that
+    // doses still reference would orphan the doses' assignments. Watch is
+    // a consumer here).
+    var pillMealByID = try Dictionary(
+      context.fetch(FetchDescriptor<PillMeal>()).map { ($0.id, $0) },
+      uniquingKeysWith: { first, _ in first }
+    )
+    for dto in pillMeals {
+      let meal: PillMeal
+      if let existing = pillMealByID[dto.id] {
+        meal = existing
+      } else {
+        meal = PillMeal(
+          id: dto.id,
+          name: dto.name,
+          targetHour: dto.targetHour,
+          targetMinute: dto.targetMinute,
+          sortOrder: dto.sortOrder,
+          createdAt: dto.createdAt
+        )
+        context.insert(meal)
+        pillMealByID[dto.id] = meal
+      }
+      meal.name = dto.name
+      meal.targetHour = dto.targetHour
+      meal.targetMinute = dto.targetMinute
+      meal.sortOrder = dto.sortOrder
     }
 
     let existingMeds = try context.fetch(FetchDescriptor<Medication>())
@@ -313,7 +414,18 @@ public extension RegimenSnapshot {
         return MedicationComponent(id: component.id, ingredient: ingredient, dosagePerUnitMg: component.dosagePerUnitMg)
       }
       medication.schedule = dto.schedule.map { dose in
-        ScheduledDose(id: dose.id, hour: dose.hour, minute: dose.minute, quantity: dose.quantity, daysOfWeek: dose.daysOfWeek)
+        // pillMealID resolves against the just-upserted meal table; an
+        // unresolved id (meal removed mid-flight) defaults to nil rather
+        // than crashing — the dose still fires its per-`TimeSlot` notification.
+        let meal = dose.pillMealID.flatMap { pillMealByID[$0] }
+        return ScheduledDose(
+          id: dose.id,
+          hour: dose.hour,
+          minute: dose.minute,
+          quantity: dose.quantity,
+          daysOfWeek: dose.daysOfWeek,
+          pillMeal: meal
+        )
       }
     }
 
