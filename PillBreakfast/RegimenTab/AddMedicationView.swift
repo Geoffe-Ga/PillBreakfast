@@ -18,6 +18,10 @@ struct AddMedicationView: View {
       MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
         .navigationTitle("New Medication")
         .toolbarTitleDisplayMode(.inline)
+        // Large-detent sheet so the form has room without dominating
+        // the iPhone screen. Drag-to-dismiss handle is included by default.
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") { cancel() }

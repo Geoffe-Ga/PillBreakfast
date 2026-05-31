@@ -140,6 +140,9 @@ struct HealthKitImportSheet: View {
   var body: some View {
     NavigationStack(path: $path) {
       content
+        // Calm fade between authorization states — checking → loaded /
+        // denied / failed reads as one flow rather than a jump cut.
+        .animation(LiquidGlassTheme.Motion.gentle, value: state)
         .navigationTitle("Apple Health")
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
