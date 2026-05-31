@@ -149,7 +149,7 @@ struct IngredientEditorView: View {
   /// `save()` so the validation and save paths can't diverge.
   private var parsedThresholds: (ceiling: Double?, interval: Int?)? {
     func parse<T>(_ text: String, _ convert: (String) -> T?) -> T?? {
-      let trimmed = text.trimmingCharacters(in: .whitespaces)
+      let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
       if trimmed.isEmpty { return .some(nil) } // blank → no threshold
       guard let value = convert(trimmed) else { return nil } // non-numeric → invalid
       return .some(value)
@@ -165,7 +165,7 @@ struct IngredientEditorView: View {
   private var isValid: Bool {
     guard parsedThresholds != nil else { return false }
     if case .create = mode {
-      return !nameText.trimmingCharacters(in: .whitespaces).isEmpty
+      return !nameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     return true
   }
@@ -179,13 +179,24 @@ struct IngredientEditorView: View {
       ingredient.minIntervalMinutes = thresholds.interval
       ingredient.isHighRisk = isHighRisk
     case .create:
-      let trimmedName = nameText.trimmingCharacters(in: .whitespaces)
+      let trimmedName = nameText.trimmingCharacters(in: .whitespacesAndNewlines)
       // Block duplicate-name inserts. Safety totals key on `Ingredient`
       // identity, so two rows with the same name silently fork the
       // per-ingredient ceiling — neither would ever fire on a real
       // overdose. Match delegated to `IngredientFilter.containsName`
       // (case-insensitive) so it's covered by unit tests.
-      let existing = (try? modelContext.fetch(FetchDescriptor<Ingredient>())) ?? []
+      let existing: [Ingredient]
+      do {
+        existing = try modelContext.fetch(FetchDescriptor<Ingredient>())
+      } catch {
+        // Don't silently fall through to an empty `existing` — that would
+        // defeat the duplicate guard. Surface the failure and bail.
+        IngredientEditorView.logger.error(
+          "Duplicate-check fetch failed: \(error.localizedDescription, privacy: .public)"
+        )
+        saveError = "Couldn't verify the ingredient name. Please try again."
+        return
+      }
       if IngredientFilter.containsName(trimmedName, in: existing) {
         saveError = "An ingredient named \"\(trimmedName)\" already exists. Edit that one instead."
         return
