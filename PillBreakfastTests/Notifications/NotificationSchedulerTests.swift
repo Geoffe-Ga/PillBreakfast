@@ -240,6 +240,71 @@ struct NotificationSchedulerTests {
     #expect(requests.first?.content.body == "Vitamin D")
   }
 
+  @Test func sameMealDifferentSlotsProduceTwoRequests() {
+    // Pin the `MealSlotKey` logic: a meal whose assigned doses fire at
+    // different wall-clock times still produces a request per slot.
+    let mealID = UUID()
+    let meal = PillMealDTO(
+      id: mealID,
+      name: "Pill Breakfast",
+      targetHour: 9,
+      targetMinute: 30,
+      sortOrder: 0,
+      createdAt: .now
+    )
+    let morningDose = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    let afternoonDose = ScheduledDoseDTO(id: UUID(), hour: 14, minute: 0, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Vitamin D", schedule: [morningDose]),
+        medicationDTO(name: "Aspirin", schedule: [afternoonDose]),
+      ],
+      pillMeals: [meal]
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 2)
+    // Both titled with the meal; bodies differ because the slot-keyed
+    // grouping puts each med under its own slot.
+    let titles = Set(requests.map(\.content.title))
+    #expect(titles == ["Pill Breakfast"])
+    let bodies = Set(requests.map(\.content.body))
+    #expect(bodies == ["Vitamin D", "Aspirin"])
+  }
+
+  @Test func mealBodyAggregatesNamesAtSameSlotWithOverflow() throws {
+    // Parallel to `bodyAggregatesNamesAtSameTimeWithOverflow` on the ungrouped
+    // path — confirms `bodyText` is wired identically in `makeMealContent`.
+    let mealID = UUID()
+    let meal = PillMealDTO(
+      id: mealID,
+      name: "Pill Breakfast",
+      targetHour: 9,
+      targetMinute: 30,
+      sortOrder: 0,
+      createdAt: .now
+    )
+    func dose() -> ScheduledDoseDTO {
+      ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    }
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Aspirin", schedule: [dose()]),
+        medicationDTO(name: "Lithium", schedule: [dose()]),
+        medicationDTO(name: "Vitamin D", schedule: [dose()]),
+        medicationDTO(name: "Zinc", schedule: [dose()]),
+      ],
+      pillMeals: [meal]
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 1)
+    let body = try #require(requests.first?.content.body)
+    #expect(body == "Aspirin · Lithium · +2 more")
+  }
+
   @Test func multiDayMealEmitsOneRequestPerWeekday() {
     let mealID = UUID()
     let meal = PillMealDTO(
