@@ -9,6 +9,11 @@ public final class ScheduledDose {
   public var quantity: Int // number of pills
   public var daysOfWeek: [Int] // 1..7, ISO weekday; empty = every day
   public var medication: Medication?
+  /// Optional Pill Meal grouping. `nil` for legacy rows and for doses the
+  /// user hasn't assigned to a meal — both produce the existing per-`TimeSlot`
+  /// notification + ungrouped tap-through card behavior. The editor introduces
+  /// non-nil assignments in a later issue.
+  public var pillMeal: PillMeal?
 
   public init(
     id: UUID = UUID(),
@@ -16,7 +21,8 @@ public final class ScheduledDose {
     minute: Int,
     quantity: Int,
     daysOfWeek: [Int] = [],
-    medication: Medication? = nil
+    medication: Medication? = nil,
+    pillMeal: PillMeal? = nil
   ) {
     self.id = id
     self.hour = hour
@@ -24,5 +30,6 @@ public final class ScheduledDose {
     self.quantity = quantity
     self.daysOfWeek = daysOfWeek
     self.medication = medication
+    self.pillMeal = pillMeal
   }
 }
