@@ -59,6 +59,10 @@ enum HealthKitImportViewState: Equatable {
     }
   }
 
+  /// Hero-card title for each state. `.checking` is unreachable in practice
+  /// (the content switch routes that case to a ProgressView, not the hero),
+  /// but keep an explicit value here so the switch stays exhaustive without
+  /// a `@unknown default`.
   var headline: String {
     switch self {
     case .checking: "Import from Health"
@@ -196,7 +200,8 @@ struct HealthKitImportSheet: View {
   }
 
   @ViewBuilder private var heroAction: some View {
-    if state == .denied {
+    switch state {
+    case .denied:
       Button("Open Settings") {
         if let url = URL(string: UIApplication.openSettingsURLString) {
           openURL(url)
@@ -204,9 +209,16 @@ struct HealthKitImportSheet: View {
       }
       .buttonStyle(.borderedProminent)
       .controlSize(.large)
-    } else if case let .loaded(drafts) = state, drafts.isEmpty {
+    case .notAvailable, .failed:
+      // `.notAvailable` is unrecoverable on-device and a `.failed` retry
+      // would need a state-machine rewrite — give the user a clear exit.
       Button("Done") { dismiss() }
         .buttonStyle(.bordered)
+    case let .loaded(drafts) where drafts.isEmpty:
+      Button("Done") { dismiss() }
+        .buttonStyle(.bordered)
+    case .checking, .loaded:
+      EmptyView()
     }
   }
 
@@ -246,6 +258,7 @@ struct HealthKitImportSheet: View {
       Spacer()
       if alreadyImported {
         Image(systemName: "checkmark.circle.fill")
+          .font(.title3)
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
           .accessibilityHidden(true)
       } else {
