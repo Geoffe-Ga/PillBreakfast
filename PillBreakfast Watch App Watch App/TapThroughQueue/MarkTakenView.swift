@@ -9,8 +9,29 @@ struct MarkTakenView: View {
   let detail: String
   let isHighRisk: Bool
   let colorHex: String?
+  /// Optional meal context — drives the "Pill Breakfast · 2 of 5" caption.
+  /// `nil` for ungrouped doses (no header rendered).
+  let mealHeader: String?
   let onMarkTaken: () -> Void
   let onSkip: () -> Void
+
+  init(
+    medicationName: String,
+    detail: String,
+    isHighRisk: Bool,
+    colorHex: String?,
+    mealHeader: String? = nil,
+    onMarkTaken: @escaping () -> Void,
+    onSkip: @escaping () -> Void
+  ) {
+    self.medicationName = medicationName
+    self.detail = detail
+    self.isHighRisk = isHighRisk
+    self.colorHex = colorHex
+    self.mealHeader = mealHeader
+    self.onMarkTaken = onMarkTaken
+    self.onSkip = onSkip
+  }
 
   /// Optional so the view is safe without the store injected (previews/tests fall
   /// back to the default hold duration).
@@ -25,6 +46,13 @@ struct MarkTakenView: View {
       // Hero card so the dose identity is the screen's anchor before
       // the confirm action.
       VStack(spacing: LiquidGlassTheme.Spacing.compact) {
+        if let mealHeader {
+          LiquidGlassTheme.Typography.caption(mealHeader)
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
+        }
+
         HStack(spacing: LiquidGlassTheme.Spacing.compact) {
           if let color = Color(hex: colorHex) {
             Circle().fill(color).frame(width: 10, height: 10)

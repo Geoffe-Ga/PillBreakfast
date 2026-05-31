@@ -4,18 +4,49 @@ import SwiftData
 /// A dose the watch should prompt for right now: a scheduled dose within the
 /// active window that hasn't been logged yet today.
 public struct PendingDose: Sendable, Hashable, Identifiable {
+  /// 1-based position of a meal's dose within the meal's pending set.
+  public struct MealOrdinal: Sendable, Hashable {
+    public let current: Int
+    public let total: Int
+
+    public init(current: Int, total: Int) {
+      self.current = current
+      self.total = total
+    }
+  }
+
   /// Per-instance identity so two doses for the same med at the same time/quantity
   /// stay distinct in queues and dedup sets (the selector assigns one per dose).
   public let id: UUID
   public let medicationID: UUID
   public let scheduledFor: Date
   public let quantity: Int
+  /// Stable id of the meal that owns this dose, when assigned. Nil for ungrouped doses.
+  public let mealID: UUID?
+  /// User-facing meal name, denormalized at selection time so the watch card
+  /// doesn't have to re-traverse the relationship to render the header.
+  public let mealName: String?
+  /// 1-based position within the meal's pending doses (e.g. "2 of 5").
+  /// Nil for ungrouped doses or when the meal has only one dose pending — the
+  /// header line only adds context, so a "1 of 1" decoration is suppressed.
+  public let mealOrdinal: MealOrdinal?
 
-  public init(id: UUID = UUID(), medicationID: UUID, scheduledFor: Date, quantity: Int) {
+  public init(
+    id: UUID = UUID(),
+    medicationID: UUID,
+    scheduledFor: Date,
+    quantity: Int,
+    mealID: UUID? = nil,
+    mealName: String? = nil,
+    mealOrdinal: MealOrdinal? = nil
+  ) {
     self.id = id
     self.medicationID = medicationID
     self.scheduledFor = scheduledFor
     self.quantity = quantity
+    self.mealID = mealID
+    self.mealName = mealName
+    self.mealOrdinal = mealOrdinal
   }
 }
 
@@ -91,11 +122,39 @@ public struct PendingQueueSelector {
         results.append(PendingDose(
           medicationID: med.id,
           scheduledFor: scheduledToday,
-          quantity: dose.quantity
+          quantity: dose.quantity,
+          mealID: dose.pillMeal?.id,
+          mealName: dose.pillMeal?.name
         ))
       }
     }
-    return results.sorted { $0.scheduledFor < $1.scheduledFor }
+    return Self.assignMealOrdinals(to: results.sorted { $0.scheduledFor < $1.scheduledFor })
+  }
+
+  /// Walks the ordered queue, counts each meal's pending doses, and stamps a
+  /// 1-based ordinal on each. Internal so the contract can be exercised without
+  /// a SwiftData round-trip. Singleton meals (one pending dose) leave
+  /// `mealOrdinal == nil` — the header line shows the meal name but not "1 of 1".
+  static func assignMealOrdinals(to doses: [PendingDose]) -> [PendingDose] {
+    var totals: [UUID: Int] = [:]
+    for dose in doses {
+      if let mealID = dose.mealID { totals[mealID, default: 0] += 1 }
+    }
+    var seen: [UUID: Int] = [:]
+    return doses.map { dose in
+      guard let mealID = dose.mealID, let total = totals[mealID], total > 1 else { return dose }
+      let current = (seen[mealID] ?? 0) + 1
+      seen[mealID] = current
+      return PendingDose(
+        id: dose.id,
+        medicationID: dose.medicationID,
+        scheduledFor: dose.scheduledFor,
+        quantity: dose.quantity,
+        mealID: dose.mealID,
+        mealName: dose.mealName,
+        mealOrdinal: PendingDose.MealOrdinal(current: current, total: total)
+      )
+    }
   }
 
   /// Bounded by `takenAt` (which is indexed) rather than `scheduledFor`
