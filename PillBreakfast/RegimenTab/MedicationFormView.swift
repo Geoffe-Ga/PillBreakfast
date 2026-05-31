@@ -37,7 +37,7 @@ struct MedicationFormView: View {
       Section("Ingredient") {
         NavigationLink {
           IngredientPickerView(
-            selectionBinding: $formState.componentDraft.ingredientID,
+            selection: $formState.componentDraft.ingredientID,
             onCreateRequest: { query in
               newIngredientInitialName = query
               showingNewIngredient = true
@@ -173,6 +173,8 @@ private struct NewIngredientView: View {
     // Duplicate-name guard — same invariant as IngredientEditorView's
     // create mode. Two same-name rows would silently fork the per-
     // ingredient safety ceiling and neither would fire on a real overdose.
+    // Full fetch (no predicate) is fine at the bounded library size — see
+    // the rationale on `IngredientFilter`.
     let existing: [Ingredient]
     do {
       existing = try modelContext.fetch(FetchDescriptor<Ingredient>())

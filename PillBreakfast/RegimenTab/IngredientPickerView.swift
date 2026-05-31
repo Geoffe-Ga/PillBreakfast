@@ -15,7 +15,7 @@ struct IngredientPickerView: View {
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
   @State private var searchText = ""
 
-  let selectionBinding: Binding<UUID?>
+  let selection: Binding<UUID?>
   /// Called with the typed search text when the user taps the "Add X as new"
   /// row. The host dismisses the picker and presents the create flow.
   let onCreateRequest: (String) -> Void
@@ -36,10 +36,10 @@ struct IngredientPickerView: View {
         }
       }
 
-      Section {
+      Section("Ingredients") {
         ForEach(filtered) { ingredient in
           Button {
-            selectionBinding.wrappedValue = ingredient.id
+            selection.wrappedValue = ingredient.id
             dismiss()
           } label: {
             HStack {
@@ -53,21 +53,12 @@ struct IngredientPickerView: View {
                 }
               }
               Spacer()
-              if selectionBinding.wrappedValue == ingredient.id {
+              if selection.wrappedValue == ingredient.id {
                 Image(systemName: "checkmark")
                   .foregroundStyle(.tint)
               }
             }
           }
-        }
-      } header: {
-        Text("Ingredients")
-      } footer: {
-        if !showAddRow, !ingredients.isEmpty, filtered.isEmpty {
-          // Reached when the @Query is non-empty but the *trimmed* query
-          // is — defensive; today the filter returns all ingredients on
-          // a blank query so this branch is unreachable.
-          EmptyView()
         }
       }
     }
