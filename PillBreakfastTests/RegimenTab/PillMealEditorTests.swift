@@ -21,7 +21,8 @@ struct PillMealEditorTests {
     context.insert(meal)
     try context.save()
 
-    #expect(try PillMealDeletion.check(meal, in: context) == .allowed)
+    let refetched = try #require(try context.fetch(FetchDescriptor<PillMeal>()).first)
+    #expect(PillMealDeletion.check(refetched) == .allowed)
   }
 
   @Test func deletionBlockedWhenAtLeastOneDoseReferencesTheMeal() throws {
@@ -34,8 +35,8 @@ struct PillMealEditorTests {
     context.insert(med)
     try context.save()
 
-    let check = try PillMealDeletion.check(meal, in: context)
-    #expect(check == .referenced(doseCount: 1))
+    let refetched = try #require(try context.fetch(FetchDescriptor<PillMeal>()).first)
+    #expect(PillMealDeletion.check(refetched) == .referenced(doseCount: 1))
   }
 
   @Test func deletionCountReflectsMultipleReferences() throws {
@@ -50,7 +51,8 @@ struct PillMealEditorTests {
     context.insert(medB)
     try context.save()
 
-    #expect(try PillMealDeletion.check(meal, in: context) == .referenced(doseCount: 2))
+    let refetched = try #require(try context.fetch(FetchDescriptor<PillMeal>()).first)
+    #expect(PillMealDeletion.check(refetched) == .referenced(doseCount: 2))
   }
 
   // MARK: - Time propagation
@@ -69,7 +71,7 @@ struct PillMealEditorTests {
     context.insert(medB)
     try context.save()
 
-    PillMealEditorView.applyTime(targetHour: 22, targetMinute: 30, to: meal)
+    meal.applyTime(targetHour: 22, targetMinute: 30)
     try context.save()
 
     let refetched = try #require(try context.fetch(FetchDescriptor<PillMeal>()).first)
@@ -93,7 +95,7 @@ struct PillMealEditorTests {
     context.insert(med)
     try context.save()
 
-    PillMealEditorView.applyTime(targetHour: 9, targetMinute: 30, to: meal)
+    meal.applyTime(targetHour: 9, targetMinute: 30)
 
     #expect(dose.hour == 9)
     #expect(dose.minute == 30)

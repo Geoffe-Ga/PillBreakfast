@@ -60,8 +60,11 @@ struct ScheduleRowEditor: View {
   }
 
   /// Setter auto-fills hour/minute when a meal is selected so the disabled
-  /// DatePicker still shows the canonical time, and leaves them alone when
-  /// the user clears the assignment.
+  /// DatePicker still shows the canonical time. Clearing the assignment
+  /// re-enables the DatePicker but **does not** revert the time — the user's
+  /// next action is to pick a new time, so silently rolling back to a stale
+  /// pre-assignment value would be more surprising than leaving the
+  /// last-displayed value in place.
   private func mealBinding(for schedule: Binding<ScheduleDraft>) -> Binding<UUID?> {
     Binding<UUID?>(
       get: { schedule.wrappedValue.pillMealID },

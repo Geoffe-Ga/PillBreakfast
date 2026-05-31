@@ -108,7 +108,7 @@ struct PillMealEditorView: View {
     do {
       if let existing {
         existing.name = trimmedName
-        PillMealEditorView.applyTime(targetHour: newHour, targetMinute: newMinute, to: existing)
+        existing.applyTime(targetHour: newHour, targetMinute: newMinute)
         try modelContext.save()
       } else {
         let meal = PillMeal(
@@ -128,36 +128,22 @@ struct PillMealEditorView: View {
     }
   }
 
-  /// Updates a meal's target time AND rewrites every assigned dose's
-  /// hour/minute. Meal owns the time once a dose is assigned to it, so the
-  /// editor's save path treats the propagation as a single atomic edit.
-  static func applyTime(targetHour: Int, targetMinute: Int, to meal: PillMeal) {
-    let timeChanged = meal.targetHour != targetHour || meal.targetMinute != targetMinute
-    meal.targetHour = targetHour
-    meal.targetMinute = targetMinute
-    guard timeChanged else { return }
-    for dose in meal.scheduledDoses {
-      dose.hour = targetHour
-      dose.minute = targetMinute
-    }
-  }
-
   private func attemptDelete() {
     guard let existing else { return }
-    do {
-      let check = try PillMealDeletion.check(existing, in: modelContext)
-      switch check {
-      case .allowed:
+    switch PillMealDeletion.check(existing) {
+    case .allowed:
+      do {
         modelContext.delete(existing)
         try modelContext.save()
         WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
         dismiss()
-      case let .referenced(count):
-        deleteBlockedCount = count
+      } catch {
+        PillMealEditorView.logger.error("Pill meal delete failed: \(error.localizedDescription, privacy: .public)")
+        modelContext.rollback()
+        saveError = "The change couldn't be saved. Please try again."
       }
-    } catch {
-      PillMealEditorView.logger.error("Pill meal delete check failed: \(error.localizedDescription, privacy: .public)")
-      saveError = "Couldn't check whether this meal is deletable. Please try again."
+    case let .referenced(count):
+      deleteBlockedCount = count
     }
   }
 }

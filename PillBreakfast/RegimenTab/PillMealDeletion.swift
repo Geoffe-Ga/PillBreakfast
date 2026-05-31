@@ -1,5 +1,3 @@
-import SwiftData
-
 /// Whether a Pill Meal may be deleted (mirrors `IngredientDeletion` shape).
 enum PillMealDeletionCheck: Equatable {
   case allowed
@@ -9,11 +7,11 @@ enum PillMealDeletionCheck: Equatable {
 
 @MainActor
 enum PillMealDeletion {
-  static func check(_ meal: PillMeal, in context: ModelContext) throws -> PillMealDeletionCheck {
-    let mealID = meal.id
-    let referencingCount = try context
-      .fetch(FetchDescriptor<ScheduledDose>())
-      .count { $0.pillMeal?.id == mealID }
-    return referencingCount == 0 ? .allowed : .referenced(doseCount: referencingCount)
+  /// Uses the meal's `scheduledDoses` inverse relationship rather than a
+  /// `ScheduledDose` table scan — the inverse is what the schema exists
+  /// for and the count grows linearly with the regimen, not the store.
+  static func check(_ meal: PillMeal) -> PillMealDeletionCheck {
+    let count = meal.scheduledDoses.count
+    return count == 0 ? .allowed : .referenced(doseCount: count)
   }
 }
