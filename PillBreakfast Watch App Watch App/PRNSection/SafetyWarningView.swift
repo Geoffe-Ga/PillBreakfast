@@ -23,8 +23,8 @@ struct SafetyWarningView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.standard) {
         ForEach(messages) { message in
-          VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact / 2) {
-            HStack(spacing: LiquidGlassTheme.Spacing.compact / 2) {
+          VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
+            HStack(spacing: LiquidGlassTheme.Spacing.compact) {
               Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(LiquidGlassTheme.Colors.highRiskAccent)
               LiquidGlassTheme.Typography.headline(message.title)

@@ -4,34 +4,21 @@ import SwiftUI
 /// extracted so `MarkTakenView` can compose either this or the press-and-hold
 /// control). A single tap is fine for vitamins; high-risk meds use
 /// `HighRiskConfirmButton` instead.
+///
+/// Uses `.borderedProminent` rather than a hand-rolled `ButtonStyle` so the
+/// foreground/background contrast tracks the system tint resolution (an
+/// accessibility-inverted or high-contrast environment gets the right
+/// foreground without us hardcoding `.white`). The bordered-prominent style
+/// already animates its press feedback with a snappy system spring —
+/// re-implementing it with a custom `scaleEffect` would risk gesture conflicts
+/// with watchOS's digital-crown scroll without buying meaningfully more
+/// motion than the system already provides.
 struct SingleTapConfirmButton: View {
   let onConfirmed: () -> Void
 
   var body: some View {
-    Button {
-      onConfirmed()
-    } label: {
-      Text("Mark Taken")
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-    }
-    .buttonStyle(SnappyProminentButtonStyle())
-  }
-}
-
-/// Bordered-prominent appearance with a brief scale dip on press, driven by
-/// `configuration.isPressed` (not a `DragGesture`) so digital-crown scrolls
-/// and swipe-to-dismiss can't leave the button stuck in the pressed state.
-/// Reduce-motion neutralises the scale.
-private struct SnappyProminentButtonStyle: ButtonStyle {
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .foregroundStyle(.white)
-      .background(.tint)
-      .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.standard))
-      .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.96)
-      .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.snappy, value: configuration.isPressed)
+    Button("Mark Taken", action: onConfirmed)
+      .buttonStyle(.borderedProminent)
+      .controlSize(.large)
   }
 }

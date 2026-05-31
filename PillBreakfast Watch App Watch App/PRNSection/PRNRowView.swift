@@ -13,6 +13,8 @@ struct PRNRowView: View {
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
     }
     .padding(LiquidGlassTheme.Spacing.compact)
+    // Spacing.compact for the vertical inset so rows still feel like
+    // touch targets after the elevated background.
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(LiquidGlassTheme.Materials.surface)
     .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.standard))

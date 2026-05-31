@@ -9,6 +9,10 @@ struct QueueSuccessView: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var didAppear = false
+  /// Gated separately from `didAppear` so the shimmer doesn't sweep while the
+  /// label is still faded out — `.shimmer()` fires on view attach, but the
+  /// label is invisible until the `Motion.dramatic` reveal completes.
+  @State private var shimmerArmed = false
 
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
@@ -18,29 +22,43 @@ struct QueueSuccessView: View {
         .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
         .scaleEffect(didAppear || reduceMotion ? 1 : 0.6)
         .opacity(didAppear || reduceMotion ? 1 : 0)
-      LiquidGlassTheme.Typography.display("All pills logged")
-        .multilineTextAlignment(.center)
-        .minimumScaleFactor(0.8)
-        .shimmer()
-        .opacity(didAppear || reduceMotion ? 1 : 0)
+      Group {
+        if shimmerArmed {
+          LiquidGlassTheme.Typography.display("All pills logged")
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
+            .shimmer()
+        } else {
+          LiquidGlassTheme.Typography.display("All pills logged")
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
+        }
+      }
+      .opacity(didAppear || reduceMotion ? 1 : 0)
     }
     .padding()
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .glassBackground()
     .onAppear {
-      if reduceMotion {
+      withAnimation(reduceMotion ? nil : LiquidGlassTheme.Motion.dramatic) {
         didAppear = true
-      } else {
-        withAnimation(LiquidGlassTheme.Motion.dramatic) {
-          didAppear = true
-        }
       }
     }
     .task {
+      // Wait until after the `Motion.dramatic` reveal lands before arming the
+      // shimmer so it sweeps across a *visible* label. Under reduce-motion
+      // the label is visible from the first frame and the shimmer is
+      // suppressed by `Group`'s identity change but is also harmless.
       do {
-        try await Task.sleep(for: .seconds(1.5))
+        try await Task.sleep(for: .seconds(0.5))
       } catch {
-        return // task cancelled (view dismissed) — don't navigate
+        return
+      }
+      shimmerArmed = true
+      do {
+        try await Task.sleep(for: .seconds(1.0))
+      } catch {
+        return
       }
       onDone()
     }
