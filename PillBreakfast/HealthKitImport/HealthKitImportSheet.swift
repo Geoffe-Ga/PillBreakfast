@@ -252,6 +252,7 @@ struct HealthKitImportSheet: View {
     return HStack(spacing: LiquidGlassTheme.Spacing.compact) {
       VStack(alignment: .leading, spacing: 2) {
         LiquidGlassTheme.Typography.headline(draft.displayName)
+          .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
         LiquidGlassTheme.Typography.footnote(alreadyImported ? "Already imported" : (draft.hasSchedule ? "Scheduled" : "As needed"))
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
