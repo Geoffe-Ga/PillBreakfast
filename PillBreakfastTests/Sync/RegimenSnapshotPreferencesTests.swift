@@ -4,8 +4,11 @@ import Testing
 
 @MainActor
 struct RegimenSnapshotPreferencesTests {
-  @Test func currentSchemaVersionIsThree() {
-    #expect(RegimenSnapshot.currentSchemaVersion == 3)
+  @Test func currentSchemaVersionIsFour() {
+    // Bumped to 4 for Pill Meals (#191) — `pillMeals` array on the snapshot
+    // and `pillMealID` on each scheduled dose. Older payloads decode by
+    // defaulting these to `[]` / `nil`.
+    #expect(RegimenSnapshot.currentSchemaVersion == 4)
   }
 
   @Test func roundTripCarriesPreferences() throws {

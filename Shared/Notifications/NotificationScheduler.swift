@@ -16,34 +16,107 @@ public enum NotificationScheduler {
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "Notifications")
 
   /// Pure: turns a snapshot into the request set, with no side effects, so it's
-  /// unit-testable without a notification environment. One request per scheduled
-  /// dose (per weekday when `daysOfWeek` is non-empty; daily when empty).
+  /// unit-testable without a notification environment.
+  ///
+  /// - **Ungrouped doses** (`pillMealID == nil`) keep the legacy behaviour: one
+  ///   request per scheduled dose (per weekday when `daysOfWeek` is non-empty,
+  ///   daily when empty), titled "Pills · N to take" with the per-slot name
+  ///   aggregate in the body.
+  /// - **Meal-grouped doses** (`pillMealID` resolves to a snapshot meal)
+  ///   consolidate: one request per `(meal, slot, weekday)` tuple, titled with
+  ///   the meal name and bodied with the names of every dose in that meal at
+  ///   that slot.
+  ///
+  /// A dose whose `pillMealID` doesn't resolve in `snapshot.pillMeals` falls
+  /// back to the ungrouped path — better to keep the notification than to drop
+  /// it on a meal that's been deleted mid-sync.
   public static func makeRequests(from snapshot: RegimenSnapshot) -> [UNNotificationRequest] {
     let maintenance = snapshot.medications.filter { !$0.isArchived && $0.kind == .maintenance }
-
-    // How many maintenance doses fire at a given wall-clock minute — drives the
-    // "N to take" count and the name list in the body.
-    let dosesAtTime: [TimeSlot: [String]] = Dictionary(grouping: maintenance.flatMap { med in
-      med.schedule.map { (TimeSlot(hour: $0.hour, minute: $0.minute), med.displayName) }
-    }, by: { $0.0 }).mapValues { $0.map(\.1).sorted() }
+    let mealsByID = Dictionary(uniqueKeysWithValues: snapshot.pillMeals.map { ($0.id, $0) })
 
     var requests: [UNNotificationRequest] = []
-    for medication in maintenance {
-      for dose in medication.schedule {
-        let slot = TimeSlot(hour: dose.hour, minute: dose.minute)
-        let content = makeContent(namesAtSlot: dosesAtTime[slot] ?? [medication.displayName])
-        for trigger in makeTriggers(for: dose) {
-          requests.append(
-            UNNotificationRequest(
-              identifier: identifier(for: dose, weekday: trigger.weekday),
-              content: content,
-              trigger: trigger.trigger
-            )
+    requests.append(contentsOf: ungroupedRequests(maintenance: maintenance, mealsByID: mealsByID))
+    requests.append(contentsOf: mealGroupedRequests(maintenance: maintenance, mealsByID: mealsByID))
+    return requests
+  }
+
+  private static func ungroupedRequests(
+    maintenance: [MedicationDTO],
+    mealsByID: [UUID: PillMealDTO]
+  ) -> [UNNotificationRequest] {
+    // Aggregate names per slot for ungrouped doses only.
+    let ungroupedPairs: [(MedicationDTO, ScheduledDoseDTO)] = maintenance.flatMap { med in
+      med.schedule.compactMap { dose in
+        isEffectivelyUngrouped(dose, mealsByID: mealsByID) ? (med, dose) : nil
+      }
+    }
+    let namesAtSlot: [TimeSlot: [String]] = Dictionary(
+      grouping: ungroupedPairs.map { (TimeSlot(hour: $0.1.hour, minute: $0.1.minute), $0.0.displayName) },
+      by: { $0.0 }
+    ).mapValues { $0.map(\.1).sorted() }
+
+    var requests: [UNNotificationRequest] = []
+    for (medication, dose) in ungroupedPairs {
+      let slot = TimeSlot(hour: dose.hour, minute: dose.minute)
+      let content = makeContent(namesAtSlot: namesAtSlot[slot] ?? [medication.displayName])
+      for trigger in makeTriggers(for: dose) {
+        requests.append(
+          UNNotificationRequest(
+            identifier: identifier(for: dose, weekday: trigger.weekday),
+            content: content,
+            trigger: trigger.trigger
           )
-        }
+        )
       }
     }
     return requests
+  }
+
+  private static func mealGroupedRequests(
+    maintenance: [MedicationDTO],
+    mealsByID: [UUID: PillMealDTO]
+  ) -> [UNNotificationRequest] {
+    // Names for each (mealID, slot) — used as the body when the request fires.
+    let mealPairs: [(MedicationDTO, ScheduledDoseDTO, MealSlotKey)] = maintenance.flatMap { med in
+      med.schedule.compactMap { dose -> (MedicationDTO, ScheduledDoseDTO, MealSlotKey)? in
+        guard let mealID = dose.pillMealID, mealsByID[mealID] != nil else { return nil }
+        return (med, dose, MealSlotKey(mealID: mealID, slot: TimeSlot(hour: dose.hour, minute: dose.minute)))
+      }
+    }
+    let namesByMealSlot: [MealSlotKey: [String]] = Dictionary(
+      grouping: mealPairs.map { ($0.2, $0.0.displayName) },
+      by: { $0.0 }
+    ).mapValues { $0.map(\.1).sorted() }
+
+    // Emit one request per (mealID, slot, weekday) — multiple doses in the
+    // same meal at the same slot must not generate duplicates.
+    var requests: [UNNotificationRequest] = []
+    var emitted: Set<MealRequestKey> = []
+    for (_, dose, slotKey) in mealPairs {
+      guard let meal = mealsByID[slotKey.mealID] else { continue }
+      let names = namesByMealSlot[slotKey] ?? []
+      let content = makeMealContent(mealName: meal.name, namesAtMeal: names)
+      for trigger in makeTriggers(for: dose) {
+        let requestKey = MealRequestKey(mealID: slotKey.mealID, slot: slotKey.slot, weekday: trigger.weekday)
+        if emitted.contains(requestKey) { continue }
+        emitted.insert(requestKey)
+        requests.append(
+          UNNotificationRequest(
+            identifier: mealIdentifier(meal: meal, slot: slotKey.slot, weekday: trigger.weekday),
+            content: content,
+            trigger: trigger.trigger
+          )
+        )
+      }
+    }
+    return requests
+  }
+
+  private static func isEffectivelyUngrouped(_ dose: ScheduledDoseDTO, mealsByID: [UUID: PillMealDTO]) -> Bool {
+    guard let mealID = dose.pillMealID else { return true }
+    // A pill-meal-id pointing at a meal the snapshot didn't carry falls back
+    // to the existing per-slot grouping rather than vanishing silently.
+    return mealsByID[mealID] == nil
   }
 
   /// Cancels every PillBreakfast-namespaced pending request and schedules a fresh set.
@@ -76,6 +149,21 @@ public enum NotificationScheduler {
   private struct TimeSlot: Hashable {
     let hour: Int
     let minute: Int
+  }
+
+  /// (meal, slot) — collects the body's name list per meal/slot pair.
+  private struct MealSlotKey: Hashable {
+    let mealID: UUID
+    let slot: TimeSlot
+  }
+
+  /// (meal, slot, weekday) — deduplicates per-weekday emission so multiple
+  /// doses in the same meal at the same slot don't produce duplicate requests.
+  /// `weekday: nil` means "daily" (empty `daysOfWeek`).
+  private struct MealRequestKey: Hashable {
+    let mealID: UUID
+    let slot: TimeSlot
+    let weekday: Int?
   }
 
   /// Key under which `makeContent` stashes the resolved display label for
@@ -114,6 +202,19 @@ public enum NotificationScheduler {
     return content
   }
 
+  /// Meal-grouped variant: title is the meal name; body / userInfo carry the
+  /// same per-slot name aggregate so snooze rescheduling reads the same string.
+  private static func makeMealContent(mealName: String, namesAtMeal names: [String]) -> UNMutableNotificationContent {
+    let content = UNMutableNotificationContent()
+    content.title = mealName
+    let body = bodyText(for: names)
+    content.body = body
+    content.userInfo[medicationNameUserInfoKey] = body
+    content.categoryIdentifier = NotificationCategory.maintenanceDose
+    content.sound = .default
+    return content
+  }
+
   private static func bodyText(for names: [String]) -> String {
     guard names.count > 2 else { return names.joined(separator: " · ") }
     return names.prefix(2).joined(separator: " · ") + " · +\(names.count - 2) more"
@@ -124,13 +225,25 @@ public enum NotificationScheduler {
     return "\(identifierPrefix)\(dose.id.uuidString).\(weekday)"
   }
 
+  /// Meal-grouped identifier shape: `<prefix>meal.<mealID>.<hour>.<minute>[.weekday]`.
+  /// The `meal.` infix is what distinguishes it from a per-dose identifier and lets
+  /// `scheduledDoseID(fromIdentifier:)` reject it cleanly.
+  private static func mealIdentifier(meal: PillMealDTO, slot: TimeSlot, weekday: Int?) -> String {
+    let weekdayPart = weekday.map { ".\($0)" } ?? ""
+    return "\(identifierPrefix)meal.\(meal.id.uuidString).\(slot.hour).\(slot.minute)\(weekdayPart)"
+  }
+
   /// Recovers the `ScheduledDose` id from one of our reminder identifiers (the
   /// inverse of `identifier(for:weekday:)`) — used when a notification action fires
-  /// and we need to know which dose it was for. Returns `nil` for foreign ids.
+  /// and we need to know which dose it was for. Returns `nil` for foreign ids
+  /// *and* for meal-grouped identifiers (those don't correspond to a single dose;
+  /// per-dose snooze/skip on a meal notification is the next issue's scope).
   public static func scheduledDoseID(fromIdentifier identifier: String) -> UUID? {
     guard identifier.hasPrefix(identifierPrefix) else { return nil }
-    // After the prefix: "<uuid>" or "<uuid>.<weekday>". The UUID has no dots.
     let remainder = identifier.dropFirst(identifierPrefix.count)
+    // Meal identifiers carry a `meal.` infix immediately after the prefix.
+    if remainder.hasPrefix("meal.") { return nil }
+    // After the prefix: "<uuid>" or "<uuid>.<weekday>". The UUID has no dots.
     let uuidPart = remainder.prefix { $0 != "." }
     return UUID(uuidString: String(uuidPart))
   }

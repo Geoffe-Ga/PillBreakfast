@@ -139,4 +139,133 @@ struct NotificationSchedulerTests {
     content.title = "Pills · 1 to take"
     #expect(NotificationScheduler.medicationName(from: content) == "Pills · 1 to take")
   }
+
+  // MARK: - Meal-aware grouping (#191)
+
+  @Test func mealAssignmentProducesOneRequestTitledWithMealName() throws {
+    let mealID = UUID()
+    let meal = PillMealDTO(
+      id: mealID,
+      name: "Pill Breakfast",
+      targetHour: 9,
+      targetMinute: 30,
+      sortOrder: 0,
+      createdAt: .now
+    )
+    let dose1 = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    let dose2 = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Vitamin D", schedule: [dose1]),
+        medicationDTO(name: "Lithium", schedule: [dose2]),
+      ],
+      pillMeals: [meal]
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 1)
+    let request = try #require(requests.first)
+    #expect(request.content.title == "Pill Breakfast")
+    #expect(request.content.body == "Lithium · Vitamin D")
+    #expect(request.content.categoryIdentifier == NotificationCategory.maintenanceDose)
+    // Meal identifier carries the `meal.` infix and is not parseable as a single dose id.
+    #expect(request.identifier.contains(".dose.meal.\(mealID.uuidString)"))
+    #expect(NotificationScheduler.scheduledDoseID(fromIdentifier: request.identifier) == nil)
+  }
+
+  @Test func ungroupedDosesStillProduceTheExistingTimeSlotTitle() {
+    // Regression pin: a snapshot with no meals at all behaves identically
+    // to pre-#191 — one request per dose, "Pills · N to take" title.
+    let dose1 = ScheduledDoseDTO(id: UUID(), hour: 8, minute: 0, quantity: 1, daysOfWeek: [])
+    let dose2 = ScheduledDoseDTO(id: UUID(), hour: 8, minute: 0, quantity: 1, daysOfWeek: [])
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Aspirin", schedule: [dose1]),
+        medicationDTO(name: "Lithium", schedule: [dose2]),
+      ],
+      pillMeals: []
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 2)
+    let titles = Set(requests.map(\.content.title))
+    #expect(titles == ["Pills · 2 to take"])
+    let bodies = Set(requests.map(\.content.body))
+    #expect(bodies == ["Aspirin · Lithium"])
+  }
+
+  @Test func mixedRegimenProducesOneMealRequestPlusOneTimeSlotRequest() {
+    let mealID = UUID()
+    let meal = PillMealDTO(
+      id: mealID,
+      name: "Pill Breakfast",
+      targetHour: 9,
+      targetMinute: 30,
+      sortOrder: 0,
+      createdAt: .now
+    )
+    let mealDose = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)
+    let ungroupedDose = ScheduledDoseDTO(id: UUID(), hour: 14, minute: 0, quantity: 1, daysOfWeek: [])
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Vitamin D", schedule: [mealDose]),
+        medicationDTO(name: "Aspirin", schedule: [ungroupedDose]),
+      ],
+      pillMeals: [meal]
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 2)
+    let titles = Set(requests.map(\.content.title))
+    #expect(titles == ["Pill Breakfast", "Pills · 1 to take"])
+  }
+
+  @Test func mealReferencedDoseFallsBackToUngroupedWhenMealMissing() {
+    // A dose pointing at a meal that didn't make it into the snapshot
+    // (e.g. concurrent edit, partial sync) still fires its existing
+    // per-slot notification rather than vanishing.
+    let dose = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: UUID())
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [medicationDTO(name: "Vitamin D", schedule: [dose])],
+      pillMeals: []
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    #expect(requests.count == 1)
+    #expect(requests.first?.content.title == "Pills · 1 to take")
+    #expect(requests.first?.content.body == "Vitamin D")
+  }
+
+  @Test func multiDayMealEmitsOneRequestPerWeekday() {
+    let mealID = UUID()
+    let meal = PillMealDTO(
+      id: mealID,
+      name: "Pill Breakfast",
+      targetHour: 9,
+      targetMinute: 30,
+      sortOrder: 0,
+      createdAt: .now
+    )
+    let dose1 = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [1, 3, 5], pillMealID: mealID)
+    let dose2 = ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [1, 3, 5], pillMealID: mealID)
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        medicationDTO(name: "Vitamin D", schedule: [dose1]),
+        medicationDTO(name: "Lithium", schedule: [dose2]),
+      ],
+      pillMeals: [meal]
+    )
+
+    let requests = NotificationScheduler.makeRequests(from: snapshot)
+    // Two doses, three weekdays each, but consolidated under the meal:
+    // one request per (meal, slot, weekday) — three total.
+    #expect(requests.count == 3)
+    let titles = Set(requests.map(\.content.title))
+    #expect(titles == ["Pill Breakfast"])
+  }
 }
