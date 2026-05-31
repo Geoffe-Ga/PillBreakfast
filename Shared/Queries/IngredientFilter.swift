@@ -24,4 +24,18 @@ public enum IngredientFilter {
     if ingredient.name.lowercased().contains(needle) { return true }
     return ingredient.aliases.contains { $0.lowercased().contains(needle) }
   }
+
+  /// True if `ingredients` contains a row whose `name` matches `candidateName`
+  /// case-insensitively. Used as the create-mode duplicate guard in
+  /// `IngredientEditorView` — safety totals key on `Ingredient` identity, so
+  /// two rows sharing a name silently fork the per-ingredient ceiling and
+  /// neither would fire on a real overdose.
+  public static func containsName(
+    _ candidateName: String,
+    in ingredients: [Ingredient]
+  ) -> Bool {
+    let needle = candidateName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !needle.isEmpty else { return false }
+    return ingredients.contains { $0.name.lowercased() == needle }
+  }
 }

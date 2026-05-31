@@ -180,6 +180,16 @@ struct IngredientEditorView: View {
       ingredient.isHighRisk = isHighRisk
     case .create:
       let trimmedName = nameText.trimmingCharacters(in: .whitespaces)
+      // Block duplicate-name inserts. Safety totals key on `Ingredient`
+      // identity, so two rows with the same name silently fork the
+      // per-ingredient ceiling — neither would ever fire on a real
+      // overdose. Match delegated to `IngredientFilter.containsName`
+      // (case-insensitive) so it's covered by unit tests.
+      let existing = (try? modelContext.fetch(FetchDescriptor<Ingredient>())) ?? []
+      if IngredientFilter.containsName(trimmedName, in: existing) {
+        saveError = "An ingredient named \"\(trimmedName)\" already exists. Edit that one instead."
+        return
+      }
       let new = Ingredient(
         name: trimmedName,
         isHighRisk: isHighRisk,

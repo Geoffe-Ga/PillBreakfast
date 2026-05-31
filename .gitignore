@@ -47,3 +47,9 @@ scripts/ralph/.paused
 # Local Claude Code state
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Ralph workflow scratch — per-PR commit messages and PR body templates that
+# live as files just so git-workflow can pass them via `-F` / `--body-file`.
+# The permanent record is the commit message and PR description, not these.
+plans/github-issues/COMMIT_*.md
+plans/github-issues/PR_*.md

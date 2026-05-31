@@ -63,4 +63,52 @@ struct IngredientFilterTests {
     let result = IngredientFilter.filter(extra, query: "acet")
     #expect(result.map(\.name) == ["Acetaminophen", "Acetylcysteine"])
   }
+
+  @Test func ingredientWithMatchingNameAndAliasIsReturnedOnce() {
+    // If the query matches both a name and an alias on the same ingredient,
+    // `matches` short-circuits on the name hit — the row appears exactly
+    // once. Pin this since `filter` is a `.filter` over an array; duplicate
+    // results would be a subtle copy-paste regression.
+    let withOverlap = [
+      Ingredient(name: "Aspirin", aliases: ["Asparagine", "ASA"]),
+    ]
+    let result = IngredientFilter.filter(withOverlap, query: "as")
+    #expect(result.count == 1)
+  }
+
+  // MARK: - containsName (create-mode duplicate guard)
+
+  @Test func containsNameMatchesCaseInsensitively() {
+    #expect(IngredientFilter.containsName("ibuprofen", in: fixture()))
+    #expect(IngredientFilter.containsName("IBUPROFEN", in: fixture()))
+    #expect(IngredientFilter.containsName("Ibuprofen", in: fixture()))
+  }
+
+  @Test func containsNameMatchesAfterTrimmingWhitespace() {
+    // The user's typed name comes from a TextField; trim before comparing
+    // so " Ibuprofen " still blocks an Ibuprofen duplicate.
+    #expect(IngredientFilter.containsName("  Ibuprofen  ", in: fixture()))
+  }
+
+  @Test func containsNameDoesNotMatchAliases() {
+    // Only names — matching aliases here would block the user from
+    // creating, say, a brand-named ingredient that happens to share an
+    // alias with an existing entry (the autocomplete already surfaces
+    // the existing row in that case). "APAP" is an Acetaminophen alias
+    // and "Lithium" is a Lithium carbonate alias in the fixture; neither
+    // matches a primary name.
+    #expect(!IngredientFilter.containsName("APAP", in: fixture()))
+    #expect(!IngredientFilter.containsName("Lithium", in: fixture()))
+  }
+
+  @Test func containsNameReturnsFalseForUnrelatedName() {
+    #expect(!IngredientFilter.containsName("Zzzzqqqq", in: fixture()))
+  }
+
+  @Test func containsNameReturnsFalseForBlankInput() {
+    // A blank name can't be a duplicate of anything — the create-mode
+    // Save button is already gated on a non-empty name; defense in depth.
+    #expect(!IngredientFilter.containsName("", in: fixture()))
+    #expect(!IngredientFilter.containsName("   ", in: fixture()))
+  }
 }
