@@ -110,7 +110,7 @@ struct IngredientLibrarySeederTests {
     // The SPEC reserves the press-and-hold confirm gesture for high-risk
     // meds. The named narrow-TI Rx drugs below must all be flagged so a
     // future regression that drops the flag is caught.
-    let highRiskNames: Set = [
+    let highRiskNames = [
       "Lithium carbonate",
       "Lamotrigine",
       "Valproate",
@@ -121,8 +121,13 @@ struct IngredientLibrarySeederTests {
       "Digoxin",
     ]
     for name in highRiskNames {
-      let spec = try? #require(IngredientLibrarySeeder.seeds.first { $0.name == name })
-      #expect(spec?.isHighRisk == true, "\(name) must be isHighRisk")
+      // `guard … Issue.record` rather than `try? #require` so a missing
+      // ingredient and a wrong flag produce distinct failure messages.
+      guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
+        Issue.record("High-risk seed \"\(name)\" not found in library")
+        continue
+      }
+      #expect(spec.isHighRisk == true, "\(name) must be isHighRisk")
     }
   }
 
@@ -132,38 +137,65 @@ struct IngredientLibrarySeederTests {
     // several to pin the contract.
     let rxNames = ["Sertraline", "Lamotrigine", "Atorvastatin", "Metformin", "Lithium carbonate"]
     for name in rxNames {
-      let spec = try? #require(IngredientLibrarySeeder.seeds.first { $0.name == name })
-      #expect(spec?.dailyCeilingMg == nil, "\(name) (Rx) must ship with dailyCeilingMg = nil")
-      #expect(spec?.minIntervalMinutes == nil, "\(name) (Rx) must ship with minIntervalMinutes = nil")
+      guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
+        Issue.record("Rx seed \"\(name)\" not found in library")
+        continue
+      }
+      #expect(spec.dailyCeilingMg == nil, "\(name) (Rx) must ship with dailyCeilingMg = nil")
+      #expect(spec.minIntervalMinutes == nil, "\(name) (Rx) must ship with minIntervalMinutes = nil")
     }
   }
 
   @Test func otcAnalgesicsCarrySourcedThresholds() {
-    // Spot-check the OTC analgesic block — all four classic NSAIDs/analgesics
-    // must keep their FDA-sourced thresholds.
+    // Spot-check the OTC analgesic block — every analgesic (including the
+    // new Ketoprofen entry from #155) must keep its FDA-sourced thresholds.
     let expected: [(name: String, ceiling: Double, interval: Int)] = [
       ("Acetaminophen", 4000, 240),
       ("Ibuprofen", 1200, 360),
       ("Aspirin", 4000, 240),
       ("Naproxen", 660, 720),
+      ("Ketoprofen", 75, 480),
     ]
     for case let (name, ceiling, interval) in expected {
-      let spec = try? #require(IngredientLibrarySeeder.seeds.first { $0.name == name })
-      #expect(spec?.dailyCeilingMg == ceiling, "\(name) ceiling drift")
-      #expect(spec?.minIntervalMinutes == interval, "\(name) interval drift")
+      guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
+        Issue.record("OTC analgesic \"\(name)\" not found in library")
+        continue
+      }
+      #expect(spec.dailyCeilingMg == ceiling, "\(name) ceiling drift")
+      #expect(spec.minIntervalMinutes == interval, "\(name) interval drift")
     }
   }
 
-  @Test func newOTCAntihistaminesCarrySourcedThresholds() {
-    // The expansion adds several OTC antihistamines — they each ship with
-    // FDA-monograph / per-product-labeling thresholds so the safety check
-    // can fire on real overdoses.
-    let antihistamines = ["Loratadine", "Cetirizine", "Fexofenadine", "Levocetirizine"]
+  @Test func otcAntihistaminesCarrySourcedThresholds() {
+    // Both the original Diphenhydramine and the new OTC antihistamine
+    // expansions must carry their FDA-monograph / product-labeling
+    // thresholds so the safety check can fire on real overdoses.
+    let antihistamines = [
+      "Diphenhydramine",
+      "Loratadine",
+      "Cetirizine",
+      "Fexofenadine",
+      "Levocetirizine",
+    ]
     for name in antihistamines {
-      let spec = try? #require(IngredientLibrarySeeder.seeds.first { $0.name == name })
-      #expect(spec?.dailyCeilingMg != nil, "\(name) (OTC) must ship with a ceiling")
-      #expect(spec?.minIntervalMinutes != nil, "\(name) (OTC) must ship with an interval")
+      guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
+        Issue.record("OTC antihistamine \"\(name)\" not found in library")
+        continue
+      }
+      #expect(spec.dailyCeilingMg != nil, "\(name) (OTC) must ship with a ceiling")
+      #expect(spec.minIntervalMinutes != nil, "\(name) (OTC) must ship with an interval")
     }
+  }
+
+  @Test func diphenhydramineKeepsItsOriginalThresholds() {
+    // Pin the exact values for the antihistamine that was in the original
+    // six-entry library so the expansion didn't accidentally edit them.
+    guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == "Diphenhydramine" }) else {
+      Issue.record("Diphenhydramine not found in library")
+      return
+    }
+    #expect(spec.dailyCeilingMg == 300)
+    #expect(spec.minIntervalMinutes == 240)
   }
 
   @Test func aliasesAreNonEmptyOnSeedsWithCommonSynonyms() {
@@ -176,10 +208,17 @@ struct IngredientLibrarySeederTests {
       ("Lithium carbonate", "Lithium"),
       ("Vitamin B9", "Folic acid"),
       ("Vitamin C", "Ascorbic acid"),
+      // Per #166 review: short codes like "B3" matter for autocomplete —
+      // a user typing "B3" expects to find both forms.
+      ("Vitamin B3 (Niacin)", "B3"),
+      ("Vitamin B3 (Niacinamide)", "B3"),
     ]
     for case let (name, alias) in aliasContracts {
-      let spec = try? #require(IngredientLibrarySeeder.seeds.first { $0.name == name })
-      #expect(spec?.aliases.contains(alias) == true, "\(name) should carry alias \"\(alias)\"")
+      guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
+        Issue.record("Alias-contract seed \"\(name)\" not found in library")
+        continue
+      }
+      #expect(spec.aliases.contains(alias), "\(name) should carry alias \"\(alias)\"")
     }
   }
 }

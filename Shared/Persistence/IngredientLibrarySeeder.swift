@@ -68,7 +68,11 @@ public enum IngredientLibrarySeeder {
     SeedSpec(name: "Acetaminophen", aliases: ["Paracetamol", "APAP"], isHighRisk: false, dailyCeilingMg: 4000, minIntervalMinutes: 240),
     SeedSpec(name: "Ibuprofen", aliases: [], isHighRisk: false, dailyCeilingMg: 1200, minIntervalMinutes: 360),
     SeedSpec(name: "Aspirin", aliases: ["ASA", "Acetylsalicylic acid"], isHighRisk: false, dailyCeilingMg: 4000, minIntervalMinutes: 240),
-    SeedSpec(name: "Naproxen", aliases: ["Naproxen sodium"], isHighRisk: false, dailyCeilingMg: 660, minIntervalMinutes: 720),
+    // Preserve "Naproxen Sodium" casing from the pre-#155 library — alias
+    // matching is intended to be case-insensitive, but keeping the canonical
+    // capitalisation avoids any unverified migration risk on the
+    // HealthMedicationMapper suggestion path.
+    SeedSpec(name: "Naproxen", aliases: ["Naproxen Sodium"], isHighRisk: false, dailyCeilingMg: 660, minIntervalMinutes: 720),
     SeedSpec(name: "Ketoprofen", aliases: [], isHighRisk: false, dailyCeilingMg: 75, minIntervalMinutes: 480),
   ]
 
@@ -146,8 +150,8 @@ public enum IngredientLibrarySeeder {
     SeedSpec(name: "Vitamin A", aliases: ["Retinol"], isHighRisk: false, dailyCeilingMg: 3, minIntervalMinutes: nil),
     SeedSpec(name: "Vitamin B1", aliases: ["Thiamine", "Thiamin"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Vitamin B2", aliases: ["Riboflavin"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
-    SeedSpec(name: "Vitamin B3 (Niacin)", aliases: ["Nicotinic acid"], isHighRisk: false, dailyCeilingMg: 35, minIntervalMinutes: nil),
-    SeedSpec(name: "Vitamin B3 (Niacinamide)", aliases: ["Nicotinamide"], isHighRisk: false, dailyCeilingMg: 35, minIntervalMinutes: nil),
+    SeedSpec(name: "Vitamin B3 (Niacin)", aliases: ["Nicotinic acid", "B3"], isHighRisk: false, dailyCeilingMg: 35, minIntervalMinutes: nil),
+    SeedSpec(name: "Vitamin B3 (Niacinamide)", aliases: ["Nicotinamide", "B3"], isHighRisk: false, dailyCeilingMg: 35, minIntervalMinutes: nil),
     SeedSpec(name: "Vitamin B5", aliases: ["Pantothenic acid"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Vitamin B6", aliases: ["Pyridoxine"], isHighRisk: false, dailyCeilingMg: 100, minIntervalMinutes: nil),
     SeedSpec(name: "Vitamin B7", aliases: ["Biotin"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
