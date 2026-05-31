@@ -61,7 +61,7 @@ struct LiquidGlassThemeTests {
     )
   }
 
-  // MARK: - #158 token expansion
+  // MARK: - Extended typography, elevation, corner radius, motion
 
   @Test func displayBuilderAppliesDisplayFont() {
     let text = "All caught up"

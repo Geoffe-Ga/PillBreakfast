@@ -40,10 +40,14 @@ public enum LiquidGlassTheme {
     /// SF Pro (Display at this size), title3, monospaced digits — dosage
     /// figures, so changing digits don't shift the layout.
     public static let dosageFont: Font = .system(.title3, design: .default, weight: .medium).monospacedDigit()
-    /// SF Pro Rounded caption for supporting text.
+    /// SF Pro Rounded caption (12 pt default) for the smallest supporting
+    /// text — chip labels, dense list metadata.
     public static let captionFont: Font = .system(.caption, design: .rounded)
-    /// SF Pro Rounded footnote — tertiary labels (timestamp captions,
-    /// secondary row text). One step below `captionFont` semantically.
+    /// SF Pro Rounded footnote (13 pt default) for legible secondary copy —
+    /// row subtitles, ingredient summaries, "last logged" timestamps.
+    /// Note: Apple's `.footnote` is one step *larger* than `.caption`, so
+    /// this lands between caption and headline on the type scale despite
+    /// the colloquial sense of "footnote".
     public static let footnoteFont: Font = .system(.footnote, design: .rounded)
   }
 

@@ -38,8 +38,9 @@ public extension LiquidGlassTheme.Typography {
     Text(text).font(captionFont)
   }
 
-  /// Tertiary labels — timestamp captions, secondary row text. One step
-  /// below `caption`.
+  /// Legible secondary copy — row subtitles, "last logged" timestamps,
+  /// ingredient summaries. Sits between caption and headline on the type
+  /// scale (Apple's `.footnote` is 13 pt vs `.caption`'s 12 pt).
   static func footnote(_ text: String) -> Text {
     Text(text).font(footnoteFont)
   }
