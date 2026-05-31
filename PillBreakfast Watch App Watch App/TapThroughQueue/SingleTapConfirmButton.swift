@@ -7,12 +7,6 @@ import SwiftUI
 struct SingleTapConfirmButton: View {
   let onConfirmed: () -> Void
 
-  /// Brief scale dip on press so the confirm reads as a deliberate beat
-  /// rather than an instantaneous "did anything happen?" Reduce-motion
-  /// neutralises this to a constant scale.
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isPressed = false
-
   var body: some View {
     Button {
       onConfirmed()
@@ -21,14 +15,23 @@ struct SingleTapConfirmButton: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
     }
-    .buttonStyle(.borderedProminent)
-    .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.standard))
-    .scaleEffect(reduceMotion || !isPressed ? 1 : 0.96)
-    .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.snappy, value: isPressed)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in isPressed = true }
-        .onEnded { _ in isPressed = false }
-    )
+    .buttonStyle(SnappyProminentButtonStyle())
+  }
+}
+
+/// Bordered-prominent appearance with a brief scale dip on press, driven by
+/// `configuration.isPressed` (not a `DragGesture`) so digital-crown scrolls
+/// and swipe-to-dismiss can't leave the button stuck in the pressed state.
+/// Reduce-motion neutralises the scale.
+private struct SnappyProminentButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .foregroundStyle(.white)
+      .background(.tint)
+      .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.standard))
+      .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.96)
+      .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.snappy, value: configuration.isPressed)
   }
 }

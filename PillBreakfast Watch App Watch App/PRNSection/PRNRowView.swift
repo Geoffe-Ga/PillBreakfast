@@ -9,12 +9,13 @@ struct PRNRowView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       LiquidGlassTheme.Typography.medicationName(summary.firstLine)
-      // `footnote` (13 pt) instead of `caption` (12 pt) so the running-total
-      // / last-dose line stays legible on the watch's smallest face.
       LiquidGlassTheme.Typography.footnote(summary.secondLine)
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
     }
-    .padding(.vertical, LiquidGlassTheme.Spacing.compact / 2)
+    .padding(LiquidGlassTheme.Spacing.compact)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(LiquidGlassTheme.Materials.surface)
+    .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.standard))
     .elevation(.raised)
   }
 }

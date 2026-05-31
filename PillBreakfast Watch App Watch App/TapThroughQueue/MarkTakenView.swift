@@ -22,8 +22,8 @@ struct MarkTakenView: View {
 
   var body: some View {
     VStack(spacing: LiquidGlassTheme.Spacing.standard) {
-      // Hero card: med name + dosage in an elevated glass block so the dose
-      // identity reads as the screen's anchor before the confirm action.
+      // Hero card so the dose identity is the screen's anchor before
+      // the confirm action.
       VStack(spacing: LiquidGlassTheme.Spacing.compact) {
         HStack(spacing: LiquidGlassTheme.Spacing.compact) {
           if let color = Color(hex: colorHex) {
