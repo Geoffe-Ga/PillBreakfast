@@ -17,6 +17,7 @@ struct AddMedicationView: View {
     NavigationStack {
       MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
         .navigationTitle("New Medication")
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") { cancel() }
