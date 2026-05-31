@@ -10,9 +10,18 @@ struct MedicationFormView: View {
   var onIngredientCreated: (UUID) -> Void = { _ in }
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
   @State private var showingNewIngredient = false
+  /// Pre-fills `NewIngredientView` when the search-miss row in the picker
+  /// fires — empties to "" when the `+` New Ingredient button opens it
+  /// cold from the form.
+  @State private var newIngredientInitialName = ""
   /// Sticky once the user first touches the form, so errors don't vanish if a
   /// field (e.g. the name) is later cleared back to empty.
   @State private var hasInteracted = false
+
+  private var selectedIngredientName: String? {
+    guard let id = formState.componentDraft.ingredientID else { return nil }
+    return ingredients.first { $0.id == id }?.name
+  }
 
   var body: some View {
     Form {
@@ -26,13 +35,26 @@ struct MedicationFormView: View {
       }
 
       Section("Ingredient") {
-        Picker("Ingredient", selection: $formState.componentDraft.ingredientID) {
-          Text("Select…").tag(UUID?.none)
-          ForEach(ingredients) { ingredient in
-            Text(ingredient.name).tag(UUID?.some(ingredient.id))
+        NavigationLink {
+          IngredientPickerView(
+            selectionBinding: $formState.componentDraft.ingredientID,
+            onCreateRequest: { query in
+              newIngredientInitialName = query
+              showingNewIngredient = true
+            }
+          )
+        } label: {
+          HStack {
+            Text("Ingredient")
+            Spacer()
+            Text(selectedIngredientName ?? "Select…")
+              .foregroundStyle(selectedIngredientName == nil ? .secondary : .primary)
           }
         }
-        Button("New Ingredient…") { showingNewIngredient = true }
+        Button("New Ingredient…") {
+          newIngredientInitialName = ""
+          showingNewIngredient = true
+        }
         HStack {
           Text("Dose per unit (mg)")
           Spacer()
@@ -78,7 +100,7 @@ struct MedicationFormView: View {
     .scrollContentBackground(.hidden)
     .glassBackground()
     .sheet(isPresented: $showingNewIngredient) {
-      NewIngredientView { newID in
+      NewIngredientView(initialName: newIngredientInitialName) { newID in
         formState.componentDraft.ingredientID = newID
         onIngredientCreated(newID)
       }
@@ -89,23 +111,38 @@ struct MedicationFormView: View {
   }
 }
 
-/// One-screen sub-form for adding an ingredient to the library inline.
+/// One-screen sub-form for adding an ingredient to the library inline from
+/// the medication editor's picker (#157). The richer "ceiling + interval +
+/// disclaimer" editor lives in `IngredientEditorView` and is reached from the
+/// Ingredients tab; this surface stays a lightweight name + high-risk pair.
+///
+/// `initialName` is pre-filled when the picker's search-miss row routes here.
 private struct NewIngredientView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
+  let initialName: String
   let onCreate: (UUID) -> Void
 
-  @State private var name = ""
+  @State private var name: String
   @State private var isHighRisk = false
+  @State private var saveError: String?
+
+  init(initialName: String = "", onCreate: @escaping (UUID) -> Void) {
+    self.initialName = initialName
+    self.onCreate = onCreate
+    _name = State(initialValue: initialName)
+  }
 
   private var trimmedName: String {
-    name.trimmingCharacters(in: .whitespaces)
+    name.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   var body: some View {
     NavigationStack {
       Form {
         TextField("Name", text: $name)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
         Toggle("High-risk (press-and-hold to confirm)", isOn: $isHighRisk)
       }
       .navigationTitle("New Ingredient")
@@ -114,15 +151,42 @@ private struct NewIngredientView: View {
           Button("Cancel") { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button("Add") {
-            let ingredient = Ingredient(name: trimmedName, isHighRisk: isHighRisk)
-            modelContext.insert(ingredient)
-            onCreate(ingredient.id)
-            dismiss()
-          }
-          .disabled(trimmedName.isEmpty)
+          Button("Add", action: add)
+            .disabled(trimmedName.isEmpty)
         }
       }
+      .alert(
+        "Couldn't add",
+        isPresented: Binding(
+          get: { saveError != nil },
+          set: { if !$0 { saveError = nil } }
+        )
+      ) {
+        Button("OK", role: .cancel) { saveError = nil }
+      } message: {
+        Text(saveError ?? "")
+      }
     }
+  }
+
+  private func add() {
+    // Duplicate-name guard — same invariant as IngredientEditorView's
+    // create mode. Two same-name rows would silently fork the per-
+    // ingredient safety ceiling and neither would fire on a real overdose.
+    let existing: [Ingredient]
+    do {
+      existing = try modelContext.fetch(FetchDescriptor<Ingredient>())
+    } catch {
+      saveError = "Couldn't verify the ingredient name. Please try again."
+      return
+    }
+    if IngredientFilter.containsName(trimmedName, in: existing) {
+      saveError = "An ingredient named \"\(trimmedName)\" already exists. Pick it from the picker instead."
+      return
+    }
+    let ingredient = Ingredient(name: trimmedName, isHighRisk: isHighRisk)
+    modelContext.insert(ingredient)
+    onCreate(ingredient.id)
+    dismiss()
   }
 }
