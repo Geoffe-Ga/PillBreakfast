@@ -63,6 +63,27 @@ struct PillMealTests {
     #expect(try context.fetch(FetchDescriptor<PillMeal>()).count == 1)
   }
 
+  @Test func pillMealInverseReflectsAssignedScheduledDoses() throws {
+    let context = try makeInMemoryContext()
+
+    let meal = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 30)
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    let dose1 = ScheduledDose(hour: 9, minute: 30, quantity: 1, medication: medication, pillMeal: meal)
+    let dose2 = ScheduledDose(hour: 9, minute: 30, quantity: 2, medication: medication, pillMeal: meal)
+    medication.schedule = [dose1, dose2]
+    context.insert(meal)
+    context.insert(medication)
+    try context.save()
+
+    // Refetch from the store rather than reading the inserted instance —
+    // SwiftData populates the inverse during fetch, not at the time the
+    // dose-side reference is assigned.
+    let storedMeal = try #require(try context.fetch(FetchDescriptor<PillMeal>()).first)
+    #expect(storedMeal.scheduledDoses.count == 2)
+    let storedIDs = Set(storedMeal.scheduledDoses.map(\.id))
+    #expect(storedIDs == Set([dose1.id, dose2.id]))
+  }
+
   @Test func existingScheduledDoseFetchesReturnNilPillMeal() throws {
     let context = try makeInMemoryContext()
 

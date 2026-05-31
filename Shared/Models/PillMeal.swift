@@ -20,6 +20,13 @@ public final class PillMeal {
   /// so newly-created meals append; the editor can later expose drag-to-reorder.
   public var sortOrder: Int
   public var createdAt: Date
+  /// Inverse of `ScheduledDose.pillMeal`. Lets the editor (next issue) read
+  /// `meal.scheduledDoses` directly to gate deletion ("can't delete a meal
+  /// with assigned doses") and to summarize "N doses" in the section row.
+  /// `.nullify` keeps doses around when the meal is deleted — the editor is
+  /// responsible for blocking deletion while assignments exist.
+  @Relationship(deleteRule: .nullify, inverse: \ScheduledDose.pillMeal)
+  public var scheduledDoses: [ScheduledDose] = []
 
   public init(
     id: UUID = UUID(),

@@ -13,6 +13,11 @@ public final class ScheduledDose {
   /// user hasn't assigned to a meal — both produce the existing per-`TimeSlot`
   /// notification + ungrouped tap-through card behavior. The editor introduces
   /// non-nil assignments in a later issue.
+  ///
+  /// `.nullify` matches SwiftData's default for optional relationships but is
+  /// stated explicitly to match the rest of the schema and document intent.
+  /// Inverse is declared on `PillMeal.scheduledDoses`.
+  @Relationship(deleteRule: .nullify)
   public var pillMeal: PillMeal?
 
   public init(
