@@ -60,8 +60,12 @@ struct IngredientEditorView: View {
     Form {
       if case .create = mode {
         Section {
+          // `.never` so a user typing "lithium carbonate" doesn't get
+          // silently transformed to "Lithium Carbonate" (title case) when
+          // canonical drug naming is sentence case ("Lithium carbonate").
+          // Autocorrect off because chemical names break it.
           TextField("Acetaminophen, Vitamin D3, …", text: $nameText)
-            .textInputAutocapitalization(.words)
+            .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
         } header: {
           Text("Name")
