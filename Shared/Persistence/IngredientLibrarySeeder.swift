@@ -133,6 +133,11 @@ public enum IngredientLibrarySeeder {
     SeedSpec(name: "Loperamide", aliases: ["Imodium"], isHighRisk: false, dailyCeilingMg: 8, minIntervalMinutes: 240),
     SeedSpec(name: "Bismuth subsalicylate", aliases: ["Pepto-Bismol"], isHighRisk: false, dailyCeilingMg: 4200, minIntervalMinutes: 60),
     SeedSpec(name: "Simethicone", aliases: ["Gas-X"], isHighRisk: false, dailyCeilingMg: 500, minIntervalMinutes: 360),
+    // Coupled with `Calcium` (mineral block, UL 2500 mg). The per-ingredient
+    // PRN running total sees these as independent rows — a user logging both
+    // Tums (antacid) and a calcium supplement could exceed the combined safe
+    // elemental load without either ceiling firing. Combined-ingredient
+    // aggregation is tracked in #168.
     SeedSpec(name: "Calcium carbonate", aliases: ["Tums"], isHighRisk: false, dailyCeilingMg: 7500, minIntervalMinutes: 60),
     SeedSpec(name: "Magnesium hydroxide", aliases: ["Milk of Magnesia"], isHighRisk: false, dailyCeilingMg: 2400, minIntervalMinutes: 360),
     SeedSpec(name: "Docusate", aliases: ["Colace"], isHighRisk: false, dailyCeilingMg: 500, minIntervalMinutes: 720),
