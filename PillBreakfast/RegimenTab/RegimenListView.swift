@@ -5,13 +5,10 @@ import SwiftUI
 /// Grouped regimen list (Maintenance / PRN) with add, edit, and swipe-to-archive.
 /// Editing pushes the updated regimen to the watch via `WatchConnectivityCoordinator`.
 struct RegimenListView: View {
-  /// Hero icon size in the empty state — kept as a file constant so it can be
-  /// promoted to a `LiquidGlassTheme.Sizing` token alongside other hero icons
-  /// in a future polish PR without a stray literal living in the view.
+  /// Hero icon size in the empty state.
   private static let emptyStateIconSize: CGFloat = 44
-  /// Sub-compact inter-line spacing between the medication name and its
-  /// schedule summary in a row. Smaller than `Spacing.compact` (8) on purpose
-  /// — these two lines belong to the same row and should hug.
+  /// Inter-line spacing between the medication name and its schedule summary
+  /// — sub-compact on purpose so the two lines hug as one row.
   private static let rowLineSpacing: CGFloat = 2
 
   @Environment(\.modelContext) private var modelContext
@@ -128,13 +125,18 @@ struct RegimenListView: View {
       }
       Spacer(minLength: 0)
       if medication.isHighRisk {
-        // High-risk indicator stays amber — the one sanctioned color per
-        // CLAUDE.md / SPEC §9.
+        // Monochrome on the iPhone setup surface. CLAUDE.md reserves the
+        // amber accent for press-and-hold confirmations on the watch
+        // logging path; the high-risk indicator here stays glyph-only and
+        // relies on the symbol shape (and accessibility label) to read.
         Image(systemName: "exclamationmark.shield.fill")
-          .foregroundStyle(LiquidGlassTheme.Colors.highRiskAccent)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
           .accessibilityLabel("High risk")
       }
     }
+    // Extra vertical padding (`Spacing.compact` = 8 pt on top of the
+    // `.insetGrouped` default) is deliberate — the two-line name + schedule
+    // hierarchy needs breathing room not provided by the system row insets.
     .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 

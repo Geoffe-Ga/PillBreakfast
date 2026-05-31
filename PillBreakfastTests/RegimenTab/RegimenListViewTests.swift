@@ -25,6 +25,18 @@ struct RegimenListViewTests {
     #expect(RegimenListView.scheduleSummary(for: med) == "1 daily dose")
   }
 
+  @Test func scheduleSummaryUsesPluralForTwoDailyDoses() {
+    // Pin the singular/plural boundary at count == 2 explicitly — the
+    // existing 3-dose test covers the same branch but a one-step-off
+    // regression at 2 would otherwise slip through.
+    let med = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    med.schedule = [
+      ScheduledDose(hour: 8, minute: 0, quantity: 1, daysOfWeek: []),
+      ScheduledDose(hour: 20, minute: 0, quantity: 1, daysOfWeek: []),
+    ]
+    #expect(RegimenListView.scheduleSummary(for: med) == "2 daily doses")
+  }
+
   @Test func scheduleSummaryUsesPluralForMultipleDailyDoses() {
     let med = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
     med.schedule = [
