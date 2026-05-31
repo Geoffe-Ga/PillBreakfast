@@ -76,7 +76,13 @@ public enum NotificationScheduler {
     maintenance: [MedicationDTO],
     mealsByID: [UUID: PillMealDTO]
   ) -> [UNNotificationRequest] {
-    // Names for each (mealID, slot) — used as the body when the request fires.
+    // Note on time-source: each notification fires at `dose.hour`/`dose.minute`,
+    // not at `meal.targetHour`/`targetMinute`. The dose's hour/minute IS the
+    // canonical fire time; the meal-editor (#190) keeps them in sync via
+    // `PillMeal.applyTime` whenever the user changes the meal's target. The
+    // meal DTO's target fields exist for the iPhone Pill Meals UI and for any
+    // future "this dose drifted from its meal" reconciliation pass — the
+    // scheduler does not consult them.
     let mealPairs: [(MedicationDTO, ScheduledDoseDTO, MealSlotKey)] = maintenance.flatMap { med in
       med.schedule.compactMap { dose -> (MedicationDTO, ScheduledDoseDTO, MealSlotKey)? in
         guard let mealID = dose.pillMealID, mealsByID[mealID] != nil else { return nil }
@@ -88,14 +94,21 @@ public enum NotificationScheduler {
       by: { $0.0 }
     ).mapValues { $0.map(\.1).sorted() }
 
+    // Content is built once per (meal, slot) — every weekday request for the
+    // same group shares the same body/title, and UNNotificationRequest's init
+    // copies the content internally, so sharing the reference is safe and
+    // avoids redundant allocations.
+    let contentByMealSlot: [MealSlotKey: UNMutableNotificationContent] = namesByMealSlot.reduce(into: [:]) { acc, entry in
+      guard let meal = mealsByID[entry.key.mealID] else { return }
+      acc[entry.key] = makeMealContent(mealName: meal.name, namesAtMeal: entry.value)
+    }
+
     // Emit one request per (mealID, slot, weekday) — multiple doses in the
     // same meal at the same slot must not generate duplicates.
     var requests: [UNNotificationRequest] = []
     var emitted: Set<MealRequestKey> = []
     for (_, dose, slotKey) in mealPairs {
-      guard let meal = mealsByID[slotKey.mealID] else { continue }
-      let names = namesByMealSlot[slotKey] ?? []
-      let content = makeMealContent(mealName: meal.name, namesAtMeal: names)
+      guard let meal = mealsByID[slotKey.mealID], let content = contentByMealSlot[slotKey] else { continue }
       for trigger in makeTriggers(for: dose) {
         let requestKey = MealRequestKey(mealID: slotKey.mealID, slot: slotKey.slot, weekday: trigger.weekday)
         if emitted.contains(requestKey) { continue }

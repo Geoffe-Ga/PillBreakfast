@@ -58,6 +58,8 @@ public enum SyncError: Error, Equatable, Sendable {
   case danglingIngredientReference(componentID: UUID, ingredientID: UUID)
   /// A scheduled dose carries an out-of-range hour/minute/weekday that would silently break notification scheduling.
   case invalidSchedule(doseID: UUID)
+  /// A pill meal carries an out-of-range targetHour/targetMinute.
+  case invalidPillMeal(id: UUID)
 }
 
 public struct IngredientDTO: Codable, Sendable, Hashable {
@@ -154,6 +156,13 @@ public struct PillMealDTO: Codable, Sendable, Hashable, Identifiable {
     self.targetMinute = targetMinute
     self.sortOrder = sortOrder
     self.createdAt = createdAt
+  }
+
+  /// Mirrors `ScheduledDoseDTO.isValid` — `apply(to:)` rejects out-of-range
+  /// meals before touching the store so a malformed payload can't silently
+  /// corrupt the regimen.
+  public var isValid: Bool {
+    (0 ... 23).contains(targetHour) && (0 ... 59).contains(targetMinute)
   }
 }
 
@@ -296,9 +305,10 @@ public extension RegimenSnapshot {
     )
 
     // Validate-before-mutate: every component must resolve to an ingredient that
-    // already exists or is being inserted by this snapshot, and every scheduled
-    // dose must be in range. Checking up front means a rejected snapshot can't
-    // leave the context half-rebuilt.
+    // already exists or is being inserted by this snapshot, every scheduled
+    // dose must be in range, and every pill meal's target time must be in
+    // range. Checking up front means a rejected snapshot can't leave the
+    // context half-rebuilt.
     let resolvableIngredientIDs = Set(ingredientByID.keys).union(ingredients.map(\.id))
     for medication in medications {
       for component in medication.components where !resolvableIngredientIDs.contains(component.ingredientID) {
@@ -312,6 +322,9 @@ public extension RegimenSnapshot {
         // is the last boundary before bad data enters the store.
         throw SyncError.invalidSchedule(doseID: dose.id)
       }
+    }
+    for meal in pillMeals where !meal.isValid {
+      throw SyncError.invalidPillMeal(id: meal.id)
     }
 
     for dto in ingredients {

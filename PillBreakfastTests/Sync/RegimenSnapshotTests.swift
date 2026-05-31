@@ -335,4 +335,151 @@ struct RegimenSnapshotTests {
     #expect(snapshot.medications.count == 1)
     #expect(snapshot.medications.first?.displayName == "Active")
   }
+
+  // MARK: - Pill Meals sync (#191)
+
+  @Test func fromContextEmitsPillMealsAndPopulatesPillMealID() throws {
+    let context = try makeInMemoryContext()
+    let meal = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 30, sortOrder: 0)
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    let dose = ScheduledDose(hour: 9, minute: 30, quantity: 1, medication: medication, pillMeal: meal)
+    medication.schedule = [dose]
+    context.insert(meal)
+    context.insert(medication)
+    try context.save()
+
+    let snapshot = try RegimenSnapshot.from(context: context)
+    #expect(snapshot.pillMeals.count == 1)
+    #expect(snapshot.pillMeals.first?.name == "Pill Breakfast")
+    #expect(snapshot.pillMeals.first?.targetHour == 9)
+    let scheduledDose = try #require(snapshot.medications.first?.schedule.first)
+    #expect(scheduledDose.pillMealID == meal.id)
+  }
+
+  @Test func applyUpsertsPillMealsAndWiresDoseRelationships() throws {
+    let mealID = UUID()
+    let medID = UUID()
+    let ingredientID = UUID()
+    let snapshot = RegimenSnapshot(
+      ingredients: [
+        IngredientDTO(id: ingredientID, name: "Cholecalciferol", aliases: [], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
+      ],
+      medications: [
+        MedicationDTO(
+          id: medID,
+          displayName: "Vitamin D",
+          fullName: nil,
+          unitForm: .capsule,
+          kind: .maintenance,
+          colorHex: nil,
+          notes: nil,
+          isArchived: false,
+          createdAt: .now,
+          healthKitConceptID: nil,
+          prnAvailableQuantities: [],
+          components: [ComponentDTO(id: UUID(), ingredientID: ingredientID, dosagePerUnitMg: 50)],
+          schedule: [ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: mealID)]
+        ),
+      ],
+      pillMeals: [PillMealDTO(id: mealID, name: "Pill Breakfast", targetHour: 9, targetMinute: 30, sortOrder: 0, createdAt: .now)]
+    )
+
+    let context = try makeInMemoryContext()
+    try snapshot.apply(to: context)
+
+    let storedMeals = try context.fetch(FetchDescriptor<PillMeal>())
+    #expect(storedMeals.count == 1)
+    #expect(storedMeals.first?.name == "Pill Breakfast")
+    let storedDose = try #require(try context.fetch(FetchDescriptor<ScheduledDose>()).first)
+    #expect(storedDose.pillMeal?.id == mealID)
+  }
+
+  @Test func applyDoseWithUnresolvedPillMealIDFallsBackToNil() throws {
+    // pillMealID points at a meal the snapshot didn't carry — apply()
+    // leaves the dose's `pillMeal` nil rather than crashing. The dose
+    // still fires its per-`TimeSlot` notification.
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [
+        MedicationDTO(
+          id: UUID(),
+          displayName: "Vitamin D",
+          fullName: nil,
+          unitForm: .capsule,
+          kind: .maintenance,
+          colorHex: nil,
+          notes: nil,
+          isArchived: false,
+          createdAt: .now,
+          healthKitConceptID: nil,
+          prnAvailableQuantities: [],
+          components: [],
+          schedule: [ScheduledDoseDTO(id: UUID(), hour: 9, minute: 30, quantity: 1, daysOfWeek: [], pillMealID: UUID())]
+        ),
+      ],
+      pillMeals: []
+    )
+
+    let context = try makeInMemoryContext()
+    try snapshot.apply(to: context)
+
+    let storedDose = try #require(try context.fetch(FetchDescriptor<ScheduledDose>()).first)
+    #expect(storedDose.pillMeal == nil)
+  }
+
+  @Test func decodesLegacyV3SnapshotWithoutPillMealsKey() throws {
+    // A v3 payload (a not-yet-updated iPhone) predates `pillMeals` and the
+    // dose's `pillMealID` field. The decoder must accept it and default
+    // every dose to the ungrouped path.
+    let legacyJSON = """
+    {
+      "schemaVersion": 3,
+      "ingredients": [],
+      "medications": [{
+        "id": "\(UUID().uuidString)",
+        "displayName": "Aspirin",
+        "fullName": null,
+        "unitForm": "tablet",
+        "kind": "maintenance",
+        "colorHex": null,
+        "notes": null,
+        "isArchived": false,
+        "createdAt": 731457600,
+        "healthKitConceptID": null,
+        "prnAvailableQuantities": [],
+        "components": [],
+        "schedule": [{
+          "id": "\(UUID().uuidString)",
+          "hour": 8,
+          "minute": 0,
+          "quantity": 1,
+          "daysOfWeek": []
+        }]
+      }],
+      "preferences": {
+        "highRiskHoldDurationSeconds": 0.5,
+        "defaultSnoozeOffsetMinutes": 30
+      }
+    }
+    """
+    let data = try #require(legacyJSON.data(using: .utf8))
+    let decoded = try JSONDecoder().decode(RegimenSnapshot.self, from: data)
+    #expect(decoded.schemaVersion == 3)
+    #expect(decoded.pillMeals.isEmpty)
+    #expect(decoded.medications.first?.schedule.first?.pillMealID == nil)
+  }
+
+  @Test func applyRejectsInvalidPillMealBeforeMutation() throws {
+    let snapshot = RegimenSnapshot(
+      ingredients: [],
+      medications: [],
+      pillMeals: [PillMealDTO(id: UUID(), name: "Bad", targetHour: 25, targetMinute: 99, sortOrder: 0, createdAt: .now)]
+    )
+    let context = try makeInMemoryContext()
+    #expect(throws: SyncError.self) {
+      try snapshot.apply(to: context)
+    }
+    // Rejected before mutation — nothing inserted.
+    #expect(try context.fetch(FetchDescriptor<PillMeal>()).isEmpty)
+  }
 }
