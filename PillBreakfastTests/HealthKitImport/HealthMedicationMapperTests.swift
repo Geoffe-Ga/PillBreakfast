@@ -79,8 +79,8 @@ struct HealthMedicationMapperTests {
 
   @Test func suggestedIngredientReturnsNilWhenNothingMatches() throws {
     let library = try seededLibrary()
-    let draft = MedicationDraft(displayName: "Lithium Carbonate", healthKitConceptID: "x")
-    // No seeded ingredient mentions Lithium; library covers OTC ingredients only.
+    // Synthetic name that no seed (#155 expanded library) or alias matches.
+    let draft = MedicationDraft(displayName: "Zzzzqqqq Glubberin 500", healthKitConceptID: "x")
     #expect(HealthMedicationMapper.suggestedIngredient(for: draft, in: library) == nil)
   }
 
