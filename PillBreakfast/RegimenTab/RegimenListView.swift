@@ -5,6 +5,15 @@ import SwiftUI
 /// Grouped regimen list (Maintenance / PRN) with add, edit, and swipe-to-archive.
 /// Editing pushes the updated regimen to the watch via `WatchConnectivityCoordinator`.
 struct RegimenListView: View {
+  /// Hero icon size in the empty state — kept as a file constant so it can be
+  /// promoted to a `LiquidGlassTheme.Sizing` token alongside other hero icons
+  /// in a future polish PR without a stray literal living in the view.
+  private static let emptyStateIconSize: CGFloat = 44
+  /// Sub-compact inter-line spacing between the medication name and its
+  /// schedule summary in a row. Smaller than `Spacing.compact` (8) on purpose
+  /// — these two lines belong to the same row and should hug.
+  private static let rowLineSpacing: CGFloat = 2
+
   @Environment(\.modelContext) private var modelContext
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
@@ -24,24 +33,7 @@ struct RegimenListView: View {
 
   var body: some View {
     List {
-      if medications.isEmpty {
-        Section {
-          ContentUnavailableView {
-            Label {
-              LiquidGlassTheme.Typography.display("No medications yet")
-            } icon: {
-              Image(systemName: "pills.fill")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-            }
-          } description: {
-            LiquidGlassTheme.Typography.footnote("Add a medication to start tracking, or import what's already in Apple Health.")
-              .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-              .multilineTextAlignment(.center)
-          }
-          .listRowBackground(Color.clear)
-        }
-      } else {
+      if !medications.isEmpty {
         section("Maintenance", medications: maintenance)
         section("PRN", medications: prn)
       }
@@ -49,6 +41,27 @@ struct RegimenListView: View {
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)
     .glassBackground()
+    // `ContentUnavailableView` is a full-view replacement and ignores List
+    // row sizing — wrapping it in a `Section` collapses it to row height.
+    // Overlay it instead so it centres in the List's frame while the
+    // toolbar (+ / Import) stays available.
+    .overlay {
+      if medications.isEmpty {
+        ContentUnavailableView {
+          Label {
+            LiquidGlassTheme.Typography.display("No medications yet")
+          } icon: {
+            Image(systemName: "pills.fill")
+              .font(.system(size: Self.emptyStateIconSize, weight: .light))
+              .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+          }
+        } description: {
+          LiquidGlassTheme.Typography.footnote("Add a medication to start tracking, or import what's already in Apple Health.")
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+            .multilineTextAlignment(.center)
+        }
+      }
+    }
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
         Button {
@@ -108,9 +121,9 @@ struct RegimenListView: View {
 
   private func row(_ medication: Medication) -> some View {
     HStack(alignment: .center, spacing: LiquidGlassTheme.Spacing.compact) {
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: Self.rowLineSpacing) {
         LiquidGlassTheme.Typography.medicationName(medication.displayName)
-        LiquidGlassTheme.Typography.footnote(scheduleSummary(medication))
+        LiquidGlassTheme.Typography.footnote(Self.scheduleSummary(for: medication))
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
       Spacer(minLength: 0)
@@ -125,9 +138,10 @@ struct RegimenListView: View {
     .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 
-  /// One-line schedule summary: dose count for maintenance, "as-needed" for
-  /// PRN. Footnote-sized so it reads as secondary to the name.
-  private func scheduleSummary(_ medication: Medication) -> String {
+  /// One-line schedule summary: "N daily dose(s)" for maintenance,
+  /// "As-needed" for PRN. `internal static` so the singular/plural and
+  /// zero-dose copy can be unit-tested without spinning up a SwiftUI runtime.
+  static func scheduleSummary(for medication: Medication) -> String {
     switch medication.kind {
     case .maintenance:
       let count = medication.schedule.count
