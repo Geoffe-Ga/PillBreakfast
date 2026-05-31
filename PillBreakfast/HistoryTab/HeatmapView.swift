@@ -6,10 +6,11 @@ import SwiftUI
 /// rather than washing out (SPEC §6.2; CLAUDE.md "color reserved for high-risk
 /// meds").
 ///
-/// Layout: a fixed 7-column grid (weekday columns) with the first row's empty
-/// leading cells padded so the rightmost cell of the bottom row is "today".
-/// A weekday-letter rail above the grid and an intensity legend below give
-/// the cells context without using color.
+/// **Layout note**: the grid is row-major (first 7 cells fill the first row,
+/// regardless of weekday). A proper GitHub-style calendar heatmap — columns
+/// are weeks, rows are weekdays, with a weekday rail on the left and month
+/// markers on top — needs a layout refactor and is tracked in #178. The
+/// intensity legend below the grid stays useful in both layouts.
 struct HeatmapView: View {
   let days: [HistoryDay]
 
@@ -22,14 +23,14 @@ struct HeatmapView: View {
   /// the baseline.
   static let zeroOpacity: Double = 0.05
 
-  /// Locale-independent ISO weekday labels — the column rail uses the
-  /// first letter of each so a UK / EU user still sees the familiar shape.
-  private static let weekdayLetters = ["M", "T", "W", "T", "F", "S", "S"]
+  /// Legend-swatch ratios — quiet, mid, busy. Named so the renderer doesn't
+  /// re-allocate the literal on every body pass and so future tweaks land
+  /// in one place.
+  private static let legendRatios: [Double] = [0.25, 0.55, 0.85]
 
-  private let columnSpacing: CGFloat = 4
-  private var columns: [GridItem] {
+  private static let columnSpacing: CGFloat = 4
+  private static let columns: [GridItem] =
     Array(repeating: GridItem(.flexible(), spacing: columnSpacing), count: 7)
-  }
 
   /// Normalize a per-day count into a `.primary` opacity. Pure so the
   /// monotonicity / range invariants can be checked without rendering.
@@ -44,8 +45,7 @@ struct HeatmapView: View {
     let maxCount = days.map(\.eventCount).max() ?? 0
     return ScrollView {
       VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.standard) {
-        weekdayRail
-        LazyVGrid(columns: columns, spacing: columnSpacing) {
+        LazyVGrid(columns: Self.columns, spacing: Self.columnSpacing) {
           ForEach(days) { day in
             NavigationLink(value: HistoryDayRoute(date: day.date)) {
               HistoryDayCell(day: day, opacity: Self.opacity(for: day.eventCount, maxCount: maxCount))
@@ -61,25 +61,14 @@ struct HeatmapView: View {
     .glassBackground()
   }
 
-  private var weekdayRail: some View {
-    LazyVGrid(columns: columns, spacing: columnSpacing) {
-      ForEach(Array(Self.weekdayLetters.enumerated()), id: \.offset) { _, letter in
-        LiquidGlassTheme.Typography.caption(letter)
-          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-          .frame(maxWidth: .infinity)
-          .accessibilityHidden(true)
-      }
-    }
-  }
-
-  /// Three-step monochromatic legend ("Quiet — Active — Busy") tied to the
-  /// busiest day in the visible window. Helps a first-time viewer see that
-  /// intensity carries meaning even when the entire month is moderate.
+  /// Three-step monochromatic legend ("Quiet — Busy") tied to the busiest day
+  /// in the visible window. Helps a first-time viewer see that intensity
+  /// carries meaning even when the entire month is moderate.
   private func intensityLegend(maxCount: Int) -> some View {
     HStack(spacing: LiquidGlassTheme.Spacing.compact) {
       LiquidGlassTheme.Typography.footnote("Quiet")
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-      ForEach([0.25, 0.55, 0.85], id: \.self) { ratio in
+      ForEach(Self.legendRatios, id: \.self) { ratio in
         RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.tight)
           .fill(.primary.opacity(Self.minNonZeroOpacity + ratio * (Self.maxOpacity - Self.minNonZeroOpacity)))
           .frame(width: 16, height: 12)

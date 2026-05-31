@@ -154,7 +154,7 @@ private struct DayEventRow: View {
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         .monospacedDigit()
     }
-    .padding(.vertical, LiquidGlassTheme.Spacing.compact / 2)
+    .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 
   static func symbolName(for status: DoseStatus) -> String {
