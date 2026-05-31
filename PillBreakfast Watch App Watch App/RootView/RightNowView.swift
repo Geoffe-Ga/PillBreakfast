@@ -40,6 +40,26 @@ struct RightNowView: View {
     NavigationStack {
       content
         .navigationTitle("Right Now")
+        // Always-reachable affordances so PRN/OTC and anytime-log are
+        // never gated behind an empty queue (SPEC §2.3 / issue #200).
+        .toolbar {
+          ToolbarItem(placement: .topBarLeading) {
+            NavigationLink {
+              LogAnytimeView()
+            } label: {
+              Image(systemName: "calendar.badge.clock")
+                .accessibilityLabel("Log a scheduled dose anytime")
+            }
+          }
+          ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+              PRNListView()
+            } label: {
+              Image(systemName: "pills")
+                .accessibilityLabel("Take as-needed")
+            }
+          }
+        }
     }
     .task(id: scheduleSignature) { reload() }
     // The window is time-relative, so re-evaluate when the app is foregrounded
@@ -99,6 +119,13 @@ private struct AllCaughtUpView: View {
         PRNListView()
       } label: {
         Label("Take as-needed", systemImage: "pills")
+      }
+      // Same path as the toolbar item, surfaced as a large empty-state
+      // affordance for discoverability when nothing is queued.
+      NavigationLink {
+        LogAnytimeView()
+      } label: {
+        Label("Log a scheduled dose", systemImage: "calendar.badge.clock")
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
