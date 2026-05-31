@@ -17,11 +17,11 @@ struct PillEmptyStateView: View {
   var body: some View {
     ContentUnavailableView {
       Label {
-        // Display titles ("All caught up", "No history yet") are short
-        // labels; scaling to 0.8 keeps them on one line at AX5 rather
-        // than truncating with an ellipsis.
+        // Scale to 0.8 + lineLimit(1) so AX5 keeps a short empty-state
+        // headline on one line rather than wrapping or truncating.
         LiquidGlassTheme.Typography.display(title)
           .minimumScaleFactor(0.8)
+          .lineLimit(1)
       } icon: {
         Image(systemName: systemImage)
           .font(.system(size: 44, weight: .light))
