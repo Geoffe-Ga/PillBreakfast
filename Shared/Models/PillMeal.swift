@@ -31,4 +31,18 @@ public final class PillMeal {
     self.sortOrder = sortOrder
     self.createdAt = createdAt
   }
+
+  /// Updates `targetHour` / `targetMinute` AND rewrites every assigned dose's
+  /// hour/minute when the time actually changed. Meal owns the time once a
+  /// dose is assigned to it, so the propagation belongs on the model.
+  public func applyTime(targetHour: Int, targetMinute: Int) {
+    let changed = self.targetHour != targetHour || self.targetMinute != targetMinute
+    self.targetHour = targetHour
+    self.targetMinute = targetMinute
+    guard changed else { return }
+    for dose in scheduledDoses {
+      dose.hour = targetHour
+      dose.minute = targetMinute
+    }
+  }
 }

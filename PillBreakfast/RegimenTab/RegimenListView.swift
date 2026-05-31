@@ -34,7 +34,7 @@ struct RegimenListView: View {
   var body: some View {
     List {
       if !medications.isEmpty {
-        pillMealsSection
+        PillMealsListSection(meals: pillMeals)
         section("Maintenance", medications: maintenance)
         section("PRN", medications: prn)
       }
@@ -92,27 +92,6 @@ struct RegimenListView: View {
       Button("OK", role: .cancel) { archiveError = nil }
     } message: {
       Text(archiveError ?? "")
-    }
-  }
-
-  /// Empty section above Maintenance / PRN; explicit `minHeight` stops `ContentUnavailableView` collapsing to a list row.
-  private var pillMealsSection: some View {
-    Section {
-      if pillMeals.isEmpty {
-        PillEmptyStateView(
-          title: "No pill meals yet",
-          description: "Group meds you take together to get a single notification at that time.",
-          systemImage: "fork.knife"
-        )
-        .frame(maxWidth: .infinity, minHeight: 140)
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets())
-      }
-      // Non-empty row UI lands in #190.
-      ForEach(pillMeals) { _ in EmptyView() }
-    } header: {
-      LiquidGlassTheme.Typography.headline("Pill Meals")
-        .textCase(nil)
     }
   }
 
