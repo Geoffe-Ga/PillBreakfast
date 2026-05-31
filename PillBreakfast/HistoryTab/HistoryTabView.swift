@@ -178,14 +178,23 @@ private struct HistoryContent: View {
       HeatmapView(days: cells)
         .overlay {
           if isEmpty {
-            ContentUnavailableView(
-              "No history yet",
-              systemImage: "tray",
-              description: Text(HistoryTabView.emptyDescription(forFilter: filterMedicationID, in: medications))
-            )
+            ContentUnavailableView {
+              Label {
+                LiquidGlassTheme.Typography.display("No history yet")
+              } icon: {
+                Image(systemName: "tray")
+                  .font(.system(size: 44, weight: .light))
+                  .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+              }
+            } description: {
+              LiquidGlassTheme.Typography.footnote(HistoryTabView.emptyDescription(forFilter: filterMedicationID, in: medications))
+                .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+                .multilineTextAlignment(.center)
+            }
           }
         }
         .navigationTitle("History")
+        .toolbarTitleDisplayMode(.large)
         .toolbar {
           ToolbarItem(placement: .primaryAction) {
             MedicationFilterMenu(

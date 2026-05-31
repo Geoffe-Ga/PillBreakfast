@@ -5,10 +5,13 @@ import SwiftUI
 /// busiest day in the window so a quiet week still reads at the top end
 /// rather than washing out (SPEC §6.2; CLAUDE.md "color reserved for high-risk
 /// meds").
+///
+/// Layout: a fixed 7-column grid (weekday columns) with the first row's empty
+/// leading cells padded so the rightmost cell of the bottom row is "today".
+/// A weekday-letter rail above the grid and an intensity legend below give
+/// the cells context without using color.
 struct HeatmapView: View {
   let days: [HistoryDay]
-
-  private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
   /// Minimum opacity for a day with any doses — keeps the cell visible against
   /// the Liquid Glass surface rather than dropping to invisible at low counts.
@@ -18,6 +21,15 @@ struct HeatmapView: View {
   /// shape; lower than `minNonZeroOpacity` so any logged dose is visibly above
   /// the baseline.
   static let zeroOpacity: Double = 0.05
+
+  /// Locale-independent ISO weekday labels — the column rail uses the
+  /// first letter of each so a UK / EU user still sees the familiar shape.
+  private static let weekdayLetters = ["M", "T", "W", "T", "F", "S", "S"]
+
+  private let columnSpacing: CGFloat = 4
+  private var columns: [GridItem] {
+    Array(repeating: GridItem(.flexible(), spacing: columnSpacing), count: 7)
+  }
 
   /// Normalize a per-day count into a `.primary` opacity. Pure so the
   /// monotonicity / range invariants can be checked without rendering.
@@ -31,18 +43,56 @@ struct HeatmapView: View {
   var body: some View {
     let maxCount = days.map(\.eventCount).max() ?? 0
     return ScrollView {
-      LazyVGrid(columns: columns, spacing: 4) {
-        ForEach(days) { day in
-          NavigationLink(value: HistoryDayRoute(date: day.date)) {
-            HistoryDayCell(day: day, opacity: Self.opacity(for: day.eventCount, maxCount: maxCount))
+      VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.standard) {
+        weekdayRail
+        LazyVGrid(columns: columns, spacing: columnSpacing) {
+          ForEach(days) { day in
+            NavigationLink(value: HistoryDayRoute(date: day.date)) {
+              HistoryDayCell(day: day, opacity: Self.opacity(for: day.eventCount, maxCount: maxCount))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Show day's events")
           }
-          .buttonStyle(.plain)
-          .accessibilityHint("Show day's events")
         }
+        intensityLegend(maxCount: maxCount)
       }
-      .padding()
+      .padding(LiquidGlassTheme.Spacing.standard)
     }
     .glassBackground()
+  }
+
+  private var weekdayRail: some View {
+    LazyVGrid(columns: columns, spacing: columnSpacing) {
+      ForEach(Array(Self.weekdayLetters.enumerated()), id: \.offset) { _, letter in
+        LiquidGlassTheme.Typography.caption(letter)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+          .frame(maxWidth: .infinity)
+          .accessibilityHidden(true)
+      }
+    }
+  }
+
+  /// Three-step monochromatic legend ("Quiet — Active — Busy") tied to the
+  /// busiest day in the visible window. Helps a first-time viewer see that
+  /// intensity carries meaning even when the entire month is moderate.
+  private func intensityLegend(maxCount: Int) -> some View {
+    HStack(spacing: LiquidGlassTheme.Spacing.compact) {
+      LiquidGlassTheme.Typography.footnote("Quiet")
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      ForEach([0.25, 0.55, 0.85], id: \.self) { ratio in
+        RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.tight)
+          .fill(.primary.opacity(Self.minNonZeroOpacity + ratio * (Self.maxOpacity - Self.minNonZeroOpacity)))
+          .frame(width: 16, height: 12)
+      }
+      LiquidGlassTheme.Typography.footnote("Busy")
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      Spacer(minLength: 0)
+      if maxCount > 0 {
+        LiquidGlassTheme.Typography.footnote("Busiest: \(maxCount) \(maxCount == 1 ? "dose" : "doses")")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      }
+    }
+    .accessibilityElement(children: .combine)
   }
 }
 
@@ -51,13 +101,12 @@ private struct HistoryDayCell: View {
   let opacity: Double
 
   var body: some View {
-    RoundedRectangle(cornerRadius: 6)
+    RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.tight)
       .fill(.primary.opacity(opacity))
       .aspectRatio(1, contentMode: .fit)
       .overlay {
-        Text("\(day.dayOfMonth)")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
+        LiquidGlassTheme.Typography.caption("\(day.dayOfMonth)")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(Self.accessibilityLabel(for: day))
