@@ -14,6 +14,8 @@ import SwiftData
 public final class PillMeal {
   @Attribute(.unique) public var id: UUID
   public var name: String
+  // Editor (#190) enforces these via `DatePicker(.hourAndMinute)`; bounds
+  // validation at the model layer is tracked in #199.
   public var targetHour: Int // 0…23
   public var targetMinute: Int // 0…59
   /// Stable display order in the iPhone Pill Meals section. Defaults to 0

@@ -112,11 +112,13 @@ struct PillMealTests {
 
     #expect(try context.fetch(FetchDescriptor<PillMeal>()).isEmpty)
     // The dose survives the meal's deletion (no cascade from `PillMeal` to
-    // `ScheduledDose`). The editor in the next issue is responsible for
-    // blocking deletion while assignments exist or clearing them first;
-    // the model layer's only contract here is "deleting a meal does not
-    // delete the doses that pointed at it."
+    // `ScheduledDose`) AND its back-pointer is cleared — that's the
+    // `.nullify` contract on `PillMeal.scheduledDoses`. The editor in the
+    // next issue is responsible for blocking deletion while assignments
+    // exist; the model layer's contract here is: deleting a meal leaves
+    // its doses in place with their `pillMeal` reference nilled.
     let surviving = try context.fetch(FetchDescriptor<ScheduledDose>())
     #expect(surviving.count == 1)
+    #expect(surviving.first?.pillMeal == nil)
   }
 }

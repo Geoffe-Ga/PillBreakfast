@@ -114,6 +114,9 @@ struct RegimenListView: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
       }
+      // Non-empty row UI (per-meal rows + "Add a pill meal" button) lands
+      // in #190. Until then a debug-path meal would render a header with
+      // an empty section body — fine for skeleton scope.
     } header: {
       LiquidGlassTheme.Typography.headline("Pill Meals")
         .textCase(nil)
