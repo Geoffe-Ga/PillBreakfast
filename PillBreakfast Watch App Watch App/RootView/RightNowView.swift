@@ -7,6 +7,7 @@ import SwiftUI
 struct RightNowView: View {
   @Environment(\.modelContext) private var modelContext
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(NotificationActionRouter.self) private var actionRouter
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
@@ -52,32 +53,20 @@ struct RightNowView: View {
     }
   }
 
-  @ViewBuilder
   private var content: some View {
-    if pendingDoses.isEmpty {
-      VStack(spacing: LiquidGlassTheme.Spacing.standard) {
-        VStack(spacing: LiquidGlassTheme.Spacing.compact) {
-          Image(systemName: "checkmark.circle")
-            .font(.system(size: 44, weight: .light))
-            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-          LiquidGlassTheme.Typography.display("All caught up")
-            .multilineTextAlignment(.center)
-            .minimumScaleFactor(0.8)
-            .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
-        }
-
-        // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
-        NavigationLink {
-          PRNListView()
-        } label: {
-          Label("Take as-needed", systemImage: "pills")
-        }
+    Group {
+      if pendingDoses.isEmpty {
+        AllCaughtUpView()
+      } else {
+        TapThroughQueueView(pendingDoses: pendingDoses, onFinished: reload)
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .glassBackground()
-    } else {
-      TapThroughQueueView(pendingDoses: pendingDoses, onFinished: reload)
     }
+    // Transition between "doses pending" and "all caught up" is calm —
+    // the user is leaving a working state, not celebrating completion
+    // (`QueueSuccessView` owns the celebration with `Motion.dramatic`).
+    // SwiftUI does not auto-skip custom `Animation` values under
+    // reduce-motion; gate explicitly.
+    .animation(reduceMotion ? nil : LiquidGlassTheme.Motion.gentle, value: pendingDoses.isEmpty)
   }
 
   private func reload() {
@@ -87,6 +76,33 @@ struct RightNowView: View {
       RightNowView.logger.error("Failed to compute pending doses: \(error.localizedDescription, privacy: .public)")
       pendingDoses = []
     }
+  }
+}
+
+/// "All caught up" empty state, extracted so the parent's transition
+/// observes a single view value rather than juggling the inner VStack.
+private struct AllCaughtUpView: View {
+  var body: some View {
+    VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+      VStack(spacing: LiquidGlassTheme.Spacing.compact) {
+        Image(systemName: "checkmark.circle")
+          .font(.system(size: 44, weight: .light))
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+        LiquidGlassTheme.Typography.display("All caught up")
+          .multilineTextAlignment(.center)
+          .minimumScaleFactor(0.8)
+          .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+      }
+
+      // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
+      NavigationLink {
+        PRNListView()
+      } label: {
+        Label("Take as-needed", systemImage: "pills")
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .glassBackground()
   }
 }
 

@@ -18,6 +18,13 @@ struct AddMedicationView: View {
       MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
         .navigationTitle("New Medication")
         .toolbarTitleDisplayMode(.inline)
+        // Large-detent sheet so the form has room without dominating
+        // the iPhone screen.
+        .presentationDetents([.large])
+        // Force exit through Cancel or Save — a drag-to-dismiss would
+        // skip `cancel()` and leave any inline-created `Ingredient`s
+        // orphaned in the store.
+        .interactiveDismissDisabled(true)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") { cancel() }
