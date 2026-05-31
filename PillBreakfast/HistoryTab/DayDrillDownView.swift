@@ -48,13 +48,22 @@ struct DayDrillDownView: View {
             .listRowSeparator(.hidden)
         }
       }
-      Section {
-        ForEach(events) { event in
-          DayEventRow(event: event)
+      ForEach(Self.sections(for: events), id: \.id) { section in
+        Section {
+          ForEach(section.events) { event in
+            DayEventRow(event: event)
+          }
+        } header: {
+          // Skeleton copy — real "PILL BREAKFAST · fired 9:30 AM" formatting
+          // lands in #194. "As-needed" is the explicit ungrouped fallback.
+          LiquidGlassTheme.Typography.headline(section.mealID == nil ? "As-needed" : "Meal placeholder")
+            .textCase(nil)
         }
-      } header: {
-        LiquidGlassTheme.Typography.headline("Events")
-          .textCase(nil)
+      }
+      Section {
+        ComplianceFooter(result: ComplianceCount.compliance(for: date, in: modelContext))
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
       }
     }
     .listStyle(.insetGrouped)
@@ -95,6 +104,37 @@ struct DayDrillDownView: View {
     }
   }
 
+  /// One section per distinct meal id touched by the day's events, plus a
+  /// final ungrouped section (`mealID == nil`) for PRN / anytime logs.
+  /// Order preserved: a section appears the first time its meal id is seen
+  /// in the chronologically-sorted `events` list, so the timeline reads
+  /// top-to-bottom without re-sorting per section.
+  static func sections(for events: [DoseEvent], calendar: Calendar = .current) -> [DayDrillDownSection] {
+    var order: [UUID?] = []
+    var buckets: [UUID?: [DoseEvent]] = [:]
+    for event in events {
+      let key = Self.mealID(for: event, calendar: calendar)
+      if buckets[key] == nil { order.append(key) }
+      buckets[key, default: []].append(event)
+    }
+    return order.compactMap { key in
+      buckets[key].map { DayDrillDownSection(mealID: key, events: $0) }
+    }
+  }
+
+  /// Look up the `PillMeal.id` for a logged event by matching its
+  /// `scheduledFor` time against the medication's `ScheduledDose` rows.
+  /// Returns `nil` for PRN / anytime logs (no scheduled slot) and for
+  /// scheduled events whose slot doesn't carry a meal assignment.
+  static func mealID(for event: DoseEvent, calendar: Calendar = .current) -> UUID? {
+    guard let scheduledFor = event.scheduledFor, let medication = event.medication else { return nil }
+    let components = calendar.dateComponents([.hour, .minute], from: scheduledFor)
+    let match = medication.schedule.first { dose in
+      dose.hour == components.hour && dose.minute == components.minute
+    }
+    return match?.pillMeal?.id
+  }
+
   /// Hero card: elevated glass + `CornerRadius.card` + monospaced mg digits.
   private func ingredientSummaryCard(_ summary: DailySummary) -> some View {
     VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
@@ -115,6 +155,17 @@ struct DayDrillDownView: View {
     .background(LiquidGlassTheme.Materials.surface)
     .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.card))
     .elevation(.raised)
+  }
+}
+
+/// Per-meal partition of a day's events. `id` is a UUID-or-nil sentinel that
+/// ForEach can key on (`nil` becomes the "As-needed" section).
+struct DayDrillDownSection: Identifiable {
+  let mealID: UUID?
+  let events: [DoseEvent]
+
+  var id: String {
+    mealID?.uuidString ?? "as-needed"
   }
 }
 
