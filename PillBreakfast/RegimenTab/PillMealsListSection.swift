@@ -60,9 +60,6 @@ struct PillMealsListSection: View {
   }
 
   private static func formattedTime(hour: Int, minute: Int) -> String {
-    var components = DateComponents()
-    components.hour = hour
-    components.minute = minute
     let calendar = Calendar.current
     let midnight = calendar.startOfDay(for: Date())
     let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight

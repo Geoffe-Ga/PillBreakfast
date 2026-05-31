@@ -133,6 +133,10 @@ struct PillMealEditorTests {
   // MARK: - PillMealsListSection subtitle
 
   @Test func subtitleFormatsTimeAndPluralizesDoseCount() {
+    // `subtitle(for:)` reads `name`, `targetHour`, `targetMinute`, and
+    // `scheduledDoses.count` — none of which need the SwiftData context to
+    // be set. Bypassing `makeContext()` here is intentional and keeps the
+    // pure-string test pure.
     let zero = PillMeal(name: "Empty", targetHour: 9, targetMinute: 30)
     let one = PillMeal(name: "Single", targetHour: 9, targetMinute: 30)
     one.scheduledDoses = [ScheduledDose(hour: 9, minute: 30, quantity: 1)]
