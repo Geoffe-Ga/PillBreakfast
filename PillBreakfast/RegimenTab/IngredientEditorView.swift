@@ -68,49 +68,62 @@ struct IngredientEditorView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
         } header: {
-          Text("Name")
+          LiquidGlassTheme.Typography.headline("Name")
+            .textCase(nil)
         } footer: {
-          Text("Use the canonical drug name; add brand names and synonyms separately later.")
+          LiquidGlassTheme.Typography.footnote("Use the canonical drug name; add brand names and synonyms separately later.")
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
       } else if case let .edit(ingredient) = mode, !ingredient.aliases.isEmpty {
-        Section("Aliases") {
-          Text(ingredient.aliases.joined(separator: ", "))
-            .foregroundStyle(.secondary)
+        Section {
+          LiquidGlassTheme.Typography.footnote(ingredient.aliases.joined(separator: ", "))
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+        } header: {
+          LiquidGlassTheme.Typography.headline("Aliases")
+            .textCase(nil)
         }
       }
 
       Section {
         TextField("e.g. 4000", text: $ceilingText)
           .keyboardType(.numberPad)
+          .font(LiquidGlassTheme.Typography.dosageFont)
       } header: {
-        Text("Daily ceiling (mg)")
+        LiquidGlassTheme.Typography.headline("Daily ceiling (mg)")
+          .textCase(nil)
       } footer: {
-        Text("Leave blank for no ceiling.")
+        LiquidGlassTheme.Typography.footnote("Leave blank for no ceiling.")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
 
       Section {
         TextField("e.g. 240", text: $intervalText)
           .keyboardType(.numberPad)
+          .font(LiquidGlassTheme.Typography.dosageFont)
       } header: {
-        Text("Minimum interval (minutes)")
+        LiquidGlassTheme.Typography.headline("Minimum interval (minutes)")
+          .textCase(nil)
       } footer: {
-        Text("Leave blank for no spacing rule.")
+        LiquidGlassTheme.Typography.footnote("Leave blank for no spacing rule.")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
 
       Section {
         Toggle("High risk", isOn: $isHighRisk)
       } footer: {
-        Text("Toggling this on requires press-and-hold to confirm every product containing this ingredient.")
+        LiquidGlassTheme.Typography.footnote("Toggling this on requires press-and-hold to confirm every product containing this ingredient.")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
 
       Section {
-        Text(IngredientLibrarySeeder.disclaimer)
-          .font(.footnote)
-          .foregroundStyle(.secondary)
+        LiquidGlassTheme.Typography.footnote(IngredientLibrarySeeder.disclaimer)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
     }
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .navigationTitle(navigationTitle)
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .confirmationAction) {
         Button(saveButtonTitle, action: save)

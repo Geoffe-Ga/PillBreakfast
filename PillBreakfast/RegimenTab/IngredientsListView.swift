@@ -12,6 +12,9 @@ import SwiftUI
 /// the two surfaces can't drift on filter rules. A `+` toolbar item and a
 /// search-miss row both route into `IngredientEditorView`'s create mode.
 struct IngredientsListView: View {
+  /// Sub-compact inter-line spacing so name + threshold summary hug as one row.
+  private static let rowLineSpacing: CGFloat = 2
+
   @Environment(\.modelContext) private var modelContext
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
   @State private var deleteError: String?
@@ -26,10 +29,10 @@ struct IngredientsListView: View {
     let showAddRow = !trimmedQuery.isEmpty && filtered.isEmpty
     List {
       Section {
-        // Non-dismissible by design — the user does not get to hide this.
-        Text(IngredientLibrarySeeder.disclaimer)
-          .font(.footnote)
-          .foregroundStyle(.secondary)
+        disclaimerCard
+          .listRowInsets(EdgeInsets(top: LiquidGlassTheme.Spacing.compact, leading: 0, bottom: LiquidGlassTheme.Spacing.standard, trailing: 0))
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
       }
 
       if showAddRow {
@@ -42,22 +45,23 @@ struct IngredientsListView: View {
         }
       }
 
-      Section("Ingredients") {
+      Section {
         ForEach(filtered) { ingredient in
           NavigationLink {
             IngredientEditorView(ingredient: ingredient)
           } label: {
-            VStack(alignment: .leading, spacing: 2) {
-              Text(ingredient.name)
-              Text(thresholdSummary(ingredient))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            row(ingredient)
           }
         }
         .onDelete { offsets in delete(at: offsets, in: filtered) }
+      } header: {
+        LiquidGlassTheme.Typography.headline("Ingredients")
+          .textCase(nil)
       }
     }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .navigationTitle("Ingredients")
     .searchable(text: $searchText, prompt: "Search by name or alias")
     .toolbar {
@@ -84,11 +88,64 @@ struct IngredientsListView: View {
     }
   }
 
+  /// "Important" lead-in + the seeded-threshold disclaimer, wrapped in an
+  /// elevated glass card so the safety statement reads as earnest rather
+  /// than buried boilerplate.
+  private var disclaimerCard: some View {
+    VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
+      LiquidGlassTheme.Typography.headline("Important")
+        .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+      LiquidGlassTheme.Typography.footnote(IngredientLibrarySeeder.disclaimer)
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+    }
+    .padding(LiquidGlassTheme.Spacing.standard)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(LiquidGlassTheme.Materials.surface)
+    .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.card))
+    .elevation(.raised)
+  }
+
+  private func row(_ ingredient: Ingredient) -> some View {
+    HStack(alignment: .center, spacing: LiquidGlassTheme.Spacing.compact) {
+      VStack(alignment: .leading, spacing: Self.rowLineSpacing) {
+        LiquidGlassTheme.Typography.medicationName(ingredient.name)
+        LiquidGlassTheme.Typography.footnote(thresholdSummary(ingredient))
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      }
+      Spacer(minLength: 0)
+      if ingredient.isHighRisk {
+        highRiskBadge
+      }
+    }
+    .padding(.vertical, LiquidGlassTheme.Spacing.compact)
+  }
+
+  /// Sub-compact inter-element padding for chip-shaped elements — half the
+  /// `Spacing.compact` rhythm so the chip stays a single visual unit rather
+  /// than reading as a button.
+  private static let chipInnerPadding: CGFloat = 4
+
+  /// Monochrome chip — CLAUDE.md reserves the amber accent for the
+  /// press-and-hold watch surface, so the iPhone setup indicator stays
+  /// glyph-and-text only.
+  private var highRiskBadge: some View {
+    HStack(spacing: Self.chipInnerPadding) {
+      Image(systemName: "exclamationmark.shield.fill")
+      LiquidGlassTheme.Typography.caption("High risk")
+    }
+    .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+    .padding(.horizontal, LiquidGlassTheme.Spacing.compact)
+    .padding(.vertical, Self.chipInnerPadding)
+    .background(LiquidGlassTheme.Materials.surface)
+    .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.tight))
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("High risk")
+  }
+
   private func thresholdSummary(_ ingredient: Ingredient) -> String {
     var parts: [String] = []
     if let ceiling = ingredient.dailyCeilingMg { parts.append("\(Int(ceiling.rounded())) mg/day") }
     if let interval = ingredient.minIntervalMinutes { parts.append("\(interval) min spacing") }
-    if ingredient.isHighRisk { parts.append("high risk") }
     return parts.isEmpty ? "No limits set" : parts.joined(separator: " · ")
   }
 

@@ -12,13 +12,12 @@ struct SettingsView: View {
     NavigationStack {
       Form {
         Section {
-          VStack(alignment: .leading, spacing: 8) {
+          VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
             HStack {
               Text("Hold duration")
               Spacer()
-              Text(durationLabel(store.preferences.highRiskHoldDurationSeconds))
-                .font(.body.monospacedDigit())
-                .foregroundStyle(.secondary)
+              LiquidGlassTheme.Typography.dosage(durationLabel(store.preferences.highRiskHoldDurationSeconds))
+                .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
             }
             Slider(
               value: $store.preferences.highRiskHoldDurationSeconds,
@@ -30,9 +29,11 @@ struct SettingsView: View {
             }
           }
         } header: {
-          Text("High-risk confirmation")
+          LiquidGlassTheme.Typography.headline("High-risk confirmation")
+            .textCase(nil)
         } footer: {
-          Text("How long to press and hold before a high-risk dose is logged on the watch.")
+          LiquidGlassTheme.Typography.footnote("How long to press and hold before a high-risk dose is logged on the watch.")
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
 
         Section {
@@ -45,7 +46,8 @@ struct SettingsView: View {
             pushPreferences()
           }
         } footer: {
-          Text("Starting position for the snooze picker on the watch.")
+          LiquidGlassTheme.Typography.footnote("Starting position for the snooze picker on the watch.")
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
 
         Section {
@@ -62,10 +64,14 @@ struct SettingsView: View {
             Label("Ingredients", systemImage: "list.bullet.rectangle")
           }
         } footer: {
-          Text("Edit ingredient ceilings, spacing, and high-risk flags.")
+          LiquidGlassTheme.Typography.footnote("Edit ingredient ceilings, spacing, and high-risk flags.")
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
       }
+      .scrollContentBackground(.hidden)
+      .glassBackground()
       .navigationTitle("Settings")
+      .toolbarTitleDisplayMode(.large)
     }
   }
 
