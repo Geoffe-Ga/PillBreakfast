@@ -85,6 +85,9 @@ public enum IngredientLibrarySeeder {
     SeedSpec(name: "Diphenhydramine", aliases: ["Benadryl"], isHighRisk: false, dailyCeilingMg: 300, minIntervalMinutes: 240),
     SeedSpec(name: "Loratadine", aliases: ["Claritin"], isHighRisk: false, dailyCeilingMg: 10, minIntervalMinutes: 1440),
     SeedSpec(name: "Cetirizine", aliases: ["Zyrtec"], isHighRisk: false, dailyCeilingMg: 10, minIntervalMinutes: 1440),
+    // 180 mg targets the 24-hour Allegra (180 mg once-daily) product label.
+    // Users on the 12-hour form (60 mg q12h, 120 mg/day) should lower the
+    // ceiling — the seeded threshold is a warning, not a hard cap, per SPEC.
     SeedSpec(name: "Fexofenadine", aliases: ["Allegra"], isHighRisk: false, dailyCeilingMg: 180, minIntervalMinutes: 720),
     SeedSpec(name: "Levocetirizine", aliases: ["Xyzal"], isHighRisk: false, dailyCeilingMg: 5, minIntervalMinutes: 1440),
     SeedSpec(name: "Chlorpheniramine", aliases: ["Chlor-Trimeton"], isHighRisk: false, dailyCeilingMg: 24, minIntervalMinutes: 240),
@@ -145,6 +148,11 @@ public enum IngredientLibrarySeeder {
   // for adults 19+. Where ODS notes "no UL established" the threshold is nil.
   // Daily Value conversions: 1 mcg cholecalciferol = 40 IU; 1 mg alpha-tocopherol
   // = 1.49 IU; 1 mcg RAE retinol = 3.33 IU.
+  //
+  // Sub-mg ULs (Vitamin A 3 mg, Vitamin D 0.1 mg, Vitamin B9 1 mg, Selenium
+  // 0.4 mg, Iodine 1.1 mg, Molybdenum 2 mg) display awkwardly in the mg-only
+  // schema — users know D in IU, B9 in mcg, etc. UI-level unit conversion
+  // is tracked in #169; the seeded ULs stay in canonical mg here.
 
   private static let vitamins: [SeedSpec] = [
     SeedSpec(name: "Vitamin A", aliases: ["Retinol"], isHighRisk: false, dailyCeilingMg: 3, minIntervalMinutes: nil),
@@ -246,7 +254,10 @@ public enum IngredientLibrarySeeder {
     SeedSpec(name: "Carbamazepine", aliases: ["Tegretol"], isHighRisk: true, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Gabapentin", aliases: ["Neurontin"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Pregabalin", aliases: ["Lyrica"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
-    // Benzodiazepines
+    // Benzodiazepines — controlled substances but not narrow-TI by the SPEC's
+    // definition. Press-and-hold is reserved for drugs where small dose
+    // differences cause toxicity (lithium, digoxin, warfarin, …). Excluding
+    // benzos from `isHighRisk` is intentional; reassessment is tracked in #167.
     SeedSpec(name: "Clonazepam", aliases: ["Klonopin"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Alprazolam", aliases: ["Xanax"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),
     SeedSpec(name: "Lorazepam", aliases: ["Ativan"], isHighRisk: false, dailyCeilingMg: nil, minIntervalMinutes: nil),

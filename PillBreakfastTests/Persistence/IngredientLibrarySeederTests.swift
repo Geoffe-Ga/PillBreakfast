@@ -167,23 +167,23 @@ struct IngredientLibrarySeederTests {
   }
 
   @Test func otcAntihistaminesCarrySourcedThresholds() {
-    // Both the original Diphenhydramine and the new OTC antihistamine
-    // expansions must carry their FDA-monograph / product-labeling
-    // thresholds so the safety check can fire on real overdoses.
-    let antihistamines = [
-      "Diphenhydramine",
-      "Loratadine",
-      "Cetirizine",
-      "Fexofenadine",
-      "Levocetirizine",
+    // Pin the exact OTC antihistamine thresholds — a non-nil check alone
+    // wouldn't catch a typo like a 10 → 100 mg ceiling. Both the original
+    // Diphenhydramine and the new entries are spot-checked.
+    let expected: [(name: String, ceiling: Double, interval: Int)] = [
+      ("Diphenhydramine", 300, 240),
+      ("Loratadine", 10, 1440),
+      ("Cetirizine", 10, 1440),
+      ("Fexofenadine", 180, 720),
+      ("Levocetirizine", 5, 1440),
     ]
-    for name in antihistamines {
+    for case let (name, ceiling, interval) in expected {
       guard let spec = IngredientLibrarySeeder.seeds.first(where: { $0.name == name }) else {
         Issue.record("OTC antihistamine \"\(name)\" not found in library")
         continue
       }
-      #expect(spec.dailyCeilingMg != nil, "\(name) (OTC) must ship with a ceiling")
-      #expect(spec.minIntervalMinutes != nil, "\(name) (OTC) must ship with an interval")
+      #expect(spec.dailyCeilingMg == ceiling, "\(name) ceiling drift")
+      #expect(spec.minIntervalMinutes == interval, "\(name) interval drift")
     }
   }
 
