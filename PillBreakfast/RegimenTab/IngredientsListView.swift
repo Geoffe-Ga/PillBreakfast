@@ -120,20 +120,26 @@ struct IngredientsListView: View {
     .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 
+  /// Sub-compact inter-element padding for chip-shaped elements — half the
+  /// `Spacing.compact` rhythm so the chip stays a single visual unit rather
+  /// than reading as a button.
+  private static let chipInnerPadding: CGFloat = 4
+
   /// Monochrome chip — CLAUDE.md reserves the amber accent for the
   /// press-and-hold watch surface, so the iPhone setup indicator stays
   /// glyph-and-text only.
   private var highRiskBadge: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: Self.chipInnerPadding) {
       Image(systemName: "exclamationmark.shield.fill")
       LiquidGlassTheme.Typography.caption("High risk")
     }
     .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
     .padding(.horizontal, LiquidGlassTheme.Spacing.compact)
-    .padding(.vertical, 4)
+    .padding(.vertical, Self.chipInnerPadding)
     .background(LiquidGlassTheme.Materials.surface)
     .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.tight))
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("High risk")
   }
 
   private func thresholdSummary(_ ingredient: Ingredient) -> String {
