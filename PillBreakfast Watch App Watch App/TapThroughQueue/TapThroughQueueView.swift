@@ -74,7 +74,7 @@ struct TapThroughQueueView: View {
   }
 
   private func detail(for medication: Medication, quantity: Int) -> String {
-    let unit = quantity == 1 ? "tablet" : "tablets"
+    let unit = quantity == 1 ? medication.unitForm.singularLabel : medication.unitForm.pluralLabel
     // A single summed mg figure is meaningless for combo products (you can't add
     // acetaminophen + aspirin mg), so show the per-unit mg only for single-ingredient
     // meds; combos show just the count.

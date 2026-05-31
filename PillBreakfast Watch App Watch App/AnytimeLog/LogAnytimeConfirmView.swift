@@ -25,7 +25,7 @@ struct LogAnytimeConfirmView: View {
   }
 
   private var detail: String {
-    let unit = quantity == 1 ? "tablet" : "tablets"
+    let unit = quantity == 1 ? medication.unitForm.singularLabel : medication.unitForm.pluralLabel
     if medication.components.count == 1, let mgPerUnit = medication.components.first?.dosagePerUnitMg {
       return "\(Int(mgPerUnit.rounded()))mg · \(quantity) \(unit)"
     }

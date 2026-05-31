@@ -13,7 +13,7 @@ struct LogAnytimeTests {
     return ModelContext(container)
   }
 
-  @Test func defaultQuantityFollowsFirstScheduledDose() throws {
+  @Test func defaultQuantityFollowsEarliestScheduledDose() throws {
     let context = try makeContext()
     let med = Medication(displayName: "Metoprolol", unitForm: .tablet, kind: .maintenance)
     med.schedule = [
@@ -24,6 +24,31 @@ struct LogAnytimeTests {
     try context.save()
 
     #expect(AnytimeLogQuantity.defaultQuantity(for: med) == 2)
+  }
+
+  @Test func defaultQuantityIsInsertionOrderIndependent() throws {
+    // Reversed insertion order — the 20:00 dose lands first in the array.
+    // Earliest-by-time still picks the 8:00 dose's quantity.
+    let context = try makeContext()
+    let med = Medication(displayName: "Metoprolol", unitForm: .tablet, kind: .maintenance)
+    med.schedule = [
+      ScheduledDose(hour: 20, minute: 0, quantity: 1),
+      ScheduledDose(hour: 8, minute: 0, quantity: 2),
+    ]
+    context.insert(med)
+    try context.save()
+
+    #expect(AnytimeLogQuantity.defaultQuantity(for: med) == 2)
+  }
+
+  @Test func medicationUnitFormDrivesUserFacingLabels() {
+    #expect(MedicationForm.tablet.singularLabel == "tablet")
+    #expect(MedicationForm.tablet.pluralLabel == "tablets")
+    #expect(MedicationForm.capsule.singularLabel == "capsule")
+    #expect(MedicationForm.capsule.pluralLabel == "capsules")
+    #expect(MedicationForm.liquid.singularLabel == "mL")
+    #expect(MedicationForm.other.singularLabel == "dose")
+    #expect(MedicationForm.other.pluralLabel == "doses")
   }
 
   @Test func defaultQuantityFallsBackToOneWhenScheduleIsEmpty() throws {
