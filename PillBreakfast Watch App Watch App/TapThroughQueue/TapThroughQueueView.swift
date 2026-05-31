@@ -20,6 +20,9 @@ struct TapThroughQueueView: View {
   /// so two doses with the same med/time/quantity stay distinct.
   @State private var loggedDoseIDs: Set<UUID> = []
   @State private var writeFailed = false
+  /// Name of the meal whose last dose was just confirmed; drives the
+  /// `MealCompletionView` micro-state that auto-advances to the next dose.
+  @State private var completedMealName: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "TapThrough")
 
@@ -27,6 +30,13 @@ struct TapThroughQueueView: View {
     Group {
       if finished || pendingDoses.isEmpty {
         QueueSuccessView(onDone: onFinished)
+      } else if let completedMealName {
+        // Brief micro-state between meals once the last dose of one has been
+        // confirmed. Auto-advances to the next dose's card (or the success
+        // view if the queue is now empty) after Self.dwellSeconds.
+        MealCompletionView(mealName: completedMealName) {
+          self.completedMealName = nil
+        }
       } else {
         // Default page style per the issue. Swiping past a dose without acting on
         // it leaves that dose pending — it resurfaces on the next queue open (each
@@ -64,6 +74,7 @@ struct TapThroughQueueView: View {
         // Color is reserved for high-risk meds (CLAUDE.md); the baseline UI stays
         // monochromatic, so only pass a swatch when the med is high-risk.
         colorHex: medication.isHighRisk ? medication.colorHex : nil,
+        mealHeader: Self.mealHeader(for: dose),
         onMarkTaken: { log(dose, medication, status: .taken) },
         onSkip: { log(dose, medication, status: .skipped) }
       )
@@ -71,6 +82,17 @@ struct TapThroughQueueView: View {
       // The synced regimen lost this medication — skip the screen silently.
       Color.clear.onAppear { advance(after: dose) }
     }
+  }
+
+  /// "Pill Breakfast · 2 of 5" when an ordinal is set, "Pill Breakfast" for
+  /// a singleton meal, nil for ungrouped doses. `static` so the wording is
+  /// testable without a SwiftUI runtime.
+  static func mealHeader(for dose: PendingDose) -> String? {
+    guard let mealName = dose.mealName else { return nil }
+    if let ordinal = dose.mealOrdinal {
+      return "\(mealName) · \(ordinal.current) of \(ordinal.total)"
+    }
+    return mealName
   }
 
   private func detail(for medication: Medication, quantity: Int) -> String {
@@ -115,7 +137,10 @@ struct TapThroughQueueView: View {
 
   /// Advances to the screen after `dose`'s own position, so a swipe-ahead-then-tap
   /// can't overshoot. A dose bypassed by swiping simply stays pending and
-  /// resurfaces on the next queue open.
+  /// resurfaces on the next queue open. Inserts a 0.5 s `MealCompletionView`
+  /// dwell when the user has just confirmed the last dose of a meal and
+  /// another card still follows — the dwell view's `onAdvance` clears
+  /// `completedMealName` and the next card slides up.
   private func advance(after dose: PendingDose) {
     guard let offset = pendingDoses.firstIndex(of: dose) else {
       // Shouldn't happen — the dose came from this queue — but surface it rather
@@ -124,10 +149,20 @@ struct TapThroughQueueView: View {
       finished = true
       return
     }
-    if offset + 1 < pendingDoses.count {
-      withAnimation { index = offset + 1 }
-    } else {
+    let nextOffset = offset + 1
+    guard nextOffset < pendingDoses.count else {
       finished = true
+      return
+    }
+    let nextDose = pendingDoses[nextOffset]
+    if let mealName = dose.mealName, nextDose.mealID != dose.mealID {
+      // Last dose of this meal AND more cards follow — show the micro-state
+      // first so the user gets a beat between meals. Advance the index
+      // *now* so the next card is ready behind the dwell view.
+      index = nextOffset
+      completedMealName = mealName
+    } else {
+      withAnimation { index = nextOffset }
     }
   }
 }
