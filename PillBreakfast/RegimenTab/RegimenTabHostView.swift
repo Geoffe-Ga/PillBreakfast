@@ -6,6 +6,9 @@ struct RegimenTabHostView: View {
     NavigationStack {
       RegimenListView()
         .navigationTitle("Regimen")
+        // Large-title on the root list; push destinations override to
+        // `.inline` to give content room.
+        .toolbarTitleDisplayMode(.large)
     }
   }
 }

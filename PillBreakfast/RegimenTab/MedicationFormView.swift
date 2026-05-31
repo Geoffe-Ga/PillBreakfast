@@ -25,16 +25,19 @@ struct MedicationFormView: View {
 
   var body: some View {
     Form {
-      Section("Medication") {
+      Section {
         TextField("Name", text: $formState.displayName)
         Picker("Form", selection: $formState.unitForm) {
           ForEach(MedicationForm.allCases, id: \.self) { form in
             Text(form.rawValue.capitalized).tag(form)
           }
         }
+      } header: {
+        LiquidGlassTheme.Typography.headline("Medication")
+          .textCase(nil)
       }
 
-      Section("Ingredient") {
+      Section {
         NavigationLink {
           IngredientPickerView(
             selection: $formState.componentDraft.ingredientID,
@@ -62,19 +65,24 @@ struct MedicationFormView: View {
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.trailing)
         }
+      } header: {
+        LiquidGlassTheme.Typography.headline("Ingredient")
+          .textCase(nil)
       }
 
       if formState.kind == .maintenance {
-        Section("Schedule") {
+        Section {
           ScheduleRowEditor(schedules: $formState.schedules)
+        } header: {
+          LiquidGlassTheme.Typography.headline("Schedule")
+            .textCase(nil)
         }
       }
 
       if hasInteracted, !formState.validationErrors.isEmpty {
         Section {
           ForEach(formState.validationErrors, id: \.self) { error in
-            Text(error)
-              .font(LiquidGlassTheme.Typography.captionFont)
+            LiquidGlassTheme.Typography.footnote(error)
               // Semantic error color, not decoration — kept deliberately. Color
               // discipline (amber-only) governs the watch logging surface; an
               // error indicator on the iPhone setup form is a different concern.
@@ -94,7 +102,8 @@ struct MedicationFormView: View {
           Label("Manage ingredients", systemImage: "list.bullet.rectangle")
         }
       } footer: {
-        Text("Edit safety ceilings, spacing, and high-risk flags for ingredients.")
+        LiquidGlassTheme.Typography.footnote("Edit safety ceilings, spacing, and high-risk flags for ingredients.")
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
     }
     .scrollContentBackground(.hidden)
