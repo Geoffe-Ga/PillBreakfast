@@ -178,14 +178,14 @@ private struct HistoryContent: View {
       HeatmapView(days: cells)
         .overlay {
           if isEmpty {
-            ContentUnavailableView(
-              "No history yet",
-              systemImage: "tray",
-              description: Text(HistoryTabView.emptyDescription(forFilter: filterMedicationID, in: medications))
+            PillEmptyStateView(
+              title: "No history yet",
+              description: HistoryTabView.emptyDescription(forFilter: filterMedicationID, in: medications)
             )
           }
         }
         .navigationTitle("History")
+        .toolbarTitleDisplayMode(.large)
         .toolbar {
           ToolbarItem(placement: .primaryAction) {
             MedicationFilterMenu(

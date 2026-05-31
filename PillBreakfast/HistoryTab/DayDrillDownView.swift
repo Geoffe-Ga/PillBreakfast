@@ -36,39 +36,43 @@ struct DayDrillDownView: View {
 
   var body: some View {
     List {
-      Section("Events") {
+      Section {
+        // Pinned at the top so the day's safety-relevant totals lead the page.
+        if let summary, !summary.ingredientTotals.isEmpty {
+          // Card bleeds to the section edges — the card's own padding handles
+          // the inner gutter, and zeroing leading/trailing here lets the
+          // elevated background reach the visual edge of the list section.
+          ingredientSummaryCard(summary)
+            .listRowInsets(EdgeInsets(top: LiquidGlassTheme.Spacing.compact, leading: 0, bottom: LiquidGlassTheme.Spacing.standard, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+      }
+      Section {
         ForEach(events) { event in
           DayEventRow(event: event)
         }
-      }
-      if let summary, !summary.ingredientTotals.isEmpty {
-        Section("Ingredient totals") {
-          ForEach(summary.ingredientTotals, id: \.ingredientID) { amount in
-            HStack {
-              Text(amount.ingredientName)
-              Spacer()
-              Text(MgFormatter.format(amount.totalMg))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            }
-          }
-        }
+      } header: {
+        LiquidGlassTheme.Typography.headline("Events")
+          .textCase(nil)
       }
     }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .glassBackground()
     .overlay {
       // `ContentUnavailableView` rendered inside a `List` becomes a single
       // row instead of filling the surface; overlay puts it where it
       // belongs.
       if events.isEmpty {
-        ContentUnavailableView(
-          "No doses logged",
-          systemImage: "tray",
-          description: Text("Nothing was logged on this day.")
+        PillEmptyStateView(
+          title: "No doses logged",
+          description: "Nothing was logged on this day."
         )
       }
     }
-    .navigationTitle(date.formatted(date: .abbreviated, time: .omitted))
-    .navigationBarTitleDisplayMode(.inline)
+    .navigationTitle(date.formatted(date: .complete, time: .omitted))
+    .toolbarTitleDisplayMode(.inline)
     // Ingredient totals lag the `@Query` event list by one sync when new
     // events arrive mid-view: `@Query` re-renders reactively, but this
     // `.task` only re-runs when `date` changes. Acceptable for a read-only
@@ -90,6 +94,28 @@ struct DayDrillDownView: View {
       }
     }
   }
+
+  /// Hero card: elevated glass + `CornerRadius.card` + monospaced mg digits.
+  private func ingredientSummaryCard(_ summary: DailySummary) -> some View {
+    VStack(alignment: .leading, spacing: LiquidGlassTheme.Spacing.compact) {
+      LiquidGlassTheme.Typography.headline("Ingredient totals")
+        .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+      ForEach(summary.ingredientTotals, id: \.ingredientID) { amount in
+        HStack {
+          LiquidGlassTheme.Typography.footnote(amount.ingredientName)
+            .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+          Spacer()
+          LiquidGlassTheme.Typography.dosage(MgFormatter.format(amount.totalMg))
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+        }
+      }
+    }
+    .padding(LiquidGlassTheme.Spacing.standard)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(LiquidGlassTheme.Materials.surface)
+    .clipShape(RoundedRectangle(cornerRadius: LiquidGlassTheme.CornerRadius.card))
+    .elevation(.raised)
+  }
 }
 
 /// Compound `.task(id:)` key — re-fires the summary fetch whenever the date
@@ -101,26 +127,30 @@ private struct SummaryTaskID: Equatable {
 }
 
 private struct DayEventRow: View {
+  /// Sub-compact inter-line spacing so name + timestamp hug as one row.
+  static let rowLineSpacing: CGFloat = 2
+
   let event: DoseEvent
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: LiquidGlassTheme.Spacing.standard) {
       Image(systemName: Self.symbolName(for: event.status))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+        .font(.title3)
         .accessibilityLabel(Self.accessibilityStatusLabel(for: event.status))
-      VStack(alignment: .leading, spacing: 2) {
-        Text(event.medication?.displayName ?? "Unknown medication")
-          .font(.body)
-        Text(event.takenAt.formatted(date: .omitted, time: .shortened))
-          .font(.caption)
-          .foregroundStyle(.secondary)
+      VStack(alignment: .leading, spacing: Self.rowLineSpacing) {
+        LiquidGlassTheme.Typography.headline(event.medication?.displayName ?? "Unknown medication")
+          .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+        LiquidGlassTheme.Typography.footnote(event.takenAt.formatted(date: .omitted, time: .shortened))
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
           .monospacedDigit()
       }
       Spacer()
-      Text(Self.quantityLabel(event.quantity))
-        .foregroundStyle(.secondary)
+      LiquidGlassTheme.Typography.footnote(Self.quantityLabel(event.quantity))
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         .monospacedDigit()
     }
+    .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 
   static func symbolName(for status: DoseStatus) -> String {
