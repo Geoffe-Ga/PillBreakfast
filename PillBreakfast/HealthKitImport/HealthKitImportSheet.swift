@@ -58,6 +58,20 @@ enum HealthKitImportViewState: Equatable {
     case .denied, .notAvailable, .failed: "heart.slash"
     }
   }
+
+  /// Hero-card title for each state. `.checking` is unreachable in practice
+  /// (the content switch routes that case to a ProgressView, not the hero),
+  /// but keep an explicit value here so the switch stays exhaustive without
+  /// a `@unknown default`.
+  var headline: String {
+    switch self {
+    case .checking: "Import from Health"
+    case let .loaded(drafts): drafts.isEmpty ? "Nothing to import" : "Import from Health"
+    case .denied: "Health access blocked"
+    case .notAvailable: "Health unavailable"
+    case .failed: "Couldn't reach Health"
+    }
+  }
 }
 
 /// "Import from Apple Health" sheet (SPEC §6.1). Requests per-medication read
@@ -127,7 +141,7 @@ struct HealthKitImportSheet: View {
     NavigationStack(path: $path) {
       content
         .navigationTitle("Apple Health")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Done") { dismiss() }
@@ -153,8 +167,58 @@ struct HealthKitImportSheet: View {
     switch state {
     case let .loaded(drafts) where !drafts.isEmpty:
       medicationList(drafts)
+    case .checking:
+      checkingView
     default:
-      messageView
+      heroState
+    }
+  }
+
+  private var checkingView: some View {
+    VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+      ProgressView()
+        .controlSize(.large)
+      LiquidGlassTheme.Typography.footnote(state.message)
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  /// Hero treatment for the non-list states (denied / not available / failed /
+  /// loaded-empty). PillEmptyStateView gives a unified 44-pt symbol + display
+  /// title + footnote body; the action button slot below adapts per state.
+  private var heroState: some View {
+    VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+      PillEmptyStateView(
+        title: state.headline,
+        description: state.message,
+        systemImage: state.symbolName
+      )
+      heroAction
+        .padding(.horizontal, LiquidGlassTheme.Spacing.generous)
+    }
+  }
+
+  @ViewBuilder private var heroAction: some View {
+    switch state {
+    case .denied:
+      Button("Open Settings") {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+          openURL(url)
+        }
+      }
+      .buttonStyle(.borderedProminent)
+      .controlSize(.large)
+    case .notAvailable, .failed:
+      // `.notAvailable` is unrecoverable on-device and a `.failed` retry
+      // would need a state-machine rewrite — give the user a clear exit.
+      Button("Done") { dismiss() }
+        .buttonStyle(.bordered)
+    case let .loaded(drafts) where drafts.isEmpty:
+      Button("Done") { dismiss() }
+        .buttonStyle(.bordered)
+    case .checking, .loaded:
+      EmptyView()
     }
   }
 
@@ -170,56 +234,43 @@ struct HealthKitImportSheet: View {
             .disabled(alreadyImported)
             .accessibilityHint(alreadyImported ? "Already in your PillBreakfast regimen" : "")
         }
+      } header: {
+        LiquidGlassTheme.Typography.headline("Found in Health")
+          .textCase(nil)
       } footer: {
-        Text(Self.readOnlyDisclaimer)
+        LiquidGlassTheme.Typography.footnote(Self.readOnlyDisclaimer)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
     }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .glassBackground()
   }
 
   private func row(_ draft: HealthMedicationDraft, alreadyImported: Bool) -> some View {
     let isSelected = selectedIDs.contains(draft.id)
-    return HStack {
+    return HStack(spacing: LiquidGlassTheme.Spacing.compact) {
       VStack(alignment: .leading, spacing: 2) {
-        Text(draft.displayName)
-        Text(alreadyImported ? "Already imported" : (draft.hasSchedule ? "Scheduled" : "As needed"))
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        LiquidGlassTheme.Typography.headline(draft.displayName)
+          .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+        LiquidGlassTheme.Typography.footnote(alreadyImported ? "Already imported" : (draft.hasSchedule ? "Scheduled" : "As needed"))
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
       Spacer()
       if alreadyImported {
         Image(systemName: "checkmark.circle.fill")
-          .foregroundStyle(.secondary)
+          .font(.title3)
+          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
           .accessibilityHidden(true)
       } else {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-          .foregroundStyle(isSelected ? .primary : .secondary)
+          .font(.title3)
+          .foregroundStyle(isSelected ? LiquidGlassTheme.Colors.primaryText : LiquidGlassTheme.Colors.secondaryText)
           .accessibilityLabel(isSelected ? "Selected for import" : "Not selected")
       }
     }
+    .padding(.vertical, LiquidGlassTheme.Spacing.compact / 2)
     .contentShape(.rect)
-  }
-
-  private var messageView: some View {
-    VStack(spacing: 16) {
-      Image(systemName: state.symbolName)
-        .font(.largeTitle)
-        .foregroundStyle(.secondary)
-      Text("Import from Apple Health")
-        .font(.headline)
-      Text(state.message)
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-      if state == .denied {
-        Button("Open Settings") {
-          if let url = URL(string: UIApplication.openSettingsURLString) {
-            openURL(url)
-          }
-        }
-        .buttonStyle(.borderedProminent)
-      }
-    }
-    .padding()
   }
 
   private func toggle(_ id: UUID) {
