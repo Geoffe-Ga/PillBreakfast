@@ -14,6 +14,9 @@ struct RegimenListView: View {
   @Environment(\.modelContext) private var modelContext
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
+  /// Tie-break on `createdAt` so two new sortOrder=0 meals don't shuffle.
+  @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
+  private var pillMeals: [PillMeal]
   @State private var showingAdd = false
   @State private var showingHealthKitImport = false
   @State private var archiveError: String?
@@ -31,6 +34,7 @@ struct RegimenListView: View {
   var body: some View {
     List {
       if !medications.isEmpty {
+        pillMealsSection
         section("Maintenance", medications: maintenance)
         section("PRN", medications: prn)
       }
@@ -88,6 +92,27 @@ struct RegimenListView: View {
       Button("OK", role: .cancel) { archiveError = nil }
     } message: {
       Text(archiveError ?? "")
+    }
+  }
+
+  /// Empty section above Maintenance / PRN; explicit `minHeight` stops `ContentUnavailableView` collapsing to a list row.
+  private var pillMealsSection: some View {
+    Section {
+      if pillMeals.isEmpty {
+        PillEmptyStateView(
+          title: "No pill meals yet",
+          description: "Group meds you take together to get a single notification at that time.",
+          systemImage: "fork.knife"
+        )
+        .frame(maxWidth: .infinity, minHeight: 140)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
+      }
+      // Non-empty row UI lands in #190.
+      ForEach(pillMeals) { _ in EmptyView() }
+    } header: {
+      LiquidGlassTheme.Typography.headline("Pill Meals")
+        .textCase(nil)
     }
   }
 
@@ -172,5 +197,5 @@ struct RegimenListView: View {
   NavigationStack {
     RegimenListView()
   }
-  .modelContainer(for: Medication.self, inMemory: true)
+  .modelContainer(for: [Medication.self, PillMeal.self], inMemory: true)
 }

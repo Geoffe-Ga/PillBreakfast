@@ -19,6 +19,10 @@ public final class PersistenceController {
     // Additive (lightweight migration): a new standalone model with no
     // relationships, so existing stores upgrade in place.
     SnoozeRecord.self,
+    // Pill Meals foundation (plans/2026-05-31_PILL_MEALS.md). Additive:
+    // ScheduledDose.pillMeal is optional, so legacy rows migrate with the
+    // relationship defaulted to nil.
+    PillMeal.self,
   ])
 
   private static let logger = Logger(
