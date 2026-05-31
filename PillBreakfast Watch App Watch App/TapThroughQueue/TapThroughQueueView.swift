@@ -142,6 +142,12 @@ struct TapThroughQueueView: View {
   /// another card still follows — the dwell view's `onAdvance` clears
   /// `completedMealName` and the next card slides up.
   private func advance(after dose: PendingDose) {
+    // Reject a re-entry while the meal-completion dwell is on screen.
+    // `MealCompletionView.onAdvance` is the only thing that should clear
+    // `completedMealName`; ignoring spurious advances here makes a stray
+    // second tap (or an out-of-band re-trigger) impossible to double-step
+    // the queue.
+    guard completedMealName == nil else { return }
     guard let offset = pendingDoses.firstIndex(of: dose) else {
       // Shouldn't happen — the dose came from this queue — but surface it rather
       // than ending silently if a future refactor passes a foreign dose.

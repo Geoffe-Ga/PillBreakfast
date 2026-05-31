@@ -31,7 +31,9 @@ struct PendingDoseMealOrdinalTests {
     #expect(assigned[0].mealOrdinal?.current == 1)
     #expect(assigned[0].mealOrdinal?.total == 3)
     #expect(assigned[1].mealOrdinal?.current == 2)
+    #expect(assigned[1].mealOrdinal?.total == 3)
     #expect(assigned[2].mealOrdinal?.current == 3)
+    #expect(assigned[2].mealOrdinal?.total == 3)
   }
 
   @Test func singletonMealLeavesOrdinalNilSoHeaderDropsTheOneOfOneSuffix() {
