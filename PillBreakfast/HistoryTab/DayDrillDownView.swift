@@ -39,6 +39,9 @@ struct DayDrillDownView: View {
       Section {
         // Pinned at the top so the day's safety-relevant totals lead the page.
         if let summary, !summary.ingredientTotals.isEmpty {
+          // Card bleeds to the section edges — the card's own padding handles
+          // the inner gutter, and zeroing leading/trailing here lets the
+          // elevated background reach the visual edge of the list section.
           ingredientSummaryCard(summary)
             .listRowInsets(EdgeInsets(top: LiquidGlassTheme.Spacing.compact, leading: 0, bottom: LiquidGlassTheme.Spacing.standard, trailing: 0))
             .listRowBackground(Color.clear)
@@ -62,19 +65,11 @@ struct DayDrillDownView: View {
       // row instead of filling the surface; overlay puts it where it
       // belongs.
       if events.isEmpty {
-        ContentUnavailableView {
-          Label {
-            LiquidGlassTheme.Typography.display("No doses logged")
-          } icon: {
-            Image(systemName: "tray")
-              .font(.system(size: 44, weight: .light))
-              .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-          }
-        } description: {
-          LiquidGlassTheme.Typography.footnote("Nothing was logged on this day.")
-            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-            .multilineTextAlignment(.center)
-        }
+        PillEmptyStateView(
+          title: "No doses logged",
+          systemImage: "tray",
+          description: "Nothing was logged on this day."
+        )
       }
     }
     .navigationTitle(date.formatted(date: .complete, time: .omitted))
@@ -134,6 +129,11 @@ private struct SummaryTaskID: Equatable {
 }
 
 private struct DayEventRow: View {
+  /// Inter-line spacing inside an event row — sub-compact on purpose so
+  /// the name and the timestamp hug as one row, matching the regimen-row
+  /// rhythm in `RegimenListView`.
+  static let rowLineSpacing: CGFloat = 2
+
   let event: DoseEvent
 
   var body: some View {
@@ -142,7 +142,7 @@ private struct DayEventRow: View {
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         .font(.title3)
         .accessibilityLabel(Self.accessibilityStatusLabel(for: event.status))
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: Self.rowLineSpacing) {
         LiquidGlassTheme.Typography.headline(event.medication?.displayName ?? "Unknown medication")
           .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
         LiquidGlassTheme.Typography.footnote(event.takenAt.formatted(date: .omitted, time: .shortened))

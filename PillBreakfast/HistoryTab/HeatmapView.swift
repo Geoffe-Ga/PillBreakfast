@@ -81,7 +81,18 @@ struct HeatmapView: View {
           .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
       }
     }
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(Self.legendAccessibilityLabel(maxCount: maxCount))
+  }
+
+  /// Explicit VoiceOver copy for the legend so it reads as a coherent
+  /// sentence rather than VoiceOver concatenating "Quiet", three shapes,
+  /// "Busy", "Busiest: N doses".
+  static func legendAccessibilityLabel(maxCount: Int) -> String {
+    if maxCount == 0 {
+      return "Intensity legend, quiet to busy, no doses logged in this window."
+    }
+    return "Intensity legend, quiet to busy. Busiest day: \(maxCount) \(maxCount == 1 ? "dose" : "doses")."
   }
 }
 
