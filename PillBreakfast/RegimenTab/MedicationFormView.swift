@@ -9,6 +9,8 @@ struct MedicationFormView: View {
   /// up if the medication is never saved.
   var onIngredientCreated: (UUID) -> Void = { _ in }
   @Query(sort: \Ingredient.name) private var ingredients: [Ingredient]
+  @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
+  private var pillMeals: [PillMeal]
   @State private var showingNewIngredient = false
   /// Pre-fills `NewIngredientView` when the search-miss row in the picker
   /// fires — empties to "" when the `+` New Ingredient button opens it
@@ -72,7 +74,7 @@ struct MedicationFormView: View {
 
       if formState.kind == .maintenance {
         Section {
-          ScheduleRowEditor(schedules: $formState.schedules)
+          ScheduleRowEditor(schedules: $formState.schedules, meals: pillMeals)
         } header: {
           LiquidGlassTheme.Typography.headline("Schedule")
             .textCase(nil)

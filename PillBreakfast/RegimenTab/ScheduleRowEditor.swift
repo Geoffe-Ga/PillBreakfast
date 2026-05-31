@@ -1,28 +1,39 @@
 import SwiftUI
 
-/// Editor for a medication's scheduled doses: a row per time with hour/minute and
-/// quantity, plus add/remove. Operates on the form state's `[ScheduleDraft]`.
+/// Editor for a medication's scheduled doses: a row per time with hour/minute,
+/// quantity, and an optional Pill Meal binding. When a meal is selected the
+/// row's hour/minute are owned by the meal editor and disabled here.
 struct ScheduleRowEditor: View {
   @Binding var schedules: [ScheduleDraft]
+  /// Sorted by `sortOrder` then `createdAt` upstream so the picker stays
+  /// stable across renders.
+  var meals: [PillMeal]
 
   var body: some View {
     ForEach($schedules) { $schedule in
-      HStack {
-        DatePicker(
-          "Time",
-          selection: timeBinding(for: $schedule),
-          displayedComponents: .hourAndMinute
-        )
-        .labelsHidden()
+      VStack(alignment: .leading, spacing: 4) {
+        HStack {
+          DatePicker(
+            "Time",
+            selection: timeBinding(for: $schedule),
+            displayedComponents: .hourAndMinute
+          )
+          .labelsHidden()
+          .disabled(schedule.pillMealID != nil)
 
-        Spacer()
+          Spacer()
 
-        Text("Qty \(schedule.quantity)")
-          .monospacedDigit()
-        Stepper(value: $schedule.quantity, in: 1 ... 20) {
-          Text("Quantity")
+          Text("Qty \(schedule.quantity)")
+            .monospacedDigit()
+          Stepper(value: $schedule.quantity, in: 1 ... 20) {
+            Text("Quantity")
+          }
+          .labelsHidden()
         }
-        .labelsHidden()
+
+        if !meals.isEmpty {
+          mealPicker(for: $schedule)
+        }
       }
     }
     .onDelete { schedules.remove(atOffsets: $0) }
@@ -32,6 +43,36 @@ struct ScheduleRowEditor: View {
     } label: {
       Label("Add time", systemImage: "plus.circle")
     }
+  }
+
+  /// "Belongs to" picker. Selecting a meal auto-fills hour/minute from the
+  /// meal so the schedule row reads consistently with the meal editor; the
+  /// DatePicker disables to make the source of truth obvious.
+  private func mealPicker(for schedule: Binding<ScheduleDraft>) -> some View {
+    Picker("Belongs to", selection: mealBinding(for: schedule)) {
+      Text("None").tag(UUID?.none)
+      ForEach(meals) { meal in
+        Text(meal.name).tag(UUID?.some(meal.id))
+      }
+    }
+    .pickerStyle(.menu)
+    .font(LiquidGlassTheme.Typography.footnoteFont)
+  }
+
+  /// Setter auto-fills hour/minute when a meal is selected so the disabled
+  /// DatePicker still shows the canonical time, and leaves them alone when
+  /// the user clears the assignment.
+  private func mealBinding(for schedule: Binding<ScheduleDraft>) -> Binding<UUID?> {
+    Binding<UUID?>(
+      get: { schedule.wrappedValue.pillMealID },
+      set: { newID in
+        schedule.wrappedValue.pillMealID = newID
+        if let newID, let meal = meals.first(where: { $0.id == newID }) {
+          schedule.wrappedValue.hour = meal.targetHour
+          schedule.wrappedValue.minute = meal.targetMinute
+        }
+      }
+    )
   }
 
   /// Bridges the draft's hour/minute ints to a `Date` for `DatePicker`.

@@ -16,6 +16,10 @@ struct ScheduleDraft: Identifiable, Hashable {
   var hour = 8
   var minute = 0
   var quantity = 1
+  /// When non-nil, the row's hour/minute are owned by the meal (editor in
+  /// `PillMealEditorView`) and the dose's `pillMeal` relationship is wired
+  /// on save.
+  var pillMealID: UUID?
 }
 
 /// `@Observable` form state backing the add/edit medication form. Not a SwiftData
@@ -51,7 +55,7 @@ final class MedicationFormState {
     }
     self.schedules = medication.schedule
       .sorted { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
-      .map { ScheduleDraft(hour: $0.hour, minute: $0.minute, quantity: $0.quantity) }
+      .map { ScheduleDraft(hour: $0.hour, minute: $0.minute, quantity: $0.quantity, pillMealID: $0.pillMeal?.id) }
   }
 
   var validationErrors: [String] {
@@ -112,14 +116,33 @@ final class MedicationFormState {
     for old in medication.schedule {
       context.delete(old)
     }
-    medication.schedule = schedules.map {
-      ScheduledDose(hour: $0.hour, minute: $0.minute, quantity: $0.quantity)
+    // Resolve meal references once per save. A draft referencing a deleted
+    // meal silently falls back to nil (the row's hour/minute is preserved
+    // either way; the user-visible delete-while-referenced guard runs
+    // in `PillMealEditorView` before deletion).
+    let mealsByID: [UUID: PillMeal]
+    do {
+      let allMeals = try context.fetch(FetchDescriptor<PillMeal>())
+      mealsByID = Dictionary(uniqueKeysWithValues: allMeals.map { ($0.id, $0) })
+    } catch {
+      throw MedicationFormError.scheduleApplyFailed
+    }
+    medication.schedule = schedules.map { draft in
+      let meal = draft.pillMealID.flatMap { mealsByID[$0] }
+      return ScheduledDose(
+        hour: draft.hour,
+        minute: draft.minute,
+        quantity: draft.quantity,
+        medication: medication,
+        pillMeal: meal
+      )
     }
   }
 }
 
 enum MedicationFormError: Error, Equatable {
   case ingredientNotFound
+  case scheduleApplyFailed
 }
 
 /// Cleans up ingredients created inline via the "New Ingredient…" sub-form that
