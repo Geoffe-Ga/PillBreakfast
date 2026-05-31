@@ -14,9 +14,7 @@ struct RegimenListView: View {
   @Environment(\.modelContext) private var modelContext
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
-  /// Sort by `sortOrder` first so user-curated ordering survives, then
-  /// `createdAt` so two freshly-inserted meals (both at default 0) stay in
-  /// creation order rather than re-shuffling on every fetch.
+  /// Tie-break on `createdAt` so two new sortOrder=0 meals don't shuffle.
   @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
   private var pillMeals: [PillMeal]
   @State private var showingAdd = false
@@ -97,11 +95,7 @@ struct RegimenListView: View {
     }
   }
 
-  /// "Pill Meals" section above Maintenance / PRN. The skeleton only handles
-  /// the empty case — the editor + row UI lands in the next issue.
-  /// `ContentUnavailableView` collapses to row height inside a `List` row,
-  /// so the explicit `minHeight` + clear row background keeps the centred
-  /// copy visible.
+  /// Empty section above Maintenance / PRN; explicit `minHeight` stops `ContentUnavailableView` collapsing to a list row.
   private var pillMealsSection: some View {
     Section {
       if pillMeals.isEmpty {
@@ -114,9 +108,8 @@ struct RegimenListView: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
       }
-      // Non-empty row UI (per-meal rows + "Add a pill meal" button) lands
-      // in #190. Until then a debug-path meal would render a header with
-      // an empty section body — fine for skeleton scope.
+      // Non-empty row UI lands in #190.
+      ForEach(pillMeals) { _ in EmptyView() }
     } header: {
       LiquidGlassTheme.Typography.headline("Pill Meals")
         .textCase(nil)

@@ -1,32 +1,18 @@
 import Foundation
 import SwiftData
 
-/// A named, time-anchored grouping of medications the user takes together
-/// (SPEC §5.4 — `plans/2026-05-31_PILL_MEALS.md`). The app's namesake
-/// concept: "Pill Breakfast" / "Pill Dinner". Meal is organizational — it
-/// drives notification title + watch tap-through header — and per-dose
-/// confirms (single-tap / press-and-hold) are unchanged.
-///
-/// **No tolerance / window fields**: the notification fires at the target
-/// time; the logged time is recorded but never labelled on-time / late.
-/// Compliance is per-day count match (taken vs scheduled).
+/// Named time-anchor for grouped notifications (SPEC §5.4 `plans/2026-05-31_PILL_MEALS.md`). No tolerance fields — compliance is count-based.
 @Model
 public final class PillMeal {
   @Attribute(.unique) public var id: UUID
   public var name: String
-  // Editor (#190) enforces these via `DatePicker(.hourAndMinute)`; bounds
-  // validation at the model layer is tracked in #199.
-  public var targetHour: Int // 0…23
-  public var targetMinute: Int // 0…59
-  /// Stable display order in the iPhone Pill Meals section. Defaults to 0
-  /// so newly-created meals append; the editor can later expose drag-to-reorder.
+  // Editor (#190) enforces 0…23 / 0…59 via DatePicker; model-layer clamp tracked in #199.
+  public var targetHour: Int
+  public var targetMinute: Int
+  /// Display order with `createdAt` tie-break so new sortOrder=0 meals don't shuffle.
   public var sortOrder: Int
   public var createdAt: Date
-  /// Inverse of `ScheduledDose.pillMeal`. Lets the editor (next issue) read
-  /// `meal.scheduledDoses` directly to gate deletion ("can't delete a meal
-  /// with assigned doses") and to summarize "N doses" in the section row.
-  /// `.nullify` keeps doses around when the meal is deleted — the editor is
-  /// responsible for blocking deletion while assignments exist.
+  /// Inverse of `ScheduledDose.pillMeal`; `.nullify` keeps doses alive on meal delete.
   @Relationship(deleteRule: .nullify, inverse: \ScheduledDose.pillMeal)
   public var scheduledDoses: [ScheduledDose] = []
 
