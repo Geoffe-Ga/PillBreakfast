@@ -163,6 +163,9 @@ struct AddMedicationView: View {
   }
 
   private func assign(to meal: PillMeal) {
+    // `pendingDose` is always set when `suggestion` is non-nil (see
+    // `presentSuggestionOrDismiss`), so this guard is defensive — it can only
+    // fire if state were cleared out from under the dialog. Finish cleanly.
     guard let dose = pendingDose else {
       suggestion = nil
       finish()
@@ -198,6 +201,9 @@ struct AddMedicationView: View {
       try modelContext.save()
     } catch {
       AddMedicationView.logger.error("Failed to assign dose to meal: \(error.localizedDescription, privacy: .public)")
+      // Safe to roll back wholesale: the medication was already committed by
+      // `save()`, so the only uncommitted changes here are this assignment (and
+      // any new meal). There's no other in-flight context state to lose.
       modelContext.rollback()
       suggestion = nil
       pendingDose = nil

@@ -69,6 +69,11 @@ public enum PillMealAssignment {
   /// meal's target time bound to that meal, then saves once. Selections with a
   /// `nil` meal (the "None" picker option) are skipped. Returns the number of
   /// doses created. Throws on save failure; the caller rolls back.
+  ///
+  /// `quantity` is **uniform across every created dose** — fine for the
+  /// HealthKit import case (meds arrive scheduleless, 1 is the sensible
+  /// default). It is not a per-medication value; callers needing per-med
+  /// quantities should thread the dose through the regimen editor instead.
   @MainActor
   @discardableResult
   public static func assignImported(

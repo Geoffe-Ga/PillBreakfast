@@ -59,6 +59,11 @@ struct PillMealAssignmentSheet: View {
       } message: {
         Text(saveError ?? "")
       }
+      // Force exit through Save or Skip all — `ConfirmComponentsView` defers
+      // its watch push and `onComplete` to this sheet, so a swipe-down would
+      // skip both, leaving the watch out of sync and the import flow orphaned.
+      // Same rationale as `AddMedicationView`'s dismiss guard.
+      .interactiveDismissDisabled(true)
     }
   }
 
