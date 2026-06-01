@@ -139,7 +139,7 @@ struct PillMealSuggestionTests {
     #expect(med.schedule.isEmpty)
   }
 
-  @Test func assignImportedThreadsQuantityThrough() throws {
+  @Test func assignImportedPropagatesQuantity() throws {
     let context = try makeContext()
     let breakfast = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 0)
     context.insert(breakfast)
@@ -149,6 +149,27 @@ struct PillMealSuggestionTests {
 
     try PillMealAssignment.assignImported([(med, breakfast)], quantity: 2, in: context)
     #expect(med.schedule.first?.quantity == 2)
+  }
+
+  // MARK: - Earliest unassigned dose
+
+  @Test func earliestUnassignedDoseSkipsBoundDosesAndPicksEarliest() throws {
+    let lunch = meal("Lunch", 12, 0)
+    // The 8:00 dose is the earliest overall but already bound — it must be
+    // skipped in favour of the earliest *unassigned* dose (9:00).
+    let bound = ScheduledDose(hour: 8, minute: 0, quantity: 1, pillMeal: lunch)
+    let unassignedEarly = ScheduledDose(hour: 9, minute: 0, quantity: 1)
+    let unassignedLate = ScheduledDose(hour: 21, minute: 0, quantity: 1)
+    let result = PillMealSuggestion.earliestUnassignedDose(in: [bound, unassignedLate, unassignedEarly])
+    let dose = try #require(result)
+    #expect(dose.hour == 9)
+    #expect(dose.minute == 0)
+  }
+
+  @Test func earliestUnassignedDoseIsNilWhenAllBound() {
+    let breakfast = meal("Breakfast", 9, 0)
+    let bound = ScheduledDose(hour: 9, minute: 0, quantity: 1, pillMeal: breakfast)
+    #expect(PillMealSuggestion.earliestUnassignedDose(in: [bound]) == nil)
   }
 
   // MARK: - Time label

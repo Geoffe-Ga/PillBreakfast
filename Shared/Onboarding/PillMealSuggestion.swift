@@ -9,6 +9,10 @@ import SwiftData
 /// Not `Sendable`: the `single` / `multiple` cases carry live `@Model`
 /// references, so this is a UI-layer decision type produced and consumed on the
 /// main actor. `propose(forDoseAt:in:)` is a pure function over its inputs.
+///
+/// `Hashable`/`Equatable` on the `.single`/`.multiple` payloads is by object
+/// identity (the `PillMeal` `@Model` class), not value equality — intentional,
+/// since these drive transient UI state keyed on the specific live instance.
 public enum PillMealSuggestion: Hashable {
   /// No meals configured yet — the first-launch sheet (§8.1) is the entry
   /// point, so no inline prompt fires. Named `noMeals` (not `none`) to avoid a
@@ -47,6 +51,16 @@ public enum PillMealSuggestion: Hashable {
     case 1: return .single(matches[0])
     default: return .multiple(matches)
     }
+  }
+
+  /// The earliest dose (by wall-clock time) not yet bound to a meal, or `nil`
+  /// if every dose is already assigned. The add-path prompt runs `propose`
+  /// against this so doses the user already bound to a meal in the form are
+  /// left alone.
+  public static func earliestUnassignedDose(in schedule: [ScheduledDose]) -> ScheduledDose? {
+    schedule
+      .filter { $0.pillMeal == nil }
+      .min { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
   }
 
   /// Localized wall-clock label ("9:30 AM") for an hour:minute pair. Shared by

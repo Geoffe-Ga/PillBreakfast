@@ -150,10 +150,7 @@ struct AddMedicationView: View {
   /// existing meals and surface the inline prompt. Doses the user already bound
   /// to a meal in the form are left alone. No prompt → finish straight away.
   private func presentSuggestionOrDismiss(for medication: Medication) {
-    let unassigned = medication.schedule
-      .filter { $0.pillMeal == nil }
-      .sorted { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
-    guard let dose = unassigned.first else {
+    guard let dose = PillMealSuggestion.earliestUnassignedDose(in: medication.schedule) else {
       finish()
       return
     }
