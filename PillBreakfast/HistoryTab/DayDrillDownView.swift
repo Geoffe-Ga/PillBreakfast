@@ -87,7 +87,11 @@ struct DayDrillDownView: View {
     // events arrive mid-view: `@Query` re-renders reactively, but this
     // `.task` only re-runs when `date` changes. Acceptable for a read-only
     // history surface.
-    .task(id: SummaryTaskID(date: date, medicationID: filterMedicationID)) {
+    // `events.count` is part of the task id so the compliance count
+    // re-fires when SwiftData's `@Query` change-tracking adds a new
+    // `.taken` event (e.g. a watch sync mid-view) — the count would
+    // otherwise lag behind the live events list until the view reappeared.
+    .task(id: SummaryTaskID(date: date, medicationID: filterMedicationID, eventsCount: events.count)) {
       do {
         summary = try HistoryQueries.dailySummary(
           in: modelContext,
@@ -115,20 +119,27 @@ struct DayDrillDownView: View {
 
   /// "PILL BREAKFAST · fired 9:30 AM" for a meal section, "As-needed" for
   /// the ungrouped fallback, or a graceful "Meal" fallback when the meal has
-  /// been deleted out from under us mid-view. `static` so the wording is
-  /// testable without a SwiftUI runtime; uppercase is applied at the view
-  /// layer via `textCase(.uppercase)`.
-  static func headerCopy(for section: DayDrillDownSection, meals: [PillMeal]) -> String {
+  /// been deleted out from under us mid-view (the events still reference the
+  /// stale meal id; the `@Query` no longer carries the meal — render a bare
+  /// header rather than crash or surface the UUID). `static` so the wording
+  /// is testable without a SwiftUI runtime; uppercase is applied at the
+  /// view layer via `textCase(.uppercase)`.
+  static func headerCopy(
+    for section: DayDrillDownSection,
+    meals: [PillMeal],
+    calendar: Calendar = .current
+  ) -> String {
     guard let mealID = section.mealID else { return "As-needed" }
+    // Intentional "Meal" — the meal was deleted mid-view; preserve the
+    // section so the events stay grouped under SOME header.
     guard let meal = meals.first(where: { $0.id == mealID }) else { return "Meal" }
-    return "\(meal.name) · fired \(Self.formattedTime(hour: meal.targetHour, minute: meal.targetMinute))"
+    return "\(meal.name) · fired \(Self.formattedTime(hour: meal.targetHour, minute: meal.targetMinute, calendar: calendar))"
   }
 
-  /// Short-style 12-hour wall-clock formatting, locale-independent at the
-  /// digit level. Built from a midnight anchor + the meal's hour/minute so
-  /// the format respects user locale and Dynamic Type.
-  private static func formattedTime(hour: Int, minute: Int) -> String {
-    let calendar = Calendar.current
+  /// Short-style wall-clock formatting via system date formatting (respects
+  /// locale + Dynamic Type). Calendar is threaded through so tests can pin a
+  /// fixed time zone.
+  private static func formattedTime(hour: Int, minute: Int, calendar: Calendar) -> String {
     let midnight = calendar.startOfDay(for: Date())
     let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight
     return date.formatted(date: .omitted, time: .shortened)
@@ -208,6 +219,9 @@ struct DayDrillDownSection: Identifiable {
 private struct SummaryTaskID: Equatable {
   let date: Date
   let medicationID: UUID?
+  /// `events.count` so the compliance count re-fires when SwiftData's
+  /// `@Query` change-tracking adds a new event (e.g. a watch sync mid-view).
+  let eventsCount: Int
 }
 
 private struct DayEventRow: View {

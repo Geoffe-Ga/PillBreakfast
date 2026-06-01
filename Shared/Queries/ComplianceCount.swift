@@ -19,6 +19,11 @@ public enum ComplianceCount {
   /// `taken` = count of `.taken` `DoseEvent` rows whose `scheduledFor` lands
   /// inside the day — `nil`-`scheduledFor` events (PRN / anytime logs) are
   /// excluded so the ratio stays honest against the scheduled denominator.
+  ///
+  /// Note: a PRN dose with a non-nil `scheduledFor` (today's product flow
+  /// never produces this) would inflate `taken` without adding to `scheduled`.
+  /// If a future "scheduled PRN" affordance lands, filter by `medication.kind`
+  /// here.
   @MainActor
   public static func compliance(
     for day: Date,

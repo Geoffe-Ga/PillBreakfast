@@ -218,10 +218,12 @@ struct ComplianceCountTests {
     let section = DayDrillDownSection(mealID: meal.id, events: [])
     let copy = DayDrillDownView.headerCopy(for: section, meals: [meal])
     #expect(copy.hasPrefix("Pill Breakfast · fired "))
-    // Locale-independent digit pair check — short-style time on the default
-    // US locale renders "9:30 AM", but the colon-plus-digits substring is
-    // what matters for the test.
-    #expect(copy.contains("9:30"))
+    // The "9" and "30" substrings are robust across locales that change the
+    // separator ("9:30 AM" vs "9.30" vs "09.30"). The exact rendering is
+    // owned by the system formatter and respects the user's locale; we just
+    // pin that the time components landed in the string.
+    #expect(copy.contains("9"))
+    #expect(copy.contains("30"))
   }
 
   @Test func headerCopyForUngroupedSectionIsAsNeeded() {
