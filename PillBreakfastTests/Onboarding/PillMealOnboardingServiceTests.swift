@@ -7,17 +7,17 @@ import Testing
 struct PillMealOnboardingServiceTests {
   // MARK: - Clustering
 
-  @Test func twoDosesWithinFifteenMinutesClusterIntoOneSuggestion() {
+  @Test func twoDosesWithinFifteenMinutesClusterIntoOneSuggestion() throws {
     let doses = [
       ScheduledDose(hour: 9, minute: 30, quantity: 1),
       ScheduledDose(hour: 9, minute: 45, quantity: 1),
     ]
     let suggestions = PillMealOnboardingService.suggestions(from: doses)
     #expect(suggestions.count == 1)
-    let suggestion = try? #require(suggestions.first)
-    #expect(suggestion?.doseIDs.count == 2)
-    #expect(suggestion?.hour == 9)
-    #expect(suggestion?.minute == 30)
+    let suggestion = try #require(suggestions.first)
+    #expect(suggestion.doseIDs.count == 2)
+    #expect(suggestion.hour == 9)
+    #expect(suggestion.minute == 30)
   }
 
   @Test func twoDosesThirtyFiveMinutesApartDoNotCluster() {

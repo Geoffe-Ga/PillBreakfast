@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 
 /// First-launch "we found N pill groups in your regimen" stub sheet (SPEC §8.1).
@@ -21,7 +20,7 @@ struct PillMealOnboardingSheet: View {
           LiquidGlassTheme.Typography.headline("Suggested Pill Meals")
             .textCase(nil)
         } footer: {
-          LiquidGlassTheme.Typography.footnote("Naming and saving lands in the next update — for now this just shows what we found.")
+          LiquidGlassTheme.Typography.footnote("These are the pill groups we spotted in your schedule.")
             .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
         }
       }

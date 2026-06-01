@@ -39,8 +39,7 @@ public enum PillMealOnboardingService {
   public static let minimumClusterSize = 2
 
   public static func suggestions(
-    from doses: [ScheduledDose],
-    calendar _: Calendar = .current
+    from doses: [ScheduledDose]
   ) -> [SuggestedMeal] {
     let sorted = doses.sorted { lhs, rhs in
       lhs.hour * 60 + lhs.minute < rhs.hour * 60 + rhs.minute
@@ -74,7 +73,7 @@ public enum PillMealOnboardingService {
   /// Heuristic name from the cluster's anchor hour. Off-hours fall through to
   /// `"Pill Meal at HH:MM"` so the user can rename in the editor without
   /// staring at a generic label.
-  static func suggestedName(forHour hour: Int, minute: Int) -> String {
+  public static func suggestedName(forHour hour: Int, minute: Int) -> String {
     switch hour {
     case 5 ..< 11: "Pill Breakfast"
     case 11 ..< 16: "Pill Lunch"

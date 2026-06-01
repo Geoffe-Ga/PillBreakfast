@@ -18,8 +18,8 @@ struct RegimenListView: View {
   /// Tie-break on `createdAt` so two new sortOrder=0 meals don't shuffle.
   @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
   private var pillMeals: [PillMeal]
-  /// All scheduled doses on active maintenance meds, used by the
-  /// first-launch onboarding sheet's clustering.
+  /// All scheduled doses in the store (archived + orphaned included).
+  /// `activeScheduledDoses` filters this down for the onboarding clustering.
   @Query private var allScheduledDoses: [ScheduledDose]
   @State private var showingAdd = false
   @State private var showingHealthKitImport = false
@@ -34,6 +34,13 @@ struct RegimenListView: View {
 
   private var prn: [Medication] {
     medications.filter { $0.kind == .prn }
+  }
+
+  /// Doses whose parent medication is still active. The raw `@Query` includes
+  /// doses from archived meds (and orphaned `nil`-medication rows); onboarding
+  /// should only cluster live regimen doses.
+  private var activeScheduledDoses: [ScheduledDose] {
+    allScheduledDoses.filter { $0.medication?.isArchived == false }
   }
 
   var body: some View {
@@ -90,14 +97,16 @@ struct RegimenListView: View {
     .sheet(isPresented: $showingHealthKitImport) {
       HealthKitImportSheet()
     }
-    .sheet(isPresented: $showingPillMealOnboarding) {
+    // Flip the flag in `onDismiss` so it fires for *both* the Done button and
+    // a swipe-down dismiss — otherwise swiping away leaves the flag `false`
+    // and the sheet re-fires on the next tab navigation.
+    .sheet(isPresented: $showingPillMealOnboarding, onDismiss: {
+      preferencesStore?.preferences.pillMealsOnboarded = true
+    }) {
       // Compute suggestions at present-time off the live scheduled doses.
-      // The flag flips on Done regardless of whether anything was saved, so
-      // the sheet never re-fires for this install.
       PillMealOnboardingSheet(
-        suggestions: PillMealOnboardingService.suggestions(from: allScheduledDoses)
+        suggestions: PillMealOnboardingService.suggestions(from: activeScheduledDoses)
       ) {
-        preferencesStore?.preferences.pillMealsOnboarded = true
         showingPillMealOnboarding = false
       }
     }
@@ -106,7 +115,7 @@ struct RegimenListView: View {
       // and hasn't already seen the sheet. Clustering runs lazily so an
       // empty store never builds the suggestions.
       guard let preferencesStore, !preferencesStore.preferences.pillMealsOnboarded else { return }
-      let suggestions = PillMealOnboardingService.suggestions(from: allScheduledDoses)
+      let suggestions = PillMealOnboardingService.suggestions(from: activeScheduledDoses)
       if !suggestions.isEmpty {
         showingPillMealOnboarding = true
       }
