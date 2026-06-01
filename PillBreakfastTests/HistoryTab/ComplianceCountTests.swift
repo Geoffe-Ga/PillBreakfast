@@ -86,6 +86,28 @@ struct ComplianceCountTests {
     #expect(DayDrillDownView.sections(for: []).isEmpty)
   }
 
+  @Test func mealIDLookupReturnsMealIDWhenSlotCarriesMeal() throws {
+    // Direct positive-path test (the `sectionsPartitionsByMealIDWithUngroupedFallback`
+    // case exercises this indirectly). Guards against a regression where
+    // `mealID` always returns nil and the drill-down silently shows only
+    // an "As-needed" section.
+    let context = try makeContext()
+    let calendar = Calendar(identifier: .gregorian)
+    let day = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_800_000_000))
+
+    let meal = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 30)
+    let med = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    med.schedule = [ScheduledDose(hour: 9, minute: 30, quantity: 1, medication: med, pillMeal: meal)]
+    context.insert(meal)
+    context.insert(med)
+    let scheduled = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: day) ?? day
+    let event = DoseEvent(medication: med, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
+    context.insert(event)
+    try context.save()
+
+    #expect(DayDrillDownView.mealID(for: event, calendar: calendar) == meal.id)
+  }
+
   @Test func mealIDLookupReturnsNilForUnscheduledEvent() throws {
     let context = try makeContext()
     let med = Medication(displayName: "Aspirin", unitForm: .tablet, kind: .prn)

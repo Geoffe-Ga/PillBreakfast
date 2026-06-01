@@ -129,10 +129,12 @@ struct DayDrillDownView: View {
   /// scheduled events whose slot doesn't carry a meal assignment.
   static func mealID(for event: DoseEvent, calendar: Calendar = .current) -> UUID? {
     guard let scheduledFor = event.scheduledFor, let medication = event.medication else { return nil }
+    // `dateComponents.hour/.minute` are `Int?`; `dose.hour == components.hour`
+    // would compile via T-vs-T? overload and silently evaluate false on a
+    // nil component. Unwrap explicitly so the contract is visible.
     let components = calendar.dateComponents([.hour, .minute], from: scheduledFor)
-    let match = medication.schedule.first { dose in
-      dose.hour == components.hour && dose.minute == components.minute
-    }
+    guard let hour = components.hour, let minute = components.minute else { return nil }
+    let match = medication.schedule.first { $0.hour == hour && $0.minute == minute }
     return match?.pillMeal?.id
   }
 
