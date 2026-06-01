@@ -17,12 +17,14 @@ struct ComplianceFooter: View {
     .padding(.vertical, LiquidGlassTheme.Spacing.compact)
   }
 
-  /// "All doses taken" when count == scheduled; otherwise "N of M doses taken".
+  /// SPEC §7.3 — count-match wording. Never "missed" or "late":
+  /// - `scheduled == 0` → "No doses scheduled" (a rest day or empty regimen).
+  /// - `taken == scheduled > 0` → "All doses taken".
+  /// - Otherwise → "N of M doses taken".
   /// `static` so the wording is testable without a SwiftUI runtime.
   static func copy(for result: ComplianceCount.Result) -> String {
-    if result.scheduled > 0, result.taken == result.scheduled {
-      return "All doses taken"
-    }
+    if result.scheduled == 0 { return "No doses scheduled" }
+    if result.taken == result.scheduled { return "All doses taken" }
     return "\(result.taken) of \(result.scheduled) doses taken"
   }
 }

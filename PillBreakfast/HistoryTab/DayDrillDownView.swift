@@ -11,7 +11,10 @@ struct DayDrillDownView: View {
 
   @Environment(\.modelContext) private var modelContext
   @Query private var events: [DoseEvent]
+  @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
+  private var meals: [PillMeal]
   @State private var summary: DailySummary?
+  @State private var compliance: ComplianceCount.Result = .init(taken: 0, scheduled: 0)
 
   private static let logger = Logger(
     subsystem: "com.creekmasons.pillbreakfast",
@@ -54,14 +57,12 @@ struct DayDrillDownView: View {
             DayEventRow(event: event)
           }
         } header: {
-          // Skeleton copy — real "PILL BREAKFAST · fired 9:30 AM" formatting
-          // lands in #194. "As-needed" is the explicit ungrouped fallback.
-          LiquidGlassTheme.Typography.headline(section.mealID == nil ? "As-needed" : "Meal placeholder")
-            .textCase(nil)
+          LiquidGlassTheme.Typography.headline(Self.headerCopy(for: section, meals: meals))
+            .textCase(.uppercase)
         }
       }
       Section {
-        ComplianceFooter(result: ComplianceCount.compliance(for: date, in: modelContext))
+        ComplianceFooter(result: compliance)
           .listRowBackground(Color.clear)
           .listRowSeparator(.hidden)
       }
@@ -101,7 +102,36 @@ struct DayDrillDownView: View {
         )
         summary = nil
       }
+      do {
+        compliance = try ComplianceCount.compliance(for: date, in: modelContext)
+      } catch {
+        Self.logger.error(
+          "Compliance count failed: \(error.localizedDescription, privacy: .private)"
+        )
+        compliance = ComplianceCount.Result(taken: 0, scheduled: 0)
+      }
     }
+  }
+
+  /// "PILL BREAKFAST · fired 9:30 AM" for a meal section, "As-needed" for
+  /// the ungrouped fallback, or a graceful "Meal" fallback when the meal has
+  /// been deleted out from under us mid-view. `static` so the wording is
+  /// testable without a SwiftUI runtime; uppercase is applied at the view
+  /// layer via `textCase(.uppercase)`.
+  static func headerCopy(for section: DayDrillDownSection, meals: [PillMeal]) -> String {
+    guard let mealID = section.mealID else { return "As-needed" }
+    guard let meal = meals.first(where: { $0.id == mealID }) else { return "Meal" }
+    return "\(meal.name) · fired \(Self.formattedTime(hour: meal.targetHour, minute: meal.targetMinute))"
+  }
+
+  /// Short-style 12-hour wall-clock formatting, locale-independent at the
+  /// digit level. Built from a midnight anchor + the meal's hour/minute so
+  /// the format respects user locale and Dynamic Type.
+  private static func formattedTime(hour: Int, minute: Int) -> String {
+    let calendar = Calendar.current
+    let midnight = calendar.startOfDay(for: Date())
+    let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight
+    return date.formatted(date: .omitted, time: .shortened)
   }
 
   /// One section per distinct meal id touched by the day's events, plus a
