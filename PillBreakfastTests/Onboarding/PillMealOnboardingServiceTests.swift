@@ -5,6 +5,14 @@ import Testing
 
 @MainActor
 struct PillMealOnboardingServiceTests {
+  private func makeContext() throws -> ModelContext {
+    let container = try ModelContainer(
+      for: PersistenceController.schema,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return ModelContext(container)
+  }
+
   // MARK: - Clustering
 
   @Test func twoDosesWithinFifteenMinutesClusterIntoOneSuggestion() throws {
@@ -83,6 +91,109 @@ struct PillMealOnboardingServiceTests {
     let encoded = try JSONEncoder().encode(mutated)
     let decoded = try JSONDecoder().decode(UserPreferences.self, from: encoded)
     #expect(decoded.pillMealsOnboarded == true)
+  }
+
+  // MARK: - Medication name enrichment
+
+  @Test func medicationNamesAreDedupedInEncounterOrder() throws {
+    let vitaminD = Medication(displayName: "Vitamin D", unitForm: .tablet, kind: .maintenance)
+    let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    let doses = [
+      ScheduledDose(hour: 9, minute: 30, quantity: 1, medication: vitaminD),
+      ScheduledDose(hour: 9, minute: 35, quantity: 1, medication: lithium),
+      // Second Vitamin D dose in the same cluster must not duplicate the name.
+      ScheduledDose(hour: 9, minute: 40, quantity: 1, medication: vitaminD),
+    ]
+    let suggestions = PillMealOnboardingService.suggestions(from: doses)
+    let suggestion = try #require(suggestions.first)
+    #expect(suggestion.medicationNames == ["Vitamin D", "Lithium"])
+  }
+
+  // MARK: - Persistence
+
+  @Test func savingSuggestionCreatesPillMealWithTimeAndAssignedDoses() throws {
+    let context = try makeContext()
+    let d1 = ScheduledDose(hour: 9, minute: 30, quantity: 1)
+    let d2 = ScheduledDose(hour: 9, minute: 45, quantity: 1)
+    context.insert(d1)
+    context.insert(d2)
+    try context.save()
+
+    let suggestion = SuggestedMeal(
+      suggestedName: "Morning Pills",
+      hour: 9,
+      minute: 30,
+      doseIDs: [d1.id, d2.id]
+    )
+    let meal = try PillMealOnboardingService.persist(suggestion, in: context)
+
+    #expect(meal.name == "Morning Pills")
+    #expect(meal.targetHour == 9)
+    #expect(meal.targetMinute == 30)
+    #expect(Set(meal.scheduledDoses.map(\.id)) == Set([d1.id, d2.id]))
+    #expect(d1.pillMeal?.id == meal.id)
+    #expect(d2.pillMeal?.id == meal.id)
+
+    let storedMeals = try context.fetch(FetchDescriptor<PillMeal>())
+    #expect(storedMeals.count == 1)
+  }
+
+  @Test func persistWithBlankNameThrows() throws {
+    let context = try makeContext()
+    let dose = ScheduledDose(hour: 9, minute: 30, quantity: 1)
+    context.insert(dose)
+    try context.save()
+
+    let blank = SuggestedMeal(
+      suggestedName: "   ",
+      hour: 9,
+      minute: 30,
+      doseIDs: [dose.id]
+    )
+    #expect(throws: PillMealOnboardingError.blankName) {
+      try PillMealOnboardingService.persist(blank, in: context)
+    }
+    // Nothing persisted on the blank-name path.
+    #expect(try context.fetch(FetchDescriptor<PillMeal>()).isEmpty)
+    #expect(dose.pillMeal == nil)
+  }
+
+  @Test func skippingOneClusterLeavesItsDosesUnassigned() throws {
+    let context = try makeContext()
+    let b1 = ScheduledDose(hour: 9, minute: 30, quantity: 1)
+    let b2 = ScheduledDose(hour: 9, minute: 45, quantity: 1)
+    let dnr1 = ScheduledDose(hour: 21, minute: 0, quantity: 1)
+    let dnr2 = ScheduledDose(hour: 21, minute: 10, quantity: 1)
+    for dose in [b1, b2, dnr1, dnr2] {
+      context.insert(dose)
+    }
+    try context.save()
+
+    // Save only breakfast; skip dinner (never call persist for it).
+    let breakfast = SuggestedMeal(suggestedName: "Breakfast", hour: 9, minute: 30, doseIDs: [b1.id, b2.id])
+    try PillMealOnboardingService.persist(breakfast, in: context)
+
+    #expect(try context.fetch(FetchDescriptor<PillMeal>()).count == 1)
+    // Both doses of the saved cluster are assigned…
+    #expect(b1.pillMeal != nil)
+    #expect(b2.pillMeal != nil)
+    // …and the skipped cluster is untouched.
+    #expect(dnr1.pillMeal == nil)
+    #expect(dnr2.pillMeal == nil)
+  }
+
+  @Test func persistAppendsSortOrderAfterExistingMeals() throws {
+    let context = try makeContext()
+    context.insert(PillMeal(name: "Existing", targetHour: 8, targetMinute: 0, sortOrder: 5))
+    let dose = ScheduledDose(hour: 12, minute: 0, quantity: 1)
+    let dose2 = ScheduledDose(hour: 12, minute: 10, quantity: 1)
+    context.insert(dose)
+    context.insert(dose2)
+    try context.save()
+
+    let suggestion = SuggestedMeal(suggestedName: "Lunch", hour: 12, minute: 0, doseIDs: [dose.id, dose2.id])
+    let meal = try PillMealOnboardingService.persist(suggestion, in: context)
+    #expect(meal.sortOrder == 6)
   }
 
   @Test func legacyPreferencesDecodeWithoutPillMealsOnboardedKey() throws {
