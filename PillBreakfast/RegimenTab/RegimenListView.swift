@@ -24,6 +24,10 @@ struct RegimenListView: View {
   @State private var showingAdd = false
   @State private var showingHealthKitImport = false
   @State private var showingPillMealOnboarding = false
+  /// Snapshotted once when the sheet is triggered so its row identities stay
+  /// stable for the sheet's lifetime (each `suggestions(from:)` call mints new
+  /// UUIDs).
+  @State private var pendingSuggestions: [SuggestedMeal] = []
   @State private var archiveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
@@ -101,22 +105,23 @@ struct RegimenListView: View {
     // a swipe-down dismiss — otherwise swiping away leaves the flag `false`
     // and the sheet re-fires on the next tab navigation.
     .sheet(isPresented: $showingPillMealOnboarding, onDismiss: {
-      preferencesStore?.preferences.pillMealsOnboarded = true
-    }) {
-      // Compute suggestions at present-time off the live scheduled doses.
-      PillMealOnboardingSheet(
-        suggestions: PillMealOnboardingService.suggestions(from: activeScheduledDoses)
-      ) {
-        showingPillMealOnboarding = false
+      guard let preferencesStore else {
+        Self.logger.fault("UserPreferencesStore not injected — pillMealsOnboarded will not persist; sheet may re-fire")
+        return
       }
+      preferencesStore.preferences.pillMealsOnboarded = true
+    }) {
+      PillMealOnboardingSheet(suggestions: pendingSuggestions)
     }
     .task {
       // First-appear check — only fires when the user has scheduled doses
       // and hasn't already seen the sheet. Clustering runs lazily so an
-      // empty store never builds the suggestions.
+      // empty store never builds the suggestions. Snapshot the result so the
+      // sheet's row identities stay stable while it's open.
       guard let preferencesStore, !preferencesStore.preferences.pillMealsOnboarded else { return }
       let suggestions = PillMealOnboardingService.suggestions(from: activeScheduledDoses)
       if !suggestions.isEmpty {
+        pendingSuggestions = suggestions
         showingPillMealOnboarding = true
       }
     }
