@@ -174,7 +174,10 @@ struct PillMealOnboardingServiceTests {
     try PillMealOnboardingService.persist(breakfast, in: context)
 
     #expect(try context.fetch(FetchDescriptor<PillMeal>()).count == 1)
+    // Both doses of the saved cluster are assigned…
     #expect(b1.pillMeal != nil)
+    #expect(b2.pillMeal != nil)
+    // …and the skipped cluster is untouched.
     #expect(dnr1.pillMeal == nil)
     #expect(dnr2.pillMeal == nil)
   }

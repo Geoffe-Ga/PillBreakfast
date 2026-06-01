@@ -109,8 +109,10 @@ public enum PillMealOnboardingService {
     let doses = try context.fetch(
       FetchDescriptor<ScheduledDose>(predicate: #Predicate { doseIDs.contains($0.id) })
     )
-    let nextOrder = try context.fetch(FetchDescriptor<PillMeal>())
-      .map(\.sortOrder).max().map { $0 + 1 } ?? 0
+    // Bounded fetch — only the current max sortOrder is needed, not every meal.
+    var orderDescriptor = FetchDescriptor<PillMeal>(sortBy: [SortDescriptor(\.sortOrder, order: .reverse)])
+    orderDescriptor.fetchLimit = 1
+    let nextOrder = try (context.fetch(orderDescriptor).first?.sortOrder ?? -1) + 1
 
     let meal = PillMeal(
       name: name,

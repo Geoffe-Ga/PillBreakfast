@@ -114,8 +114,7 @@ struct PillMealOnboardingSheet: View {
   private func save(_ suggestion: SuggestedMeal) {
     let trimmed = trimmedName(for: suggestion)
     guard !trimmed.isEmpty else { return }
-    // Rebuild the suggestion with the user's edited name; `persist` uses
-    // `suggestedName` as the meal name.
+    // persist(_:in:) uses suggestedName as the meal name; rebuild with trimmed input.
     let named = SuggestedMeal(
       id: suggestion.id,
       suggestedName: trimmed,
