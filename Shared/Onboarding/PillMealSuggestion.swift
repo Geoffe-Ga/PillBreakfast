@@ -11,8 +11,9 @@ import SwiftData
 /// main actor. `propose(forDoseAt:in:)` is a pure function over its inputs.
 public enum PillMealSuggestion: Hashable {
   /// No meals configured yet — the first-launch sheet (§8.1) is the entry
-  /// point, so no inline prompt fires.
-  case none
+  /// point, so no inline prompt fires. Named `noMeals` (not `none`) to avoid a
+  /// confusing collision with `Optional.none` at call sites.
+  case noMeals
   /// Exactly one existing meal is within the window — offer Add / Not now.
   case single(PillMeal)
   /// Several meals are within the window — offer a quick picker.
@@ -34,7 +35,7 @@ public enum PillMealSuggestion: Hashable {
     forDoseAt time: (hour: Int, minute: Int),
     in meals: [PillMeal]
   ) -> PillMealSuggestion {
-    guard !meals.isEmpty else { return .none }
+    guard !meals.isEmpty else { return .noMeals }
     let doseMinutes = time.hour * 60 + time.minute
     let matches = meals.filter { meal in
       let rawDiff = abs((meal.targetHour * 60 + meal.targetMinute) - doseMinutes)

@@ -61,7 +61,7 @@ struct AddMedicationView: View {
             // `suggestion` set — treat it as "Not now" and finish. The action
             // buttons nil `suggestion` themselves, so this guard skips the
             // double-handle.
-            set: { if !$0, suggestion != nil { suggestion = nil; dismiss() } }
+            set: { if !$0, suggestion != nil { suggestion = nil; finish() } }
           ),
           titleVisibility: .visible
         ) {
@@ -87,17 +87,17 @@ struct AddMedicationView: View {
       Button("Create new Pill Meal at \(PillMealSuggestion.timeLabel(hour: hour, minute: minute))") {
         createMealAndAssign(hour: hour, minute: minute)
       }
-    case .some(.none), nil:
+    case .some(.noMeals), nil:
       EmptyView()
     }
-    Button("Not now", role: .cancel) { suggestion = nil; dismiss() }
+    Button("Not now", role: .cancel) { suggestion = nil; finish() }
   }
 
   private var suggestionDialogTitle: String {
     switch suggestion {
     case let .single(meal)?: "Add to \(meal.name)?"
     case .multiple?, .createNew?: "Add to a Pill Meal?"
-    case .some(.none), nil: ""
+    case .some(.noMeals), nil: ""
     }
   }
 
@@ -107,7 +107,7 @@ struct AddMedicationView: View {
     switch suggestion {
     case .single?: return "This dose is at \(time)."
     case .createNew?: return "No existing meal is near \(time)."
-    case .multiple?, .some(.none), nil: return nil
+    case .multiple?, .some(.noMeals), nil: return nil
     }
   }
 
@@ -135,24 +135,27 @@ struct AddMedicationView: View {
       return
     }
     InlineIngredientCleanup.discardUnreferenced(createdIngredientIDs, in: modelContext)
-    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+    // No push here — every terminal path funnels through `finish()`, which
+    // pushes exactly once. Pushing now would send an unassigned-dose regimen
+    // that a later assignment immediately supersedes (mirrors the deferred-push
+    // pattern in the HealthKit path).
     presentSuggestionOrDismiss(for: medication)
   }
 
   /// §8.3: after the med is saved, match its earliest *unassigned* dose against
   /// existing meals and surface the inline prompt. Doses the user already bound
-  /// to a meal in the form are left alone. No prompt → just finish.
+  /// to a meal in the form are left alone. No prompt → finish straight away.
   private func presentSuggestionOrDismiss(for medication: Medication) {
     let unassigned = medication.schedule
       .filter { $0.pillMeal == nil }
       .sorted { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
     guard let dose = unassigned.first else {
-      dismiss()
+      finish()
       return
     }
     let result = PillMealSuggestion.propose(forDoseAt: (dose.hour, dose.minute), in: pillMeals)
-    guard result != .none else {
-      dismiss()
+    guard result != .noMeals else {
+      finish()
       return
     }
     pendingDose = dose
@@ -162,7 +165,7 @@ struct AddMedicationView: View {
   private func assign(to meal: PillMeal) {
     guard let dose = pendingDose else {
       suggestion = nil
-      dismiss()
+      finish()
       return
     }
     dose.pillMeal = meal
@@ -172,7 +175,7 @@ struct AddMedicationView: View {
   private func createMealAndAssign(hour: Int, minute: Int) {
     guard let dose = pendingDose else {
       suggestion = nil
-      dismiss()
+      finish()
       return
     }
     let nextOrder = (pillMeals.map(\.sortOrder).max() ?? -1) + 1
@@ -197,11 +200,19 @@ struct AddMedicationView: View {
       AddMedicationView.logger.error("Failed to assign dose to meal: \(error.localizedDescription, privacy: .public)")
       modelContext.rollback()
       suggestion = nil
+      pendingDose = nil
       saveError = "The medication was added, but assigning it to a Pill Meal failed. You can set it from the Regimen tab."
       return
     }
-    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
     suggestion = nil
+    finish()
+  }
+
+  /// Single exit point for the add flow: push the committed regimen to the
+  /// watch once, then dismiss. Every terminal path (no prompt, assigned, or
+  /// "Not now") routes through here so the watch sees one final state.
+  private func finish() {
+    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
     dismiss()
   }
 }

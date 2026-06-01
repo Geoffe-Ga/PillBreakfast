@@ -9,9 +9,9 @@ struct PillMealSuggestionTests {
     PillMeal(name: name, targetHour: hour, targetMinute: minute)
   }
 
-  @Test func noneWhenNoMealsExist() {
+  @Test func noMealsWhenNoneExist() {
     let suggestion = PillMealSuggestion.propose(forDoseAt: (9, 0), in: [])
-    #expect(suggestion == .none)
+    #expect(suggestion == .noMeals)
   }
 
   @Test func singleWhenOneMealWithinWindow() {
@@ -120,5 +120,29 @@ struct PillMealSuggestionTests {
     let created = try PillMealAssignment.assignImported([(med, nil)], in: context)
     #expect(created == 0)
     #expect(med.schedule.isEmpty)
+  }
+
+  @Test func assignImportedThreadsQuantityThrough() throws {
+    let context = try makeContext()
+    let breakfast = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 0)
+    context.insert(breakfast)
+    let med = Medication(displayName: "Vitamin D", unitForm: .tablet, kind: .maintenance)
+    context.insert(med)
+    try context.save()
+
+    try PillMealAssignment.assignImported([(med, breakfast)], quantity: 2, in: context)
+    #expect(med.schedule.first?.quantity == 2)
+  }
+
+  // MARK: - Time label
+
+  @Test func timeLabelIsNonEmptyAndVariesByInput() {
+    // Locale-agnostic regression anchor: a real formatter yields non-empty,
+    // distinct strings for distinct times (a broken/constant impl would not).
+    let morning = PillMealSuggestion.timeLabel(hour: 9, minute: 0)
+    let evening = PillMealSuggestion.timeLabel(hour: 21, minute: 30)
+    #expect(!morning.isEmpty)
+    #expect(!evening.isEmpty)
+    #expect(morning != evening)
   }
 }
