@@ -118,7 +118,8 @@ struct DayDrillDownView: View {
       buckets[key, default: []].append(event)
     }
     return order.compactMap { key in
-      buckets[key].map { DayDrillDownSection(mealID: key, events: $0) }
+      guard let events = buckets[key] else { return nil }
+      return DayDrillDownSection(mealID: key, events: events)
     }
   }
 

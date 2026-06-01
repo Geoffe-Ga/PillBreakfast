@@ -80,6 +80,12 @@ struct ComplianceCountTests {
     #expect(sections[1].events.first?.medication?.id == aspirin.id)
   }
 
+  @Test func sectionsOnEmptyInputReturnsEmpty() {
+    // Guard against a future regression where an empty-sections case
+    // causes a `List` layout issue.
+    #expect(DayDrillDownView.sections(for: []).isEmpty)
+  }
+
   @Test func mealIDLookupReturnsNilForUnscheduledEvent() throws {
     let context = try makeContext()
     let med = Medication(displayName: "Aspirin", unitForm: .tablet, kind: .prn)
