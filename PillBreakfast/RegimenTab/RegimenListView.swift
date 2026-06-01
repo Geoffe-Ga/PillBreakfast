@@ -12,13 +12,18 @@ struct RegimenListView: View {
   private static let rowLineSpacing: CGFloat = 2
 
   @Environment(\.modelContext) private var modelContext
+  @Environment(UserPreferencesStore.self) private var preferencesStore: UserPreferencesStore?
   @Query(filter: #Predicate<Medication> { !$0.isArchived }, sort: \Medication.displayName)
   private var medications: [Medication]
   /// Tie-break on `createdAt` so two new sortOrder=0 meals don't shuffle.
   @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
   private var pillMeals: [PillMeal]
+  /// All scheduled doses on active maintenance meds, used by the
+  /// first-launch onboarding sheet's clustering.
+  @Query private var allScheduledDoses: [ScheduledDose]
   @State private var showingAdd = false
   @State private var showingHealthKitImport = false
+  @State private var showingPillMealOnboarding = false
   @State private var archiveError: String?
 
   private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "RegimenEdit")
@@ -84,6 +89,27 @@ struct RegimenListView: View {
     }
     .sheet(isPresented: $showingHealthKitImport) {
       HealthKitImportSheet()
+    }
+    .sheet(isPresented: $showingPillMealOnboarding) {
+      // Compute suggestions at present-time off the live scheduled doses.
+      // The flag flips on Done regardless of whether anything was saved, so
+      // the sheet never re-fires for this install.
+      PillMealOnboardingSheet(
+        suggestions: PillMealOnboardingService.suggestions(from: allScheduledDoses)
+      ) {
+        preferencesStore?.preferences.pillMealsOnboarded = true
+        showingPillMealOnboarding = false
+      }
+    }
+    .task {
+      // First-appear check — only fires when the user has scheduled doses
+      // and hasn't already seen the sheet. Clustering runs lazily so an
+      // empty store never builds the suggestions.
+      guard let preferencesStore, !preferencesStore.preferences.pillMealsOnboarded else { return }
+      let suggestions = PillMealOnboardingService.suggestions(from: allScheduledDoses)
+      if !suggestions.isEmpty {
+        showingPillMealOnboarding = true
+      }
     }
     .alert(
       "Couldn't archive medication",

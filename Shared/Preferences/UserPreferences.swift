@@ -34,15 +34,22 @@ public struct UserPreferences: Codable, Sendable, Hashable {
     }
   }
 
+  /// One-shot flag — flips to `true` when the first-launch Pill Meals
+  /// onboarding sheet is dismissed (skipped or saved), so the sheet never
+  /// re-appears for the same install (SPEC §8.1).
+  public var pillMealsOnboarded: Bool
+
   public init(
     highRiskHoldDurationSeconds: TimeInterval = Self.defaultHoldDuration,
-    defaultSnoozeOffsetMinutes: Int = Self.defaultSnoozeOffsetMinutes
+    defaultSnoozeOffsetMinutes: Int = Self.defaultSnoozeOffsetMinutes,
+    pillMealsOnboarded: Bool = false
   ) {
     // didSet doesn't fire during init, so validate explicitly here.
     self.highRiskHoldDurationSeconds = highRiskHoldDurationSeconds.clamped(to: Self.holdDurationRange)
     self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(defaultSnoozeOffsetMinutes)
       ? defaultSnoozeOffsetMinutes
       : Self.defaultSnoozeOffsetMinutes
+    self.pillMealsOnboarded = pillMealsOnboarded
   }
 
   public init(from decoder: Decoder) throws {
@@ -53,6 +60,9 @@ public struct UserPreferences: Codable, Sendable, Hashable {
     let offset = try container.decodeIfPresent(Int.self, forKey: .defaultSnoozeOffsetMinutes)
       ?? Self.defaultSnoozeOffsetMinutes
     self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(offset) ? offset : Self.defaultSnoozeOffsetMinutes
+    // Pre-#195 snapshots have no `pillMealsOnboarded` key — default `false`
+    // so existing installs see the suggestion sheet on next launch.
+    self.pillMealsOnboarded = try container.decodeIfPresent(Bool.self, forKey: .pillMealsOnboarded) ?? false
   }
 }
 
