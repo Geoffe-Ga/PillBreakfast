@@ -70,6 +70,23 @@ struct PillMealSuggestionTests {
     #expect(matched === bedtime)
   }
 
+  @Test func twentyNineMinutesAcrossMidnightMatches() {
+    // 23:31 meal, 00:00 dose → 29 min across the midnight wrap → match.
+    let bedtime = meal("Bedtime", 23, 31)
+    let suggestion = PillMealSuggestion.propose(forDoseAt: (0, 0), in: [bedtime])
+    guard case .single = suggestion else {
+      Issue.record("expected .single (29 min across midnight), got \(suggestion)")
+      return
+    }
+  }
+
+  @Test func thirtyOneMinutesAcrossMidnightDoesNotMatch() {
+    // 23:29 meal, 00:00 dose → 31 min across the midnight wrap → no match.
+    let bedtime = meal("Bedtime", 23, 29)
+    let suggestion = PillMealSuggestion.propose(forDoseAt: (0, 0), in: [bedtime])
+    #expect(suggestion == .createNew(hour: 0, minute: 0))
+  }
+
   // MARK: - HealthKit bundled assignment (§8.4)
 
   private func makeContext() throws -> ModelContext {

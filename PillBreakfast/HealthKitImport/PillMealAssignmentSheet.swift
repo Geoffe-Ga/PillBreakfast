@@ -10,6 +10,9 @@ import SwiftUI
 /// least one Pill Meal — otherwise there's nothing to assign to.
 struct PillMealAssignmentSheet: View {
   let medications: [Medication]
+  /// Snapshot of the meals taken when the sheet is presented. Intentional: the
+  /// sheet is short-lived and modal, and no path creates a meal while it's up,
+  /// so a live `@Query` would add no value over this fixed list.
   let meals: [PillMeal]
   /// Called when the user finishes — Save (after assignment) or Skip all. Tears
   /// down the whole import flow, same as `ConfirmComponentsView.onComplete`.
@@ -105,6 +108,9 @@ struct PillMealAssignmentSheet: View {
       onFinish()
     } catch {
       Self.logger.error("Pill Meal assignment save failed: \(error.localizedDescription)")
+      // rollback() only undoes the ScheduledDose inserts above — the imported
+      // medications were already committed by ConfirmComponentsView. The sheet
+      // stays visible so the user can retry or Skip all.
       modelContext.rollback()
       saveError = "The change couldn't be saved. Please try again."
     }

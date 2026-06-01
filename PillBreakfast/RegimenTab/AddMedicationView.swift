@@ -88,6 +88,10 @@ struct AddMedicationView: View {
         createMealAndAssign(hour: hour, minute: minute)
       }
     case .some(.noMeals), nil:
+      // Unreachable: `presentSuggestionOrDismiss` finishes on `.noMeals` and
+      // never sets `suggestion` to nil while the dialog is up. Assert so the
+      // invariant is loud in debug rather than reading as a real case.
+      let _ = assertionFailure("suggestion dialog presented with no-meals/nil state")
       EmptyView()
     }
     Button("Not now", role: .cancel) { suggestion = nil; finish() }
