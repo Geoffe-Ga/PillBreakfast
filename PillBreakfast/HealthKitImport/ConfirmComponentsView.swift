@@ -28,6 +28,10 @@ struct ConfirmComponentsView: View {
   @Environment(\.dismiss) private var dismiss
 
   @Query(sort: \Ingredient.name) private var library: [Ingredient]
+  /// Existing Pill Meals — drives the post-import "Add to Pill Meals?" step
+  /// (§8.4). When empty, the step is skipped (nothing to assign to).
+  @Query(sort: [SortDescriptor(\PillMeal.sortOrder), SortDescriptor(\PillMeal.createdAt)])
+  private var pillMeals: [PillMeal]
 
   /// draft.id → ingredient IDs the user has selected for that draft.
   @State private var selections: [UUID: Set<UUID>] = [:]
@@ -38,6 +42,10 @@ struct ConfirmComponentsView: View {
   /// Surfaces a "save failed, try again" alert so a thrown `modelContext.save()`
   /// isn't an invisible no-op for the user.
   @State private var showSaveError = false
+  /// Medications inserted by the just-completed import, handed to the bundled
+  /// meal-assignment step. Empty until `performImport` succeeds.
+  @State private var importedMedications: [Medication] = []
+  @State private var showMealAssignment = false
 
   private static let logger = Logger(
     subsystem: "com.creekmasons.pillbreakfast",
@@ -87,6 +95,13 @@ struct ConfirmComponentsView: View {
       Button("OK", role: .cancel) { showSaveError = false }
     } message: {
       Text("Couldn't save the imported medications. Please try again.")
+    }
+    .sheet(isPresented: $showMealAssignment) {
+      PillMealAssignmentSheet(
+        medications: importedMedications,
+        meals: pillMeals,
+        onFinish: onComplete
+      )
     }
     .onAppear(perform: applyAutoSuggestions)
   }
@@ -180,6 +195,7 @@ struct ConfirmComponentsView: View {
   }
 
   private func performImport() {
+    var inserted: [Medication] = []
     for draft in drafts {
       // Three safety-relevant gaps the user must close in the regimen UI after
       // import — none is derivable from the Health side:
@@ -206,6 +222,7 @@ struct ConfirmComponentsView: View {
         healthKitConceptID: draft.healthKitConceptID
       )
       modelContext.insert(medication)
+      inserted.append(medication)
       let selectedIDs = selections[draft.id, default: []]
       for ingredient in library where selectedIDs.contains(ingredient.id) {
         modelContext.insert(
@@ -231,9 +248,17 @@ struct ConfirmComponentsView: View {
       return
     }
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
-    // `onComplete` dismisses the entire import sheet, which tears down the
-    // NavigationStack this view lives in. A second `dismiss()` here would
-    // target an already-departing parent.
-    onComplete()
+    // §8.4: if the user already has Pill Meals, offer to assign the freshly
+    // imported meds in one bundled step before tearing down the import flow.
+    // With no meals there's nothing to assign to, so finish immediately.
+    if pillMeals.isEmpty {
+      // `onComplete` dismisses the entire import sheet, which tears down the
+      // NavigationStack this view lives in. A second `dismiss()` here would
+      // target an already-departing parent.
+      onComplete()
+    } else {
+      importedMedications = inserted
+      showMealAssignment = true
+    }
   }
 }
