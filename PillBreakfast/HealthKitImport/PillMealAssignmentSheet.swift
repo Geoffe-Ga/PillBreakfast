@@ -45,7 +45,7 @@ struct PillMealAssignmentSheet: View {
       .toolbarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("Skip all") { onFinish() }
+          Button("Skip all") { skipAll() }
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Save") { save() }
@@ -71,12 +71,20 @@ struct PillMealAssignmentSheet: View {
     ) {
       Text("None").tag(UUID?.none)
       ForEach(meals) { meal in
-        Text("\(meal.name) · \(Self.timeLabel(hour: meal.targetHour, minute: meal.targetMinute))")
+        Text("\(meal.name) · \(PillMealSuggestion.timeLabel(hour: meal.targetHour, minute: meal.targetMinute))")
           .tag(UUID?.some(meal.id))
       }
     } label: {
       LiquidGlassTheme.Typography.medicationName(medication.displayName)
     }
+  }
+
+  /// Skip all: assign nothing, but still push so the imported (ungrouped) meds
+  /// reach the watch — `ConfirmComponentsView` deferred its push to here to
+  /// avoid an intermediate push with no meal bindings.
+  private func skipAll() {
+    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
+    onFinish()
   }
 
   private func save() {
@@ -86,6 +94,8 @@ struct PillMealAssignmentSheet: View {
     }
     do {
       try PillMealAssignment.assignImported(selectionPairs, in: modelContext)
+      // Single push for the final state (assignments included), replacing the
+      // one `ConfirmComponentsView` used to fire before presenting this sheet.
       WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
       onFinish()
     } catch {
@@ -93,14 +103,6 @@ struct PillMealAssignmentSheet: View {
       modelContext.rollback()
       saveError = "The change couldn't be saved. Please try again."
     }
-  }
-
-  /// "9:00 AM" via the system formatter; locale-respecting.
-  static func timeLabel(hour: Int, minute: Int) -> String {
-    let calendar = Calendar.current
-    let midnight = calendar.startOfDay(for: Date())
-    let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight
-    return date.formatted(date: .omitted, time: .shortened)
   }
 }
 

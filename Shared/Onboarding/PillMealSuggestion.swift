@@ -20,11 +20,16 @@ public enum PillMealSuggestion: Hashable {
   /// Meals exist but none is close — offer "Create new Pill Meal at HH:MM".
   case createNew(hour: Int, minute: Int)
 
-  /// Half-open match window: a meal "fits" a dose when their wall-clock times
-  /// are ≤ 30 min apart. Matches the onboarding clustering tolerance.
+  /// Closed (inclusive) match window: a meal "fits" a dose when their
+  /// wall-clock times are ≤ 30 min apart. Matches the onboarding clustering
+  /// tolerance.
   public static let windowMinutes = 30
 
+  private static let minutesPerDay = 24 * 60
+
   /// Classifies a dose at `time` against `meals`. Pure — no fetch, no persist.
+  /// The time distance wraps around midnight, so a 00:05 dose matches a 23:50
+  /// meal (15 min apart, not 1425).
   public static func propose(
     forDoseAt time: (hour: Int, minute: Int),
     in meals: [PillMeal]
@@ -32,13 +37,25 @@ public enum PillMealSuggestion: Hashable {
     guard !meals.isEmpty else { return .none }
     let doseMinutes = time.hour * 60 + time.minute
     let matches = meals.filter { meal in
-      abs((meal.targetHour * 60 + meal.targetMinute) - doseMinutes) <= windowMinutes
+      let rawDiff = abs((meal.targetHour * 60 + meal.targetMinute) - doseMinutes)
+      let wrappedDiff = min(rawDiff, minutesPerDay - rawDiff)
+      return wrappedDiff <= windowMinutes
     }
     switch matches.count {
     case 0: return .createNew(hour: time.hour, minute: time.minute)
     case 1: return .single(matches[0])
     default: return .multiple(matches)
     }
+  }
+
+  /// Localized wall-clock label ("9:30 AM") for an hour:minute pair. Shared by
+  /// the add-path prompt and the HealthKit assignment sheet so the format
+  /// doesn't drift between them.
+  public static func timeLabel(hour: Int, minute: Int) -> String {
+    let calendar = Calendar.current
+    let midnight = calendar.startOfDay(for: Date())
+    let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight
+    return date.formatted(date: .omitted, time: .shortened)
   }
 }
 

@@ -247,16 +247,19 @@ struct ConfirmComponentsView: View {
       showSaveError = true
       return
     }
-    WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
     // §8.4: if the user already has Pill Meals, offer to assign the freshly
     // imported meds in one bundled step before tearing down the import flow.
     // With no meals there's nothing to assign to, so finish immediately.
     if pillMeals.isEmpty {
+      WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
       // `onComplete` dismisses the entire import sheet, which tears down the
       // NavigationStack this view lives in. A second `dismiss()` here would
       // target an already-departing parent.
       onComplete()
     } else {
+      // Defer the watch push to the assignment sheet so the watch sees the
+      // final state once, not an intermediate regimen with no meal bindings.
+      // The sheet pushes on both Save and Skip all.
       importedMedications = inserted
       showMealAssignment = true
     }

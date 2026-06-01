@@ -59,6 +59,17 @@ struct PillMealSuggestionTests {
     #expect(suggestion == .createNew(hour: 9, minute: 31))
   }
 
+  @Test func matchWrapsAroundMidnight() {
+    // 23:50 meal and a 00:05 dose are 15 min apart across midnight, not 1425.
+    let bedtime = meal("Bedtime", 23, 50)
+    let suggestion = PillMealSuggestion.propose(forDoseAt: (0, 5), in: [bedtime])
+    guard case let .single(matched) = suggestion else {
+      Issue.record("expected .single across midnight, got \(suggestion)")
+      return
+    }
+    #expect(matched === bedtime)
+  }
+
   // MARK: - HealthKit bundled assignment (§8.4)
 
   private func makeContext() throws -> ModelContext {

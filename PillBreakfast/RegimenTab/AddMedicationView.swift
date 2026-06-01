@@ -84,7 +84,7 @@ struct AddMedicationView: View {
         Button(meal.name) { assign(to: meal) }
       }
     case let .createNew(hour, minute)?:
-      Button("Create new Pill Meal at \(Self.timeLabel(hour: hour, minute: minute))") {
+      Button("Create new Pill Meal at \(PillMealSuggestion.timeLabel(hour: hour, minute: minute))") {
         createMealAndAssign(hour: hour, minute: minute)
       }
     case .some(.none), nil:
@@ -103,7 +103,7 @@ struct AddMedicationView: View {
 
   private var suggestionDialogMessage: String? {
     guard let dose = pendingDose else { return nil }
-    let time = Self.timeLabel(hour: dose.hour, minute: dose.minute)
+    let time = PillMealSuggestion.timeLabel(hour: dose.hour, minute: dose.minute)
     switch suggestion {
     case .single?: return "This dose is at \(time)."
     case .createNew?: return "No existing meal is near \(time)."
@@ -203,13 +203,5 @@ struct AddMedicationView: View {
     WatchConnectivityCoordinator.shared.pushRegimen(from: modelContext)
     suggestion = nil
     dismiss()
-  }
-
-  /// "9:30 AM" via the system formatter; locale-respecting.
-  static func timeLabel(hour: Int, minute: Int) -> String {
-    let calendar = Calendar.current
-    let midnight = calendar.startOfDay(for: Date())
-    let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: midnight) ?? midnight
-    return date.formatted(date: .omitted, time: .shortened)
   }
 }
