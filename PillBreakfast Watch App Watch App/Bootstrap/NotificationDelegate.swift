@@ -2,6 +2,7 @@ import os
 import SwiftData
 import SwiftUI
 import UserNotifications
+import WatchKit
 
 /// Watch app delegate handling notification responses. The default tap (and the
 /// "Open app" action) just bring the app forward — it lands on `RightNowView`,
@@ -12,6 +13,9 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
 
   func applicationDidFinishLaunching() {
     UNUserNotificationCenter.current().delegate = self
+    // Kick off the periodic background refresh so the complication stays current
+    // even when the app is closed (#52).
+    BackgroundRefreshHandler.shared.register()
     // Register the category, then re-arm reminders from the persisted regimen in
     // case the watch launched without a fresh push (the repeating triggers also
     // survive on their own).
@@ -24,6 +28,12 @@ final class NotificationDelegate: NSObject, WKApplicationDelegate, UNUserNotific
         logger.error("Launch notification rebuild failed: \(error.localizedDescription, privacy: .public)")
       }
     }
+  }
+
+  /// Routes watchOS background tasks to the refresh handler so the complication
+  /// updates on a periodic cadence even when the app is closed (#52).
+  func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
+    BackgroundRefreshHandler.shared.handle(backgroundTasks)
   }
 
   /// Show dose reminders even when the app is foregrounded.

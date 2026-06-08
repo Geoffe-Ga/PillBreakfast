@@ -76,6 +76,8 @@ struct LogAnytimeConfirmView: View {
       } catch {
         LogAnytimeConfirmView.logger.error("Failed to queue anytime-dose transfer: \(error.localizedDescription, privacy: .public)")
       }
+      // Refresh the complication's pending count (debounced; see WidgetReloadCoordinator).
+      Task { await WidgetReloadCoordinator.shared.scheduleReload() }
       onLogged()
     } catch {
       LogAnytimeConfirmView.logger.error("Failed to log anytime dose: \(error.localizedDescription, privacy: .public)")
