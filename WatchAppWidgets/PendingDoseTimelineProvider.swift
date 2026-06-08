@@ -14,7 +14,7 @@ nonisolated struct PendingDoseEntry: TimelineEntry {
 
 extension PendingDoseEntry {
   /// What the complication renders: `nil` (the stub) → `"--"`, `0` → `"✓"`,
-  /// positive → the count. #02 populates `pendingCount` so this shows real data.
+  /// positive → the count. #49 populates `pendingCount` so this shows real data.
   /// Logic lives in `Shared/PendingDoseDisplay` so it's CI-tested (the widget
   /// extension has no test target yet).
   var displayText: String {
@@ -69,11 +69,14 @@ nonisolated struct PendingDoseTimelineProvider: TimelineProvider {
 
   /// Opens the extension's OWN read-only `ModelContext` against the App Group
   /// store — never `PersistenceController.shared`, which would run the ingredient
-  /// seeder (a write) in this read-only process. The real query lands in #02;
+  /// seeder (a write) in this read-only process. The real query lands in #49;
   /// this proves cross-process store access compiles and resolves.
   ///
-  /// `@MainActor` because `PersistenceController.schema` / `appGroupStoreURL` are
-  /// main-actor-isolated; #02 performs the read via a main-actor hop (spec §5.7).
+  /// `@MainActor` is required (not optional): this project sets
+  /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, which isolates even `static`
+  /// members, so `PersistenceController.schema` / `appGroupStoreURL` are
+  /// main-actor-isolated and a nonisolated caller can't reach them — the build
+  /// fails without this. #49 does the read via a main-actor hop (spec §5.7).
   @MainActor
   private static func makeContext() throws -> ModelContext {
     let configuration = ModelConfiguration(url: PersistenceController.appGroupStoreURL)

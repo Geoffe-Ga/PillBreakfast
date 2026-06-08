@@ -24,8 +24,6 @@ struct PendingDoseComplicationView: View {
   var body: some View {
     ZStack {
       AccessoryWidgetBackground()
-      // Display logic now lives on PendingDoseEntry (shared with the other
-      // families added in #03).
       Text(entry.displayText)
         .font(.title2)
         .minimumScaleFactor(0.5)
