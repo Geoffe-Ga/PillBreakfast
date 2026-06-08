@@ -88,10 +88,11 @@ struct AddMedicationView: View {
         createMealAndAssign(hour: hour, minute: minute)
       }
     case .some(.noMeals), nil:
-      // Unreachable: `presentSuggestionOrDismiss` finishes on `.noMeals` and
-      // never sets `suggestion` to nil while the dialog is up. Assert so the
-      // invariant is loud in debug rather than reading as a real case.
-      let _ = assertionFailure("suggestion dialog presented with no-meals/nil state")
+      // The normal resting state: `suggestion` is `nil` until a save proposes
+      // one. SwiftUI evaluates a confirmationDialog's actions builder eagerly
+      // (independent of `isPresented`), so this branch runs on every present —
+      // it must stay side-effect-free. An earlier `assertionFailure` here
+      // trapped on every Add-medication present in Debug. See RCA #256.
       EmptyView()
     }
     Button("Not now", role: .cancel) { suggestion = nil; finish() }
