@@ -58,6 +58,27 @@ struct LogNextDoseServiceTests {
     #expect(try doseEventCount(context) == 0)
   }
 
+  @Test func archivedMedicationThrowsAndWritesNothing() throws {
+    let context = try makeContext()
+    let now = Date()
+    let medication = med("Gabapentin", at: now, highRisk: false, in: context)
+    medication.isArchived = true
+    #expect(throws: LogIntentError.self) {
+      try LogNextDoseService.log(spec(for: medication, at: now), in: context, at: now)
+    }
+    #expect(try doseEventCount(context) == 0)
+  }
+
+  @Test func unknownMedicationIDThrowsAndWritesNothing() throws {
+    let context = try makeContext()
+    let now = Date()
+    let phantom = NextDoseSpec(medicationID: UUID(), scheduledFor: now, quantity: 1, medicationName: "Ghost")
+    #expect(throws: LogIntentError.self) {
+      try LogNextDoseService.log(phantom, in: context, at: now)
+    }
+    #expect(try doseEventCount(context) == 0)
+  }
+
   @Test func alreadyLoggedIsNoOpOnSecondCall() throws {
     let context = try makeContext()
     let now = Date()

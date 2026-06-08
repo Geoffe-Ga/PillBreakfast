@@ -41,9 +41,10 @@ struct LogNextDoseIntent: AppIntent {
     return .result()
   }
 
-  /// Read-write App Group container (the log writes). Never
-  /// `PersistenceController.shared`. `@MainActor` because the App Group statics
-  /// are isolated.
+  /// Read-write App Group container (the log writes). A fresh container per call
+  /// — widget extensions have no process-persistent container to reuse, so don't
+  /// "optimize" this into a static. Never `PersistenceController.shared`.
+  /// `@MainActor` because the App Group statics are isolated.
   @MainActor
   private func makeContext() throws -> ModelContext {
     let configuration = ModelConfiguration(url: PersistenceController.appGroupStoreURL)
