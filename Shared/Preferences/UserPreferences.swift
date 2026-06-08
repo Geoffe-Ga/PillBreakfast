@@ -11,7 +11,10 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   /// Allowed snooze offsets (minutes) for the watch picker's initial position
   /// (SPEC §6.3). A discrete set, not a range — invalid values snap to the default.
   public static let allowedSnoozeOffsets: [Int] = [15, 30, 45, 60, 90]
-  public static let defaultSnoozeOffsetMinutes = 30
+  /// Static default; named to stay distinct from the `defaultSnoozeOffsetMinutes`
+  /// instance (the static/instance pair must not share a name, as with
+  /// `defaultHoldDuration` / `highRiskHoldDurationSeconds`).
+  public static let snoozeOffsetDefault = 30
 
   /// Always kept within `holdDurationRange` — clamped on construction, decode,
   /// and every assignment (`didSet`), so an out-of-range value can never reach
@@ -29,7 +32,7 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   public var defaultSnoozeOffsetMinutes: Int {
     didSet {
       if !Self.allowedSnoozeOffsets.contains(defaultSnoozeOffsetMinutes) {
-        defaultSnoozeOffsetMinutes = Self.defaultSnoozeOffsetMinutes
+        defaultSnoozeOffsetMinutes = Self.snoozeOffsetDefault
       }
     }
   }
@@ -41,14 +44,14 @@ public struct UserPreferences: Codable, Sendable, Hashable {
 
   public init(
     highRiskHoldDurationSeconds: TimeInterval = Self.defaultHoldDuration,
-    defaultSnoozeOffsetMinutes: Int = Self.defaultSnoozeOffsetMinutes,
+    defaultSnoozeOffsetMinutes: Int = Self.snoozeOffsetDefault,
     pillMealsOnboarded: Bool = false
   ) {
     // didSet doesn't fire during init, so validate explicitly here.
     self.highRiskHoldDurationSeconds = highRiskHoldDurationSeconds.clamped(to: Self.holdDurationRange)
     self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(defaultSnoozeOffsetMinutes)
       ? defaultSnoozeOffsetMinutes
-      : Self.defaultSnoozeOffsetMinutes
+      : Self.snoozeOffsetDefault
     self.pillMealsOnboarded = pillMealsOnboarded
   }
 
@@ -58,8 +61,8 @@ public struct UserPreferences: Codable, Sendable, Hashable {
     self.highRiskHoldDurationSeconds = raw.clamped(to: Self.holdDurationRange)
     // v2 snapshots have no `defaultSnoozeOffsetMinutes` key — default to 30 (SPEC §6.3).
     let offset = try container.decodeIfPresent(Int.self, forKey: .defaultSnoozeOffsetMinutes)
-      ?? Self.defaultSnoozeOffsetMinutes
-    self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(offset) ? offset : Self.defaultSnoozeOffsetMinutes
+      ?? Self.snoozeOffsetDefault
+    self.defaultSnoozeOffsetMinutes = Self.allowedSnoozeOffsets.contains(offset) ? offset : Self.snoozeOffsetDefault
     // Pre-#195 snapshots have no `pillMealsOnboarded` key — default `false`
     // so existing installs see the suggestion sheet on next launch.
     self.pillMealsOnboarded = try container.decodeIfPresent(Bool.self, forKey: .pillMealsOnboarded) ?? false
