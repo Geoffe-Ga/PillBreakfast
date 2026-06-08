@@ -87,4 +87,36 @@ struct SmartStackPlanTests {
     #expect(SmartStackPlan.groupLabel(["A", "B"]) == "A · B")
     #expect(SmartStackPlan.groupLabel(["A", "B", "C"]) == "A · B · +1 more")
   }
+
+  @discardableResult
+  private func highRiskMed(_ name: String, hour: Int, minute: Int = 0, meal: PillMeal? = nil, in context: ModelContext) -> Medication {
+    let medication = med(name, hour: hour, minute: minute, meal: meal, in: context)
+    let ingredient = Ingredient(name: "\(name)-ingredient", isHighRisk: true)
+    context.insert(ingredient)
+    let component = MedicationComponent(ingredient: ingredient, dosagePerUnitMg: 100)
+    context.insert(component)
+    medication.components = [component]
+    return medication
+  }
+
+  @Test func nextNonHighRiskDoseIsNilWhenEveryDoseIsHighRisk() throws {
+    let context = try makeContext()
+    highRiskMed("Lithium", hour: 8, in: context)
+    let groups = try SmartStackPlan.doseGroups(maintenanceMeds: meds(in: context), on: thursday, calendar: utcCalendar)
+    #expect(groups.count == 1)
+    #expect(groups[0].containsHighRisk)
+    #expect(groups[0].nextNonHighRiskDose == nil)
+  }
+
+  @Test func nextNonHighRiskDosePicksTheNonHighRiskMedInAMixedGroup() throws {
+    let context = try makeContext()
+    let meal = PillMeal(name: "Morning", targetHour: 8, targetMinute: 0)
+    context.insert(meal)
+    highRiskMed("Lithium", hour: 8, meal: meal, in: context)
+    med("Vitamin D", hour: 8, minute: 0, meal: meal, in: context)
+    let groups = try SmartStackPlan.doseGroups(maintenanceMeds: meds(in: context), on: thursday, calendar: utcCalendar)
+    #expect(groups.count == 1)
+    #expect(groups[0].containsHighRisk)
+    #expect(groups[0].nextNonHighRiskDose?.medicationName == "Vitamin D")
+  }
 }
