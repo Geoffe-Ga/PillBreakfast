@@ -1,33 +1,36 @@
 import SwiftUI
 import WidgetKit
 
-/// Stub circular complication for Phase 7 (#48). Renders `"--"` centred on the
-/// accessory background; tapping deep-links into the watch app's tap-through
-/// queue (the `onOpenURL` handler is wired in #49).
+/// Pending-dose complication. One `Widget` serving three accessory families via
+/// `ComplicationRouter` (a single watch-face picker entry). Tapping deep-links
+/// into the watch app's tap-through queue via `pillbreakfast://tap-through`.
 struct PendingDoseComplication: Widget {
   let kind = "PendingDoseComplication"
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PendingDoseTimelineProvider()) { entry in
-      PendingDoseComplicationView(entry: entry)
+      ComplicationRouter(entry: entry)
+        .containerBackground(.clear, for: .widget)
         .widgetURL(URL(string: "pillbreakfast://tap-through"))
     }
     .configurationDisplayName("Pending Doses")
     .description("Shows how many doses are due now.")
-    .supportedFamilies([.accessoryCircular])
+    .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline])
   }
 }
 
-struct PendingDoseComplicationView: View {
+/// Renders the family-appropriate view. Falls back to circular for any family
+/// not in `supportedFamilies` (defensive; the registration limits what's shown).
+private struct ComplicationRouter: View {
+  @Environment(\.widgetFamily) private var family
   let entry: PendingDoseEntry
 
   var body: some View {
-    ZStack {
-      AccessoryWidgetBackground()
-      Text(entry.displayText)
-        .font(.title2)
-        .minimumScaleFactor(0.5)
+    switch family {
+    case .accessoryCircular: CircularComplicationView(entry: entry)
+    case .accessoryCorner: CornerComplicationView(entry: entry)
+    case .accessoryInline: InlineComplicationView(entry: entry)
+    default: CircularComplicationView(entry: entry)
     }
-    .containerBackground(.clear, for: .widget)
   }
 }
