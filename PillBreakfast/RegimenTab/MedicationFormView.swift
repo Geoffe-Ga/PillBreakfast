@@ -5,6 +5,12 @@ import SwiftUI
 /// configuration is intentionally stubbed here (EPIC 05).
 struct MedicationFormView: View {
   @Bindable var formState: MedicationFormState
+  /// When `true` (default, push-context), the form applies `.glassBackground()`
+  /// as its own glass surface. Pass `false` when embedded in a `.sheet` that
+  /// already provides glass chrome at the presentation layer (AddMedicationView),
+  /// to avoid a double-glass stack. See issue #103 — revisit if iOS 26 sheet
+  /// chrome stops supplying glass.
+  var appliesGlassBackground: Bool = true
   /// Called with the id of an ingredient created inline, so the host can clean it
   /// up if the medication is never saved.
   var onIngredientCreated: (UUID) -> Void = { _ in }
@@ -84,7 +90,7 @@ struct MedicationFormView: View {
       if hasInteracted, !formState.validationErrors.isEmpty {
         Section {
           ForEach(formState.validationErrors, id: \.self) { error in
-            LiquidGlassTheme.Typography.footnote(error)
+            LiquidGlassTheme.Typography.errorText(error)
               // Semantic error color, not decoration — kept deliberately. Color
               // discipline (amber-only) governs the watch logging surface; an
               // error indicator on the iPhone setup form is a different concern.
@@ -109,7 +115,7 @@ struct MedicationFormView: View {
       }
     }
     .scrollContentBackground(.hidden)
-    .glassBackground()
+    .if(appliesGlassBackground) { $0.glassBackground() }
     .sheet(isPresented: $showingNewIngredient) {
       NewIngredientView(initialName: newIngredientInitialName) { newID in
         formState.componentDraft.ingredientID = newID

@@ -44,4 +44,12 @@ public extension LiquidGlassTheme.Typography {
   static func footnote(_ text: String) -> Text {
     Text(text).font(footnoteFont)
   }
+
+  /// Validation-error text on forms. Minimum `.footnote` (13 pt default) so the
+  /// user-must-act prompt stays legible at default and smaller Dynamic Type
+  /// settings — never dropped to `caption`. Color is set by the call site
+  /// (`.red` for validation, never `highRiskAccent`). See issue #103.
+  static func errorText(_ text: String) -> Text {
+    Text(text).font(footnoteFont)
+  }
 }
