@@ -21,16 +21,12 @@ struct PendingDoseComplication: Widget {
 struct PendingDoseComplicationView: View {
   let entry: PendingDoseEntry
 
-  /// `nil` (the stub) shows `"--"`; #49 renders the real count or `"✓"`.
-  private var displayText: String {
-    guard let count = entry.pendingCount else { return "--" }
-    return count == 0 ? "✓" : String(count)
-  }
-
   var body: some View {
     ZStack {
       AccessoryWidgetBackground()
-      Text(displayText)
+      // Display logic now lives on PendingDoseEntry (shared with the other
+      // families added in #03).
+      Text(entry.displayText)
         .font(.title2)
         .minimumScaleFactor(0.5)
     }

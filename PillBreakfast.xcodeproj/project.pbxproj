@@ -248,6 +248,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				FA480001000000000000AA03 /* WatchAppWidgets */,
+				86F1A24DA7A7F601513B6A45 /* Shared */,
 			);
 			name = WatchAppWidgets;
 			packageProductDependencies = (

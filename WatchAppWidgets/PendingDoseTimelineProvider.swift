@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import WidgetKit
 
 /// One timeline sample for the pending-dose complication.
@@ -9,6 +10,21 @@ import WidgetKit
 nonisolated struct PendingDoseEntry: TimelineEntry {
   let date: Date
   let pendingCount: Int?
+}
+
+extension PendingDoseEntry {
+  /// What the complication renders: `nil` (the stub) → `"--"`, `0` → `"✓"`,
+  /// positive → the count. #02 populates `pendingCount` so this shows real data.
+  /// Logic lives in `Shared/PendingDoseDisplay` so it's CI-tested (the widget
+  /// extension has no test target yet).
+  var displayText: String {
+    PendingDoseDisplay.text(forCount: pendingCount)
+  }
+
+  /// Whether any dose is due now — drives accent/emphasis in later families.
+  var hasPending: Bool {
+    PendingDoseDisplay.hasPending(pendingCount)
+  }
 }
 
 /// Pure, `Context`-free timeline construction.
@@ -49,5 +65,19 @@ nonisolated struct PendingDoseTimelineProvider: TimelineProvider {
       policy: .after(PendingDoseTimeline.nextReload(after: now))
     )
     completion(timeline)
+  }
+
+  /// Opens the extension's OWN read-only `ModelContext` against the App Group
+  /// store — never `PersistenceController.shared`, which would run the ingredient
+  /// seeder (a write) in this read-only process. The real query lands in #02;
+  /// this proves cross-process store access compiles and resolves.
+  ///
+  /// `@MainActor` because `PersistenceController.schema` / `appGroupStoreURL` are
+  /// main-actor-isolated; #02 performs the read via a main-actor hop (spec §5.7).
+  @MainActor
+  private static func makeContext() throws -> ModelContext {
+    let configuration = ModelConfiguration(url: PersistenceController.appGroupStoreURL)
+    let container = try ModelContainer(for: PersistenceController.schema, configurations: configuration)
+    return ModelContext(container)
   }
 }
