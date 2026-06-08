@@ -135,3 +135,52 @@ user-id risk but does not remove the device-id row by itself). This
 document **and** `Submission/marketing-copy.md` (per the crash-reporting
 ADR) must both be revised and the App Store Connect entries updated
 **before** the next submission that ships the SDK.
+
+## Anonymization audit (re-run before every submission)
+
+This section is the **repeatable procedure** behind the answers above. Re-run
+all four checks before each App Store submission and before merging anything
+that touches `Info.plist`, the HealthKit code, the diagnostics pipeline, or
+the dependency graph. Each check names the command that proves it, so the
+result is evidence, not assertion.
+
+1. **No HealthKit *write* surface.** `NSHealthUpdateUsageDescription` must be
+   **absent** from every `Info.plist`. Third-party apps cannot write Apple
+   Health Medications (SPEC §3.2 / CLAUDE.md), so the write-scope key must
+   never appear — its presence would be both false and a rejection risk.
+   - Verify: `grep -rL NSHealthUpdateUsageDescription $(find . -name Info.plist -not -path '*/build/*')`
+     should list every `Info.plist` (i.e. the key is missing from all of them).
+
+2. **HealthKit *read* scope is disclosed and read-only in wording.**
+   `NSHealthShareUsageDescription` must be **present** and its copy must state
+   the read purpose **and** that the app never writes. The verbatim v1 string is:
+   > "PillBreakfast reads your medications from Apple Health to make setup
+   > faster. PillBreakfast never writes to Apple Health."
+   - Verify: `grep -A1 NSHealthShareUsageDescription PillBreakfast/Info.plist`.
+     Any edit to this string must keep the "never writes" clause — it is the
+     plain-language mirror of check 1.
+
+3. **Diagnostics are MetricKit-only and stay on-device.** No third-party
+   crash/analytics SDK may be linked. MetricKit payloads are written to the
+   App Group's `Diagnostics/` folder and are **not** transmitted off-device,
+   which is what makes every Diagnostics row **Not Collected**.
+   - Verify: `find . -name Package.resolved -o -name Package.swift` returns
+     nothing and `grep -c XCRemoteSwiftPackageReference PillBreakfast.xcodeproj/project.pbxproj`
+     returns `0` (no SPM dependencies at all); and
+     `grep -rl 'import Sentry\|import Firebase\|import Amplitude\|import Mixpanel' --include='*.swift' .`
+     returns nothing. A bare "Sentry" *comment* in
+     `Shared/Diagnostics/CrashReporting.swift` is the ADR reference, not a
+     dependency — confirm the file's only diagnostics import is `MetricKit`.
+
+4. **Tracking is "No" across the board.** No advertising identifier, no
+   cross-app/cross-site tracking, no data shared with data brokers.
+   - Verify: `grep -rl 'ASIdentifierManager\|advertisingIdentifier\|AppTrackingTransparency\|requestTrackingAuthorization' --include='*.swift' .`
+     returns nothing, and `NSUserTrackingUsageDescription` is absent from every
+     `Info.plist`. The App Store Connect "Tracking" section stays **No**.
+
+**Audit log.** When a check is re-run, append the date and the result here so
+the trail is auditable.
+
+| Date | Auditor | Checks 1–4 | Notes |
+|---|---|---|---|
+| 2026-06-08 | Ralph (#225) | ✅ all pass | No SPM/third-party SDK present; diagnostics MetricKit-only; `NSHealthUpdateUsageDescription` absent; `NSHealthShareUsageDescription` text correct; Tracking = No. No corrections to the per-category answers needed. |
