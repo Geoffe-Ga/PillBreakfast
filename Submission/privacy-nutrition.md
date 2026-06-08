@@ -156,9 +156,12 @@ result is evidence, not assertion.
    the read purpose **and** that the app never writes. The verbatim v1 string is:
    > "PillBreakfast reads your medications from Apple Health to make setup
    > faster. PillBreakfast never writes to Apple Health."
-   - Verify: `grep -A1 NSHealthShareUsageDescription PillBreakfast/Info.plist`.
-     Any edit to this string must keep the "never writes" clause — it is the
-     plain-language mirror of check 1.
+   - Verify (globs every `Info.plist`, like checks 1 and 4, so a future second
+     plist is covered automatically):
+     `grep -A1 NSHealthShareUsageDescription $(grep -rl NSHealthShareUsageDescription $(find . -name Info.plist -not -path '*/build/*'))`.
+     Exactly the iOS app's `Info.plist` should match. Any edit to this string
+     must keep the "never writes" clause — it is the plain-language mirror of
+     check 1.
 
 3. **Diagnostics are MetricKit-only and stay on-device.** No third-party
    crash/analytics SDK may be linked. MetricKit payloads are written to the
