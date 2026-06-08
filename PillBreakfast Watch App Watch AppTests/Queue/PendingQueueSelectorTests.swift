@@ -54,6 +54,7 @@ struct PendingQueueSelectorTests {
     let scheduledFor = try date(8, 0, in: cal)
     context.insert(DoseEvent(
       medication: med,
+      medicationID: med.id,
       scheduledFor: scheduledFor,
       takenAt: scheduledFor,
       quantity: 1,

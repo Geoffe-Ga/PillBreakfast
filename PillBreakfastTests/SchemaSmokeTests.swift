@@ -17,7 +17,7 @@ struct SchemaSmokeTests {
     context.insert(MedicationComponent(dosagePerUnitMg: 1))
     context.insert(Medication(displayName: "Smoke Test", unitForm: .tablet, kind: .maintenance))
     context.insert(ScheduledDose(hour: 8, minute: 0, quantity: 1))
-    context.insert(DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch))
+    context.insert(DoseEvent(medicationID: UUID(), takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch))
     try context.save()
 
     // Fetch every model type so a missing entry in PersistenceController.schema

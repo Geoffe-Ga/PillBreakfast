@@ -41,6 +41,7 @@ struct IngredientQueriesTests {
     status: DoseStatus = .taken
   ) -> DoseEvent {
     let event = DoseEvent(
+      medicationID: UUID(),
       takenAt: takenAt,
       quantity: 1,
       status: status,
@@ -179,11 +180,11 @@ struct IngredientQueriesTests {
     let tylenolTime = try date(2026, 5, 29, 8, 0, in: cal)
     let excedrinTime = try date(2026, 5, 29, 10, 0, in: cal) // more recent, shares acetaminophen
     context.insert(DoseEvent(
-      medication: tylenol, takenAt: tylenolTime, quantity: 1, status: .taken, loggedOn: .watch,
+      medication: tylenol, medicationID: tylenol.id, takenAt: tylenolTime, quantity: 1, status: .taken, loggedOn: .watch,
       ingredientAmounts: [LoggedIngredientAmount(ingredientID: apap.id, ingredientName: "Acetaminophen", totalMg: 500)]
     ))
     context.insert(DoseEvent(
-      medication: excedrin, takenAt: excedrinTime, quantity: 1, status: .taken, loggedOn: .watch,
+      medication: excedrin, medicationID: excedrin.id, takenAt: excedrinTime, quantity: 1, status: .taken, loggedOn: .watch,
       ingredientAmounts: [LoggedIngredientAmount(ingredientID: apap.id, ingredientName: "Acetaminophen", totalMg: 250)]
     ))
     try context.save()

@@ -67,6 +67,7 @@ struct PendingQueueSelectorTests {
   ) throws {
     context.insert(DoseEvent(
       medication: med,
+      medicationID: med.id,
       scheduledFor: scheduledFor,
       takenAt: scheduledFor,
       quantity: 1,
@@ -165,8 +166,34 @@ struct PendingQueueSelectorTests {
 
     context.insert(DoseEvent(
       medication: med,
+      medicationID: med.id,
       scheduledFor: todayAt8,
       takenAt: yesterdayLateNight,
+      quantity: 1,
+      status: .taken,
+      loggedOn: .watch
+    ))
+    try context.save()
+
+    let now = try date(2026, 5, 29, 8, 5, in: cal)
+    #expect(try PendingQueueSelector(calendar: cal).pendingDoses(at: now, in: context).isEmpty)
+  }
+
+  @Test func alreadyLoggedDetectedViaDenormalizedIDWithoutRelationship() throws {
+    // The denormalization's point: the "already logged" lookup keys off the
+    // stored `medicationID`, not `medication?.id`. An event carrying the id but
+    // with a nil relationship (e.g. the med row faulted out) must still suppress
+    // its slot — proving the hot path never depends on the relationship.
+    let cal = try calendar("America/New_York")
+    let context = try makeContext()
+    let med = try insertMed(in: context, schedule: [scheduledDose(8, 0)])
+    let todayAt8 = try date(2026, 5, 29, 8, 0, in: cal)
+
+    context.insert(DoseEvent(
+      medication: nil,
+      medicationID: med.id,
+      scheduledFor: todayAt8,
+      takenAt: todayAt8,
       quantity: 1,
       status: .taken,
       loggedOn: .watch
@@ -195,6 +222,7 @@ struct PendingQueueSelectorTests {
       )
       context.insert(DoseEvent(
         medication: med,
+        medicationID: med.id,
         scheduledFor: todayAt8,
         takenAt: takenAt,
         quantity: 1,

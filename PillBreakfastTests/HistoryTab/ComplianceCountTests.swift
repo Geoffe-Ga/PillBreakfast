@@ -77,8 +77,8 @@ struct ComplianceCountTests {
     context.insert(med)
     let morning = try #require(calendar.date(bySettingHour: 8, minute: 0, second: 0, of: startOfDay))
     let evening = try #require(calendar.date(bySettingHour: 20, minute: 0, second: 0, of: startOfDay))
-    context.insert(DoseEvent(medication: med, scheduledFor: morning, takenAt: morning, quantity: 1, status: .taken, loggedOn: .watch))
-    context.insert(DoseEvent(medication: med, scheduledFor: evening, takenAt: evening, quantity: 1, status: .taken, loggedOn: .watch))
+    context.insert(DoseEvent(medication: med, medicationID: med.id, scheduledFor: morning, takenAt: morning, quantity: 1, status: .taken, loggedOn: .watch))
+    context.insert(DoseEvent(medication: med, medicationID: med.id, scheduledFor: evening, takenAt: evening, quantity: 1, status: .taken, loggedOn: .watch))
     try context.save()
 
     let result = try ComplianceCount.compliance(for: day, in: context, calendar: calendar)
@@ -103,10 +103,10 @@ struct ComplianceCountTests {
     context.insert(prn)
     // Anytime log (no scheduledFor) — must not contribute to `taken`.
     let anytime = try #require(calendar.date(bySettingHour: 7, minute: 0, second: 0, of: startOfDay))
-    context.insert(DoseEvent(medication: scheduledMed, scheduledFor: nil, takenAt: anytime, quantity: 1, status: .taken, loggedOn: .watch))
+    context.insert(DoseEvent(medication: scheduledMed, medicationID: scheduledMed.id, scheduledFor: nil, takenAt: anytime, quantity: 1, status: .taken, loggedOn: .watch))
     // PRN log — also no scheduledFor.
     let prnTime = try #require(calendar.date(bySettingHour: 14, minute: 0, second: 0, of: startOfDay))
-    context.insert(DoseEvent(medication: prn, scheduledFor: nil, takenAt: prnTime, quantity: 1, status: .taken, loggedOn: .watch))
+    context.insert(DoseEvent(medication: prn, medicationID: prn.id, scheduledFor: nil, takenAt: prnTime, quantity: 1, status: .taken, loggedOn: .watch))
     try context.save()
 
     let result = try ComplianceCount.compliance(for: day, in: context, calendar: calendar)
@@ -152,9 +152,9 @@ struct ComplianceCountTests {
     let scheduled = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: day) ?? day
     let prnTime = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: day) ?? day
 
-    let vitaminDEvent = DoseEvent(medication: vitaminD, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
-    let lithiumEvent = DoseEvent(medication: lithium, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
-    let prnEvent = DoseEvent(medication: aspirin, scheduledFor: nil, takenAt: prnTime, quantity: 1, status: .taken, loggedOn: .watch)
+    let vitaminDEvent = DoseEvent(medication: vitaminD, medicationID: vitaminD.id, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
+    let lithiumEvent = DoseEvent(medication: lithium, medicationID: lithium.id, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
+    let prnEvent = DoseEvent(medication: aspirin, medicationID: aspirin.id, scheduledFor: nil, takenAt: prnTime, quantity: 1, status: .taken, loggedOn: .watch)
     context.insert(vitaminDEvent)
     context.insert(lithiumEvent)
     context.insert(prnEvent)
@@ -193,7 +193,7 @@ struct ComplianceCountTests {
     context.insert(meal)
     context.insert(med)
     let scheduled = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: day) ?? day
-    let event = DoseEvent(medication: med, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
+    let event = DoseEvent(medication: med, medicationID: med.id, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
     context.insert(event)
     try context.save()
 
@@ -204,7 +204,7 @@ struct ComplianceCountTests {
     let context = try makeContext()
     let med = Medication(displayName: "Aspirin", unitForm: .tablet, kind: .prn)
     context.insert(med)
-    let event = DoseEvent(medication: med, scheduledFor: nil, takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch)
+    let event = DoseEvent(medication: med, medicationID: med.id, scheduledFor: nil, takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch)
     context.insert(event)
     try context.save()
 
@@ -248,7 +248,7 @@ struct ComplianceCountTests {
     med.schedule = [ScheduledDose(hour: 8, minute: 0, quantity: 1, medication: med)]
     context.insert(med)
     let scheduled = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: day) ?? day
-    let event = DoseEvent(medication: med, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
+    let event = DoseEvent(medication: med, medicationID: med.id, scheduledFor: scheduled, takenAt: scheduled, quantity: 1, status: .taken, loggedOn: .watch)
     context.insert(event)
     try context.save()
 
