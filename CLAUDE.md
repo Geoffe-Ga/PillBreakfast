@@ -178,7 +178,7 @@ Issue **#12** (the paired Xcode project skeleton) is **not** Ralph's job — pbx
 
 ## Conventions Worth Preserving
 
-- **Watch never gets logging UI on the iPhone.** Resist the temptation to add "quick log" buttons to the phone app — it dilutes the product thesis.
+- **The watch is the primary logging surface and the only one that *prompts*.** The iPhone never shows scheduled "take pills now" prompts, complications, or the tap-through ritual — that stays on the wrist. **Exception (2026-06-07, reverses the original "no logging UI on iPhone" rule):** the iPhone has a manual, *user-initiated* **Log tab** (SPEC §6.4) for recording a dose from the phone when the watch isn't handy. It is pull-based (the user opens it), not push-based (the app never nags), and writes through the same `DoseEventWriter` + `SafetyEvaluator` path the watch uses, syncing to the watch via `DoseEventBatchTransfer`. Do not add scheduled-prompt or tap-through UI to the phone.
 - **High-risk = press-and-hold.** Single-tap is fine for vitamins; lithium and anything else flagged `isHighRisk` must require the press-and-hold gesture with a visible progress ring.
 - **Color is reserved for high-risk meds.** Baseline UI is monochromatic glass. Amber accent appears only on press-and-hold confirmations. Don't decorate other surfaces with color.
 - **Regimen edits trigger a full notification rebuild**, not a diff. Simpler and avoids stale `UNCalendarNotificationTrigger`s.

@@ -265,7 +265,7 @@ This is the function that makes Tylenol + Excedrin safe together, gabapentin sel
 
 ## 6. iPhone Companion App
 
-Deliberately minimal. Three tabs, no more.
+Deliberately minimal: Regimen (setup), Log (manual dose entry — §6.4), History, Settings.
 
 ### 6.1 Tab 1 — Regimen
 
@@ -295,7 +295,16 @@ Deliberately minimal. Three tabs, no more.
 - Default snooze offset for the snooze picker.
 - About / privacy.
 
-**Hard rule:** the iPhone app does **not** show "take pills now" prompts or logging UI. Logging is the watch's job. The iPhone is for setup and review only.
+### 6.4 Tab — Log (manual dose entry)
+
+Added 2026-06-07. A pull-based, user-initiated way to record a dose from the phone when the watch isn't handy (e.g. phone in hand, watch charging).
+
+- A prominent **"Log a dose"** button opens a **searchable** medication picker — active regimen meds first ("Your medications"), archived meds second.
+- Selecting a med shows a confirm step with a quantity stepper (defaulting to the earliest scheduled dose's quantity) and logs `status: .taken`, `scheduledFor: nil`, `loggedOn: .iphone`.
+- Reuses the **same infrastructure** as the watch: `SafetyEvaluator.violationsIfTaken` (soft, overridable ceiling/interval warning), `DoseEventWriter.writeDoseEvent`, and `DoseEventBatchTransfer.transfer` to sync the new dose to the watch (the transfer/merge is symmetric and idempotent on `DoseEvent.id`).
+- High-risk meds require an explicit confirmation tap (the watch's press-and-hold has no iPhone idiom, but the deliberate-action intent is preserved). Amber accent stays watch-only.
+
+**Hard rule (revised):** the iPhone app does **not** *prompt* ("take pills now"), show complications, or run the scheduled tap-through ritual — that is the watch's job. The Log tab is the one manual, user-initiated exception (§6.4); the iPhone is otherwise for setup and review.
 
 ---
 
