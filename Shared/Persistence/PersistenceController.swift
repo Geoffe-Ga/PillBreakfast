@@ -52,6 +52,16 @@ public final class PersistenceController {
     } catch {
       Self.logger.error("Ingredient library seeding failed: \(error.localizedDescription, privacy: .public)")
     }
+
+    // Backfill the denormalized DoseEvent.medicationID on rows that predate the
+    // field. Idempotent and cheap once done (matches only sentinel rows), so
+    // running on every launch is fine. A failure leaves the sentinel in place
+    // (recoverable next launch), so log rather than crash.
+    do {
+      try DoseEventMigrator.backfillMedicationIDs(in: container.mainContext)
+    } catch {
+      Self.logger.error("DoseEvent medicationID backfill failed: \(error.localizedDescription, privacy: .public)")
+    }
   }
 
   public static var appGroupStoreURL: URL {

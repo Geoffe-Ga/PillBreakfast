@@ -36,6 +36,7 @@ struct HistoryTabViewTests {
   private func insertEvent(at takenAt: Date, into context: ModelContext, medication: Medication? = nil) {
     context.insert(DoseEvent(
       medication: medication,
+      medicationID: medication?.id ?? UUID(),
       takenAt: takenAt,
       quantity: 1,
       status: .taken,

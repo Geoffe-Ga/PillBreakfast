@@ -38,6 +38,7 @@ public enum DoseEventWriter {
     let event = DoseEvent(
       id: UUID(),
       medication: medication,
+      medicationID: medication.id,
       scheduledFor: scheduledFor,
       takenAt: now,
       quantity: quantity,

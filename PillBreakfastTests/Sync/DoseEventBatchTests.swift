@@ -147,4 +147,60 @@ struct DoseEventBatchTests {
     #expect(result.inserted == 0)
     #expect(try context.fetch(FetchDescriptor<DoseEvent>()).isEmpty)
   }
+
+  @Test func mergeStampsDenormalizedMedicationIDOnInsert() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: UUID(), medicationID: medication.id)]),
+      into: context
+    )
+    // The denormalized field is stamped from the DTO so the hot-path reader sees
+    // the id without faulting the `medication` relationship.
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).medicationID == medication.id)
+  }
+
+  @Test func makeBatchCarriesDenormalizedMedicationIDThroughJSON() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
+    context.insert(medication)
+    let event = DoseEvent(
+      medication: medication,
+      medicationID: medication.id,
+      takenAt: Date(timeIntervalSince1970: 1_700_000_000),
+      quantity: 2,
+      status: .taken,
+      loggedOn: .watch
+    )
+    context.insert(event)
+    try context.save()
+
+    // makeBatch → JSON → decode mirrors the WCSession transferFile path.
+    let batch = DoseEventBatchTransfer.makeBatch(from: [event])
+    let wire = try JSONDecoder().decode(DoseEventBatch.self, from: JSONEncoder().encode(batch))
+    #expect(wire.events.first?.medicationID == medication.id)
+  }
+
+  @Test func mergeKeepsOriginalMedicationIDWhenResendMismatches() throws {
+    let context = try makeInMemoryContext()
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    context.insert(medication)
+    try context.save()
+
+    let eventID = UUID()
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: medication.id)]),
+      into: context
+    )
+    // A corrupt re-send carrying a different medicationID must not rewrite the
+    // immutable history (the merger logs and keeps the original).
+    _ = try DoseEventBatchMerger.merge(
+      DoseEventBatch(events: [sampleDTO(id: eventID, medicationID: UUID())]),
+      into: context
+    )
+    #expect(try #require(context.fetch(FetchDescriptor<DoseEvent>()).first).medicationID == medication.id)
+  }
 }

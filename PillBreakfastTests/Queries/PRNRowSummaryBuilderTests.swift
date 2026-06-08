@@ -36,6 +36,7 @@ struct PRNRowSummaryBuilderTests {
   private func logProductDose(_ med: Medication, ingredientID: UUID, name: String, mg: Double, at takenAt: Date, in context: ModelContext) {
     context.insert(DoseEvent(
       medication: med,
+      medicationID: med.id,
       scheduledFor: nil,
       takenAt: takenAt,
       quantity: 1,

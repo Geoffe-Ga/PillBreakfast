@@ -47,6 +47,7 @@ struct SafetyEvaluatorTests {
   /// Logs a prior `.taken` dose carrying a frozen ingredient-amount snapshot.
   private func logDose(_ ingredientID: UUID, mg: Double, at takenAt: Date, in context: ModelContext) {
     context.insert(DoseEvent(
+      medicationID: UUID(),
       takenAt: takenAt,
       quantity: 1,
       status: .taken,

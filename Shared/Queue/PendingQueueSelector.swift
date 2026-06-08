@@ -203,11 +203,14 @@ public struct PendingQueueSelector {
     for event in events {
       guard let scheduledFor = event.scheduledFor,
             scheduledFor >= startOfDay,
-            scheduledFor < nextDay,
-            let medicationID = event.medication?.id else { continue }
+            scheduledFor < nextDay else { continue }
+      // Read the denormalized `medicationID` rather than `event.medication?.id`,
+      // so this bounded loop never faults a `Medication` row per event. A legacy
+      // row whose medication was deleted carries the sentinel id, which never
+      // matches a real medication's slot key — harmless.
       let components = calendar.dateComponents([.hour, .minute], from: scheduledFor)
       guard let hour = components.hour, let minute = components.minute else { continue }
-      keys.insert(SlotKey(medicationID: medicationID, hour: hour, minute: minute))
+      keys.insert(SlotKey(medicationID: event.medicationID, hour: hour, minute: minute))
     }
     return keys
   }

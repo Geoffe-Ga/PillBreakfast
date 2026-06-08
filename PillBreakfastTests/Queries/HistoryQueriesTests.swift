@@ -46,6 +46,7 @@ struct HistoryQueriesTests {
   ) -> DoseEvent {
     let event = DoseEvent(
       medication: medication,
+      medicationID: medication?.id ?? UUID(),
       takenAt: takenAt,
       quantity: quantity,
       status: status,

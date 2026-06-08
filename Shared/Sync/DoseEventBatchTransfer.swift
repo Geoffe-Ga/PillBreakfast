@@ -71,6 +71,8 @@ public enum DoseEventBatchTransfer {
 /// Idempotent upsert of a `DoseEventBatch` keyed on `DoseEvent.id`.
 @MainActor
 public enum DoseEventBatchMerger {
+  private static let logger = Logger(subsystem: "com.creekmasons.pillbreakfast", category: "ReverseSync")
+
   @discardableResult
   public static func merge(
     _ batch: DoseEventBatch,
@@ -97,6 +99,12 @@ public enum DoseEventBatchMerger {
           existing.notes = newNotes
           updated += 1
         }
+        // The denormalized medicationID is immutable history; a re-send must
+        // carry the same value. A mismatch means wire corruption — log loudly
+        // but don't rewrite history (and don't trap; merges run unattended).
+        if existing.medicationID != dto.medicationID {
+          logger.warning("Dose event \(existing.id, privacy: .public) re-sent with a different medicationID; keeping the original.")
+        }
       } else {
         let medicationID = dto.medicationID
         guard let medication = try context.fetch(
@@ -108,6 +116,7 @@ public enum DoseEventBatchMerger {
           DoseEvent(
             id: dto.id,
             medication: medication,
+            medicationID: dto.medicationID,
             scheduledFor: dto.scheduledFor,
             takenAt: dto.takenAt,
             quantity: dto.quantity,

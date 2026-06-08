@@ -21,7 +21,7 @@ struct ModelGraphTests {
     medication.components = [MedicationComponent(ingredient: ingredient, dosagePerUnitMg: 300)]
     medication.schedule = [ScheduledDose(hour: 8, minute: 0, quantity: 1)]
     medication.doseEvents = [
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch),
+      DoseEvent(medicationID: medication.id, takenAt: .now, quantity: 1, status: .taken, loggedOn: .watch),
     ]
     context.insert(medication)
     try context.save()
@@ -46,7 +46,7 @@ struct ModelGraphTests {
     medication.components = [MedicationComponent(ingredient: Ingredient(name: "X"), dosagePerUnitMg: 10)]
     medication.schedule = [ScheduledDose(hour: 9, minute: 30, quantity: 2)]
     medication.doseEvents = [
-      DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone),
+      DoseEvent(medicationID: medication.id, takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone),
     ]
     context.insert(medication)
     try context.save()
@@ -98,6 +98,7 @@ struct ModelGraphTests {
     )
     let event = DoseEvent(
       medication: medication,
+      medicationID: medication.id,
       takenAt: .now,
       quantity: 1,
       status: .taken,

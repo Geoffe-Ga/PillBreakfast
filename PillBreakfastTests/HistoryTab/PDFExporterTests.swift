@@ -43,6 +43,7 @@ struct PDFExporterTests {
   ) -> DoseEvent {
     let event = DoseEvent(
       medication: medication,
+      medicationID: medication?.id ?? UUID(),
       takenAt: takenAt,
       quantity: quantity,
       status: status,
@@ -205,16 +206,16 @@ struct PDFExporterTests {
     let id = UUID()
     let base = Date()
     let events: [DoseEvent] = [
-      DoseEvent(takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medicationID: UUID(), takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medicationID: UUID(), takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: base.addingTimeInterval(2), quantity: 1, status: .skipped, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medicationID: UUID(), takenAt: base.addingTimeInterval(2), quantity: 1, status: .skipped, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
-      DoseEvent(takenAt: base.addingTimeInterval(3), quantity: 1, status: .snoozed, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medicationID: UUID(), takenAt: base.addingTimeInterval(3), quantity: 1, status: .snoozed, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: id, ingredientName: "Lithium Carbonate", totalMg: 300),
       ]),
     ]
@@ -232,10 +233,10 @@ struct PDFExporterTests {
     let comboCold = Medication(displayName: "Excedrin", unitForm: .tablet, kind: .prn)
     let base = Date()
     let events: [DoseEvent] = [
-      DoseEvent(medication: babyAspirin, takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medication: babyAspirin, medicationID: babyAspirin.id, takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 81),
       ]),
-      DoseEvent(medication: comboCold, takenAt: base.addingTimeInterval(1), quantity: 2, status: .taken, loggedOn: .iphone, ingredientAmounts: [
+      DoseEvent(medication: comboCold, medicationID: comboCold.id, takenAt: base.addingTimeInterval(1), quantity: 2, status: .taken, loggedOn: .iphone, ingredientAmounts: [
         LoggedIngredientAmount(ingredientID: aspirinID, ingredientName: "Aspirin", totalMg: 500),
       ]),
     ]
@@ -250,8 +251,8 @@ struct PDFExporterTests {
     let lithium = LoggedIngredientAmount(ingredientID: UUID(), ingredientName: "Lithium Carbonate", totalMg: 300)
     let apap = LoggedIngredientAmount(ingredientID: UUID(), ingredientName: "Acetaminophen", totalMg: 500)
     let events: [DoseEvent] = [
-      DoseEvent(takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [lithium]),
-      DoseEvent(takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [apap]),
+      DoseEvent(medicationID: UUID(), takenAt: base, quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [lithium]),
+      DoseEvent(medicationID: UUID(), takenAt: base.addingTimeInterval(1), quantity: 1, status: .taken, loggedOn: .iphone, ingredientAmounts: [apap]),
     ]
     let totals = PDFExporter.aggregateIngredients(in: events)
     #expect(totals.map(\.ingredientName) == ["Acetaminophen", "Lithium Carbonate"])
@@ -325,6 +326,7 @@ struct PDFExporterTests {
     let lithium = Medication(displayName: "Lithium", unitForm: .tablet, kind: .maintenance)
     let event = DoseEvent(
       medication: lithium,
+      medicationID: lithium.id,
       takenAt: Date(timeIntervalSinceReferenceDate: 0),
       quantity: 2,
       status: .taken,
@@ -337,7 +339,7 @@ struct PDFExporterTests {
   }
 
   @Test func eventRowFallsBackToUnknownWhenMedicationIsNil() {
-    let event = DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone)
+    let event = DoseEvent(medicationID: UUID(), takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone)
     let row = PDFExporter.eventRow(event)
     #expect(row.contains("Unknown medication"))
   }
@@ -354,7 +356,7 @@ struct PDFExporterTests {
   @Test func eventRowSingularPluralPhrasing() {
     // The `quantity == 1 ? "1 pill" : "\(n) pills"` branch deserves its own
     // assertion — both halves matter for an export a doctor reads.
-    let single = DoseEvent(takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone)
+    let single = DoseEvent(medicationID: UUID(), takenAt: .now, quantity: 1, status: .taken, loggedOn: .iphone)
     let row = PDFExporter.eventRow(single)
     #expect(row.contains("1 pill"))
     #expect(!row.contains("1 pills"))
