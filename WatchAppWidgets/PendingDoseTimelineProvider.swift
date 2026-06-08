@@ -79,6 +79,11 @@ nonisolated struct PendingDoseTimelineProvider: TimelineProvider {
   /// to a single `"--"` entry — the extension never traps. The caller wraps these
   /// in a `.atEnd` `Timeline` (WidgetKit re-requests after the horizon; #52 also
   /// reloads on dose writes).
+  ///
+  /// Perf note for #49: `pendingDoses` re-fetches `Medication`/`DoseEvent` per
+  /// entry (~5–9× over 24 h) and each `makeContext()` opens a fresh container —
+  /// acceptable now, but the #49 pass should cache the container and reuse a
+  /// single fetch across the timeline.
   @MainActor
   static func timelineEntries(at now: Date) -> [PendingDoseEntry] {
     do {

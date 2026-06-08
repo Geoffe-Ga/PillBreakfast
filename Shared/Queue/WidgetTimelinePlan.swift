@@ -17,7 +17,7 @@ public enum WidgetTimelinePlan {
     calendar: Calendar,
     windowMinutes: Int
   ) -> [Date] {
-    let window = TimeInterval(windowMinutes * 60)
+    let window = TimeInterval(windowMinutes) * 60 // cast before multiply — no Int overflow
     var edges: Set<Date> = []
     var day = calendar.startOfDay(for: from)
     let lastDay = calendar.startOfDay(for: to)
