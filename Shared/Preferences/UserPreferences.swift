@@ -15,6 +15,12 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   /// default and the instance property `defaultSnoozeOffsetMinutes` have distinct,
   /// unambiguous names — mirroring the hold-duration pair (`defaultHoldDuration`
   /// static / `highRiskHoldDurationSeconds` instance), which never share a name.
+  ///
+  /// Naming convention for preference defaults: the rule is *"a static default and
+  /// its instance property must not share a name"* — not a fixed `default` prefix.
+  /// `defaultHoldDuration` prefixes; `snoozeOffsetDefault` suffixes (it reads
+  /// better next to the `defaultSnoozeOffsetMinutes` instance). A future third
+  /// preference should pick whichever keeps the static/instance pair distinct.
   public static let snoozeOffsetDefault = 30
 
   /// Always kept within `holdDurationRange` — clamped on construction, decode,
