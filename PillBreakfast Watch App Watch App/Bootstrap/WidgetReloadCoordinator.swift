@@ -19,8 +19,8 @@ import WidgetKit
 /// directly; bridging it (e.g. a `NotificationCenter` post observed here) is left
 /// as a follow-up. Until then, inbound phone doses surface on the next
 /// background refresh (~15 min) or app open.
-public actor WidgetReloadCoordinator {
-  public static let shared = WidgetReloadCoordinator()
+actor WidgetReloadCoordinator {
+  static let shared = WidgetReloadCoordinator()
 
   private let onReload: @Sendable () -> Void
   private let debounceSecs: TimeInterval
@@ -30,7 +30,7 @@ public actor WidgetReloadCoordinator {
   ///   - debounceSecs: quiet window before a scheduled reload fires.
   ///   - onReload: the reload side effect. Injectable so tests can count calls
   ///     without the unmockable `WidgetCenter` singleton.
-  public init(
+  init(
     debounceSecs: TimeInterval = 2.0,
     onReload: @Sendable @escaping () -> Void = { WidgetCenter.shared.reloadAllTimelines() }
   ) {
@@ -40,13 +40,13 @@ public actor WidgetReloadCoordinator {
 
   /// Coalesces rapid calls: each restarts the timer, so only the last call in a
   /// burst fires `onReload` (after `debounceSecs` of quiet).
-  public func scheduleReload() {
+  func scheduleReload() {
     pendingTask?.cancel()
     let secs = debounceSecs
     let reload = onReload
     pendingTask = Task {
       do {
-        try await Task.sleep(nanoseconds: UInt64(secs * 1_000_000_000))
+        try await Task.sleep(for: .seconds(secs))
       } catch {
         return // cancelled by a newer scheduleReload()
       }
@@ -56,7 +56,7 @@ public actor WidgetReloadCoordinator {
 
   /// Immediate reload that also cancels any pending debounced one — for the
   /// background-refresh handler, which wants a guaranteed reload now.
-  public func reloadNow() {
+  func reloadNow() {
     pendingTask?.cancel()
     pendingTask = nil
     onReload()

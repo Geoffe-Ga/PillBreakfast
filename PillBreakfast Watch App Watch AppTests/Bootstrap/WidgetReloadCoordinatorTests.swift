@@ -16,7 +16,7 @@ struct WidgetReloadCoordinatorTests {
     }
     await coordinator.scheduleReload()
     await coordinator.scheduleReload()
-    try await Task.sleep(nanoseconds: UInt64(debounce * 3 * 1_000_000_000))
+    try await Task.sleep(for: .seconds(debounce * 5))
     #expect(counter.withLock { $0 } == 1)
   }
 
@@ -26,7 +26,7 @@ struct WidgetReloadCoordinatorTests {
       counter.withLock { $0 += 1 }
     }
     await coordinator.scheduleReload()
-    try await Task.sleep(nanoseconds: UInt64(debounce * 3 * 1_000_000_000))
+    try await Task.sleep(for: .seconds(debounce * 5))
     #expect(counter.withLock { $0 } == 1)
   }
 
@@ -36,9 +36,9 @@ struct WidgetReloadCoordinatorTests {
       counter.withLock { $0 += 1 }
     }
     await coordinator.scheduleReload()
-    try await Task.sleep(nanoseconds: UInt64(debounce * 3 * 1_000_000_000))
+    try await Task.sleep(for: .seconds(debounce * 5))
     await coordinator.scheduleReload()
-    try await Task.sleep(nanoseconds: UInt64(debounce * 3 * 1_000_000_000))
+    try await Task.sleep(for: .seconds(debounce * 5))
     #expect(counter.withLock { $0 } == 2)
   }
 
@@ -50,7 +50,7 @@ struct WidgetReloadCoordinatorTests {
     await coordinator.scheduleReload() // would fire later…
     await coordinator.reloadNow() // …but this fires now and cancels it
     #expect(counter.withLock { $0 } == 1)
-    try await Task.sleep(nanoseconds: UInt64(debounce * 3 * 1_000_000_000))
+    try await Task.sleep(for: .seconds(debounce * 5))
     #expect(counter.withLock { $0 } == 1) // the cancelled scheduled one never fired
   }
 }

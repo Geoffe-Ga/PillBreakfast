@@ -28,16 +28,21 @@ final class BackgroundRefreshHandler {
   func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
     for task in backgroundTasks {
       if let refresh = task as? WKApplicationRefreshBackgroundTask {
-        Task { await WidgetReloadCoordinator.shared.reloadNow() }
-        scheduleNextRefresh()
-        refresh.setTaskCompletedWithSnapshot(false)
+        // Complete only *after* the reload runs. Calling setTaskCompleted before
+        // the actor hop to `reloadNow()` lets watchOS suspend us first, so the
+        // reload might never fire.
+        Task {
+          await WidgetReloadCoordinator.shared.reloadNow()
+          scheduleNextRefresh()
+          refresh.setTaskCompletedWithSnapshot(false)
+        }
       } else {
         task.setTaskCompletedWithSnapshot(false)
       }
     }
   }
 
-  func scheduleNextRefresh() {
+  private func scheduleNextRefresh() {
     let fireDate = Date(timeIntervalSinceNow: Self.interval)
     WKApplication.shared().scheduleBackgroundRefresh(withPreferredDate: fireDate, userInfo: nil) { error in
       if let error {
