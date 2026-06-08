@@ -11,16 +11,9 @@ public struct UserPreferences: Codable, Sendable, Hashable {
   /// Allowed snooze offsets (minutes) for the watch picker's initial position
   /// (SPEC §6.3). A discrete set, not a range — invalid values snap to the default.
   public static let allowedSnoozeOffsets: [Int] = [15, 30, 45, 60, 90]
-  /// Named `snoozeOffsetDefault` (not `defaultSnoozeOffsetMinutes`) so the static
-  /// default and the instance property `defaultSnoozeOffsetMinutes` have distinct,
-  /// unambiguous names — mirroring the hold-duration pair (`defaultHoldDuration`
-  /// static / `highRiskHoldDurationSeconds` instance), which never share a name.
-  ///
-  /// Naming convention for preference defaults: the rule is *"a static default and
-  /// its instance property must not share a name"* — not a fixed `default` prefix.
-  /// `defaultHoldDuration` prefixes; `snoozeOffsetDefault` suffixes (it reads
-  /// better next to the `defaultSnoozeOffsetMinutes` instance). A future third
-  /// preference should pick whichever keeps the static/instance pair distinct.
+  /// Static default; named to stay distinct from the `defaultSnoozeOffsetMinutes`
+  /// instance (the static/instance pair must not share a name, as with
+  /// `defaultHoldDuration` / `highRiskHoldDurationSeconds`).
   public static let snoozeOffsetDefault = 30
 
   /// Always kept within `holdDurationRange` — clamped on construction, decode,
