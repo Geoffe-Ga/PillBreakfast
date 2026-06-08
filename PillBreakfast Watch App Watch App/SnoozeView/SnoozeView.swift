@@ -15,7 +15,7 @@ struct SnoozeView: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.modelContext) private var modelContext
   @Environment(UserPreferencesStore.self) private var preferencesStore
-  @State private var snoozeTime: Date = .now.addingTimeInterval(TimeInterval(UserPreferences.defaultSnoozeOffsetMinutes * 60))
+  @State private var snoozeTime: Date = .now.addingTimeInterval(TimeInterval(UserPreferences.snoozeOffsetDefault * 60))
   @State private var rescheduleFailed = false
   @State private var route: SnoozeRoute = .picker
   @State private var snoozeCount = 0

@@ -42,6 +42,6 @@ struct RegimenSnapshotPreferencesTests {
     let decoded = try JSONDecoder().decode(RegimenSnapshot.self, from: json)
     #expect(decoded.schemaVersion == 2)
     #expect(decoded.preferences.highRiskHoldDurationSeconds == 0.8)
-    #expect(decoded.preferences.defaultSnoozeOffsetMinutes == UserPreferences.defaultSnoozeOffsetMinutes)
+    #expect(decoded.preferences.defaultSnoozeOffsetMinutes == UserPreferences.snoozeOffsetDefault)
   }
 }
