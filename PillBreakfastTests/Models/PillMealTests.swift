@@ -121,4 +121,48 @@ struct PillMealTests {
     #expect(surviving.count == 1)
     #expect(surviving.first?.pillMeal == nil)
   }
+
+  // MARK: - Bounds enforcement (#199)
+
+  @Test func clampedTimePinsOutOfRangeToNearestBound() {
+    #expect(PillMeal.clampedTime(hour: 25, minute: 70).hour == 23)
+    #expect(PillMeal.clampedTime(hour: 25, minute: 70).minute == 59)
+    #expect(PillMeal.clampedTime(hour: -1, minute: -5).hour == 0)
+    #expect(PillMeal.clampedTime(hour: -1, minute: -5).minute == 0)
+  }
+
+  @Test func clampedTimeLeavesInRangeValuesUnchanged() {
+    let time = PillMeal.clampedTime(hour: 9, minute: 30)
+    #expect(time.hour == 9)
+    #expect(time.minute == 30)
+    // Boundary values are valid and must not move.
+    let low = PillMeal.clampedTime(hour: 0, minute: 0)
+    #expect(low.hour == 0 && low.minute == 0)
+    let high = PillMeal.clampedTime(hour: 23, minute: 59)
+    #expect(high.hour == 23 && high.minute == 59)
+  }
+
+  @Test func initClampsOutOfRangeTime() {
+    let meal = PillMeal(name: "Bad", targetHour: 99, targetMinute: -10)
+    #expect(meal.targetHour == 23)
+    #expect(meal.targetMinute == 0)
+  }
+
+  @Test func applyTimeClampsAndPropagatesClampedValueToDoses() throws {
+    let context = try makeInMemoryContext()
+    let meal = PillMeal(name: "Pill Breakfast", targetHour: 9, targetMinute: 30)
+    let medication = Medication(displayName: "Vitamin D", unitForm: .capsule, kind: .maintenance)
+    let dose = ScheduledDose(hour: 9, minute: 30, quantity: 1, medication: medication, pillMeal: meal)
+    medication.schedule = [dose]
+    context.insert(meal)
+    context.insert(medication)
+    try context.save()
+
+    // Out-of-range update must be clamped on the meal AND on the propagated dose.
+    meal.applyTime(targetHour: 30, targetMinute: 75)
+    #expect(meal.targetHour == 23)
+    #expect(meal.targetMinute == 59)
+    #expect(dose.hour == 23)
+    #expect(dose.minute == 59)
+  }
 }
