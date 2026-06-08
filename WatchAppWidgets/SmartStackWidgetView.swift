@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -26,7 +27,33 @@ struct SmartStackWidgetView: View {
       LiquidGlassTheme.Typography.footnote(subtitle(group))
         .monospacedDigit()
         .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+      actionView(for: group)
     }
+  }
+
+  /// High-risk groups never get a one-tap path — the intent refuses too (defense-in-depth).
+  @ViewBuilder
+  private func actionView(for group: SmartStackPlan.DoseGroupSummary) -> some View {
+    if let spec = group.nextNonHighRiskDose {
+      Button(intent: makeIntent(spec: spec)) {
+        Label("Log \(spec.medicationName)", systemImage: "checkmark.circle.fill")
+          .lineLimit(1)
+          .truncationMode(.tail)
+      }
+      .buttonStyle(.plain)
+    } else {
+      Label("Open to confirm", systemImage: "hand.point.up.left")
+        .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+    }
+  }
+
+  private func makeIntent(spec: NextDoseSpec) -> LogNextDoseIntent {
+    LogNextDoseIntent(
+      medicationID: spec.medicationID.uuidString,
+      scheduledFor: spec.scheduledFor,
+      quantity: spec.quantity,
+      medicationName: spec.medicationName
+    )
   }
 
   private var idle: some View {
