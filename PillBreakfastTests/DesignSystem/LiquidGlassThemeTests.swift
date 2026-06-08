@@ -87,6 +87,15 @@ struct LiquidGlassThemeTests {
     )
   }
 
+  @Test func errorTextBuilderAppliesFootnoteFont() {
+    // Pin the legible floor: validation errors must not drop below `.footnote`.
+    let text = "Name required."
+    #expect(
+      LiquidGlassTheme.Typography.errorText(text)
+        == Text(text).font(LiquidGlassTheme.Typography.footnoteFont)
+    )
+  }
+
   @Test func elevationFlatHasNoShadow() {
     let flat = LiquidGlassTheme.Elevation.flat
     #expect(flat.radius == 0)

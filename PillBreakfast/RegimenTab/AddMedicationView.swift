@@ -23,7 +23,10 @@ struct AddMedicationView: View {
 
   var body: some View {
     NavigationStack {
-      MedicationFormView(formState: formState) { createdIngredientIDs.append($0) }
+      // appliesGlassBackground: false — this sheet's NavigationStack already
+      // supplies the glass layer; the form supplying its own would double-stack
+      // (issue #103).
+      MedicationFormView(formState: formState, appliesGlassBackground: false) { createdIngredientIDs.append($0) }
         .navigationTitle("New Medication")
         .toolbarTitleDisplayMode(.inline)
         // Large-detent sheet so the form has room without dominating
