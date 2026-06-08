@@ -7,10 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FA480001000000000000AA0B /* WatchAppWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FA480001000000000000AA02 /* WatchAppWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		67915EA62FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		FA480001000000000000AA0D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FA480001000000000000AA01;
+			remoteInfo = WatchAppWidgets;
+		};
 		67915E802FC770C80014D1E0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 67915E6A2FC770C70014D1E0 /* Project object */;
@@ -49,6 +57,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		FA480001000000000000AA0A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FA480001000000000000AA0B /* WatchAppWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		67915EC92FC771CF0014D1E0 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -63,6 +82,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FA480001000000000000AA02 /* WatchAppWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WatchAppWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		67915E722FC770C70014D1E0 /* PillBreakfast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PillBreakfast.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		67915E7F2FC770C80014D1E0 /* PillBreakfastTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PillBreakfastTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		67915E892FC770C80014D1E0 /* PillBreakfastUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PillBreakfastUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,6 +103,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		FA480001000000000000AA03 /* WatchAppWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchAppWidgets;
+			sourceTree = "<group>";
+		};
 		67915E742FC770C70014D1E0 /* PillBreakfast */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -124,6 +149,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		FA480001000000000000AA05 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		67915E6F2FC770C70014D1E0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -179,6 +211,7 @@
 				67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
 				67915EB72FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */,
 				67915EC12FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */,
+				FA480001000000000000AA03 /* WatchAppWidgets */,
 				67915E732FC770C70014D1E0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -193,6 +226,7 @@
 				67915EA52FC771CD0014D1E0 /* PillBreakfast Watch App Watch App.app */,
 				67915EB42FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests.xctest */,
 				67915EBE2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests.xctest */,
+				FA480001000000000000AA02 /* WatchAppWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -200,6 +234,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		FA480001000000000000AA01 /* WatchAppWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FA480001000000000000AA07 /* Build configuration list for PBXNativeTarget "WatchAppWidgets" */;
+			buildPhases = (
+				FA480001000000000000AA04 /* Sources */,
+				FA480001000000000000AA05 /* Frameworks */,
+				FA480001000000000000AA06 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FA480001000000000000AA03 /* WatchAppWidgets */,
+			);
+			name = WatchAppWidgets;
+			packageProductDependencies = (
+			);
+			productName = WatchAppWidgets;
+			productReference = FA480001000000000000AA02 /* WatchAppWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		67915E712FC770C70014D1E0 /* PillBreakfast */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 67915E932FC770C80014D1E0 /* Build configuration list for PBXNativeTarget "PillBreakfast" */;
@@ -295,10 +351,12 @@
 				67915EA12FC771CD0014D1E0 /* Sources */,
 				67915EA22FC771CD0014D1E0 /* Frameworks */,
 				67915EA32FC771CD0014D1E0 /* Resources */,
+				FA480001000000000000AA0A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				FA480001000000000000AA0C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				67915EA92FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
@@ -392,6 +450,9 @@
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = 67915EA42FC771CD0014D1E0;
 					};
+					FA480001000000000000AA01 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = 67915E6D2FC770C70014D1E0 /* Build configuration list for PBXProject "PillBreakfast" */;
@@ -415,11 +476,19 @@
 				67915EA42FC771CD0014D1E0 /* PillBreakfast Watch App Watch App */,
 				67915EB32FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppTests */,
 				67915EBD2FC771CF0014D1E0 /* PillBreakfast Watch App Watch AppUITests */,
+				FA480001000000000000AA01 /* WatchAppWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		FA480001000000000000AA06 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		67915E702FC770C70014D1E0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -472,6 +541,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		FA480001000000000000AA04 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		67915E6E2FC770C70014D1E0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -517,6 +593,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		FA480001000000000000AA0C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FA480001000000000000AA01 /* WatchAppWidgets */;
+			targetProxy = FA480001000000000000AA0D /* PBXContainerItemProxy */;
+		};
 		67915E812FC770C80014D1E0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 67915E712FC770C70014D1E0 /* PillBreakfast */;
@@ -545,6 +626,70 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		FA480001000000000000AA08 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "WatchAppWidgets/WatchAppWidgets.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WatchAppWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = WatchAppWidgets;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Debug;
+		};
+		FA480001000000000000AA09 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "WatchAppWidgets/WatchAppWidgets.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4YP4K7RFL9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WatchAppWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = WatchAppWidgets;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.creekmasons.pillbreakfast.watchkitapp.PillBreakfast-Watch-App.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26;
+			};
+			name = Release;
+		};
 		67915E912FC770C80014D1E0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1023,6 +1168,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		FA480001000000000000AA07 /* Build configuration list for PBXNativeTarget "WatchAppWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA480001000000000000AA08 /* Debug */,
+				FA480001000000000000AA09 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		67915E6D2FC770C70014D1E0 /* Build configuration list for PBXProject "PillBreakfast" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
