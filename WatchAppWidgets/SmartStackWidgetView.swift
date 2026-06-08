@@ -31,15 +31,14 @@ struct SmartStackWidgetView: View {
     }
   }
 
-  /// Non-high-risk group → a one-tap `Button(intent:)` (logs in-process).
-  /// High-risk-only group → a plain "Open to confirm" label; the card's
-  /// `widgetURL` carries the tap to the app's press-and-hold screen — a high-risk
-  /// dose is NEVER one-tap-logged. Plain/monochrome: no amber, no warning color.
+  /// High-risk groups never get a one-tap path — the intent refuses too (defense-in-depth).
   @ViewBuilder
   private func actionView(for group: SmartStackPlan.DoseGroupSummary) -> some View {
     if let spec = group.nextNonHighRiskDose {
       Button(intent: makeIntent(spec: spec)) {
         Label("Log \(spec.medicationName)", systemImage: "checkmark.circle.fill")
+          .lineLimit(1)
+          .truncationMode(.tail)
       }
       .buttonStyle(.plain)
     } else {
