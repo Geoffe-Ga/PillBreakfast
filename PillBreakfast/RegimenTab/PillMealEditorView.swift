@@ -114,7 +114,8 @@ struct PillMealEditorView: View {
         let meal = PillMeal(
           name: trimmedName,
           targetHour: newHour,
-          targetMinute: newMinute
+          targetMinute: newMinute,
+          sortOrder: try PillMeal.nextSortOrder(in: modelContext)
         )
         modelContext.insert(meal)
         try modelContext.save()

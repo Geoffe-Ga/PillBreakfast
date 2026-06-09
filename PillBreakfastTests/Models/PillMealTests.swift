@@ -190,4 +190,41 @@ struct PillMealTests {
     #expect(dose.hour == 8)
     #expect(dose.minute == 0)
   }
+
+  // MARK: - sortOrder tail-append (#203)
+
+  @Test func nextSortOrderIsZeroWhenNoMeals() throws {
+    let context = try makeInMemoryContext()
+    #expect(try PillMeal.nextSortOrder(in: context) == 0)
+  }
+
+  @Test func nextSortOrderIsOnePastTheMaxNotTheCount() throws {
+    let context = try makeInMemoryContext()
+    // Reorder-created gaps: three meals but the max sortOrder (5) exceeds count−1.
+    // `count` (3) would collide with the meal at 5; max+1 (6) tail-appends.
+    for order in [0, 5, 2] {
+      context.insert(PillMeal(name: "M\(order)", targetHour: 9, targetMinute: 0, sortOrder: order))
+    }
+    try context.save()
+    #expect(try PillMeal.nextSortOrder(in: context) == 6)
+  }
+
+  @Test func newMealLandsAtTailOfSortOrderThenCreatedAtOrder() throws {
+    let context = try makeInMemoryContext()
+    let first = PillMeal(name: "Breakfast", targetHour: 8, targetMinute: 0, sortOrder: try PillMeal.nextSortOrder(in: context))
+    context.insert(first)
+    try context.save()
+    let second = PillMeal(name: "Dinner", targetHour: 20, targetMinute: 0, sortOrder: try PillMeal.nextSortOrder(in: context))
+    context.insert(second)
+    try context.save()
+
+    // The Regimen @Query sorts by sortOrder then createdAt — assert the new meal
+    // appends to the end rather than jumping to the front.
+    #expect(first.sortOrder == 0)
+    #expect(second.sortOrder == 1)
+    let ordered = try context.fetch(
+      FetchDescriptor<PillMeal>(sortBy: [SortDescriptor(\.sortOrder), SortDescriptor(\.createdAt)])
+    )
+    #expect(ordered.map(\.name) == ["Breakfast", "Dinner"])
+  }
 }

@@ -39,6 +39,14 @@ public final class PillMeal {
     (min(max(hour, 0), 23), min(max(minute, 0), 59))
   }
 
+  /// sortOrder for a new meal so it lands at the end of the user order: one past the current max (0 when none). Tail-appends — `count` would collide with reorder-created gaps.
+  @MainActor
+  public static func nextSortOrder(in context: ModelContext) throws -> Int {
+    var descriptor = FetchDescriptor<PillMeal>(sortBy: [SortDescriptor(\.sortOrder, order: .reverse)])
+    descriptor.fetchLimit = 1
+    return (try context.fetch(descriptor).first?.sortOrder ?? -1) + 1
+  }
+
   /// Sets the (clamped) time, rewriting every assigned dose only when the clamped value actually changed.
   public func applyTime(targetHour: Int, targetMinute: Int) {
     let time = Self.clampedTime(hour: targetHour, minute: targetMinute)
