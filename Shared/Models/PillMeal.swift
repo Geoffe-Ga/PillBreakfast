@@ -34,20 +34,12 @@ public final class PillMeal {
     self.createdAt = createdAt
   }
 
-  /// Pins an (hour, minute) pair into the valid `DateComponents` ranges
-  /// (`0…23` / `0…59`). The model-layer safety net for programmatic construction
-  /// and migration: the #190 editor already produces valid values, but an
-  /// out-of-range value reaching `NotificationScheduler` (#191) would build an
-  /// invalid `DateComponents`. Clamps rather than traps so a bad migrated row
-  /// can't crash launch.
+  /// Clamps (hour, minute) into 0…23 / 0…59; clamps rather than traps so a bad migrated row can't crash launch.
   public static func clampedTime(hour: Int, minute: Int) -> (hour: Int, minute: Int) {
     (min(max(hour, 0), 23), min(max(minute, 0), 59))
   }
 
-  /// Updates `targetHour` / `targetMinute` AND rewrites every assigned dose's
-  /// hour/minute when the time actually changed. Meal owns the time once a
-  /// dose is assigned to it, so the propagation belongs on the model. Inputs are
-  /// clamped (`clampedTime`) so this write path enforces the bounds too.
+  /// Sets the (clamped) time, rewriting every assigned dose only when the clamped value actually changed.
   public func applyTime(targetHour: Int, targetMinute: Int) {
     let time = Self.clampedTime(hour: targetHour, minute: targetMinute)
     let changed = self.targetHour != time.hour || self.targetMinute != time.minute

@@ -158,11 +158,36 @@ struct PillMealTests {
     context.insert(medication)
     try context.save()
 
+    // Reads `dose` in-memory without a refetch (unlike the inverse-relationship
+    // tests above): `pillMeal: meal` is wired at `ScheduledDose` init, so
+    // `applyTime` mutates these same instances directly — no fetch needed.
     // Out-of-range update must be clamped on the meal AND on the propagated dose.
     meal.applyTime(targetHour: 30, targetMinute: 75)
     #expect(meal.targetHour == 23)
     #expect(meal.targetMinute == 59)
     #expect(dose.hour == 23)
     #expect(dose.minute == 59)
+  }
+
+  @Test func applyTimeDoesNotPropagateWhenClampedValueMatchesCurrent() throws {
+    let context = try makeInMemoryContext()
+    let meal = PillMeal(name: "Night", targetHour: 23, targetMinute: 59)
+    let medication = Medication(displayName: "Melatonin", unitForm: .tablet, kind: .maintenance)
+    let dose = ScheduledDose(hour: 23, minute: 59, quantity: 1, medication: medication, pillMeal: meal)
+    medication.schedule = [dose]
+    context.insert(meal)
+    context.insert(medication)
+    try context.save()
+
+    // Sentinel: detect any unwanted propagation.
+    dose.hour = 8
+    dose.minute = 0
+
+    // (30, 75) clamps to (23, 59), which equals the meal's current time, so the
+    // `changed` guard (which compares the *clamped* value) is false and doses
+    // must not move. Locks in the non-obvious no-op produced by clamping.
+    meal.applyTime(targetHour: 30, targetMinute: 75)
+    #expect(dose.hour == 8)
+    #expect(dose.minute == 0)
   }
 }
