@@ -44,7 +44,7 @@ public final class PillMeal {
   public static func nextSortOrder(in context: ModelContext) throws -> Int {
     var descriptor = FetchDescriptor<PillMeal>(sortBy: [SortDescriptor(\.sortOrder, order: .reverse)])
     descriptor.fetchLimit = 1
-    return (try context.fetch(descriptor).first?.sortOrder ?? -1) + 1
+    return try (context.fetch(descriptor).first?.sortOrder ?? -1) + 1
   }
 
   /// Sets the (clamped) time, rewriting every assigned dose only when the clamped value actually changed.

@@ -211,10 +211,10 @@ struct PillMealTests {
 
   @Test func newMealLandsAtTailOfSortOrderThenCreatedAtOrder() throws {
     let context = try makeInMemoryContext()
-    let first = PillMeal(name: "Breakfast", targetHour: 8, targetMinute: 0, sortOrder: try PillMeal.nextSortOrder(in: context))
+    let first = try PillMeal(name: "Breakfast", targetHour: 8, targetMinute: 0, sortOrder: PillMeal.nextSortOrder(in: context))
     context.insert(first)
     try context.save()
-    let second = PillMeal(name: "Dinner", targetHour: 20, targetMinute: 0, sortOrder: try PillMeal.nextSortOrder(in: context))
+    let second = try PillMeal(name: "Dinner", targetHour: 20, targetMinute: 0, sortOrder: PillMeal.nextSortOrder(in: context))
     context.insert(second)
     try context.save()
 
