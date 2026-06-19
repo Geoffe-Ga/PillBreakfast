@@ -40,26 +40,6 @@ struct RightNowView: View {
     NavigationStack {
       content
         .navigationTitle("Right Now")
-        // Always-reachable affordances so PRN/OTC and anytime-log are
-        // never gated behind an empty queue (SPEC §2.3 / issue #200).
-        .toolbar {
-          ToolbarItem(placement: .topBarLeading) {
-            NavigationLink {
-              LogAnytimeView()
-            } label: {
-              Image(systemName: "calendar.badge.clock")
-                .accessibilityLabel("Log a scheduled dose anytime")
-            }
-          }
-          ToolbarItem(placement: .topBarTrailing) {
-            NavigationLink {
-              PRNListView()
-            } label: {
-              Image(systemName: "pills")
-                .accessibilityLabel("Take as-needed")
-            }
-          }
-        }
     }
     .task(id: scheduleSignature) { reload() }
     // The window is time-relative, so re-evaluate when the app is foregrounded
@@ -79,6 +59,29 @@ struct RightNowView: View {
         AllCaughtUpView()
       } else {
         TapThroughQueueView(pendingDoses: pendingDoses, onFinished: reload)
+          // Always-reachable affordances so PRN/OTC and anytime-log are never
+          // gated behind the queue (SPEC §2.3 / issue #200). Scoped to the
+          // queue state only: the caught-up state already surfaces both
+          // destinations as in-content buttons, and adding top-bar items there
+          // forced the root title to center under the system clock (#276).
+          .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+              NavigationLink {
+                LogAnytimeView()
+              } label: {
+                Image(systemName: "calendar.badge.clock")
+                  .accessibilityLabel("Log a scheduled dose anytime")
+              }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+              NavigationLink {
+                PRNListView()
+              } label: {
+                Image(systemName: "pills")
+                  .accessibilityLabel("Take as-needed")
+              }
+            }
+          }
       }
     }
     // Transition between "doses pending" and "all caught up" is calm —
@@ -103,32 +106,39 @@ struct RightNowView: View {
 /// observes a single view value rather than juggling the inner VStack.
 private struct AllCaughtUpView: View {
   var body: some View {
-    VStack(spacing: LiquidGlassTheme.Spacing.standard) {
-      VStack(spacing: LiquidGlassTheme.Spacing.compact) {
-        Image(systemName: "checkmark.circle")
-          .font(.system(size: 44, weight: .light))
-          .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
-        LiquidGlassTheme.Typography.display("All caught up")
-          .multilineTextAlignment(.center)
-          .minimumScaleFactor(0.8)
-          .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
-      }
+    // Scrolls rather than clips: hero + two full-width buttons exceed the
+    // height on smaller faces, which pushed the glyph up under the clock and
+    // cut the second button off the bottom (#276). Matches the `ScrollView`
+    // convention used by `SafetyWarningView`.
+    ScrollView {
+      VStack(spacing: LiquidGlassTheme.Spacing.standard) {
+        VStack(spacing: LiquidGlassTheme.Spacing.compact) {
+          Image(systemName: "checkmark.circle")
+            .font(.system(size: 44, weight: .light))
+            .foregroundStyle(LiquidGlassTheme.Colors.secondaryText)
+          LiquidGlassTheme.Typography.display("All caught up")
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.8)
+            .foregroundStyle(LiquidGlassTheme.Colors.primaryText)
+        }
 
-      // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
-      NavigationLink {
-        PRNListView()
-      } label: {
-        Label("Take as-needed", systemImage: "pills")
+        // PRN is reached from the root, not the maintenance queue (SPEC §2.3).
+        NavigationLink {
+          PRNListView()
+        } label: {
+          Label("Take as-needed", systemImage: "pills")
+        }
+        // Same path as the queue-state toolbar item, surfaced as a large
+        // empty-state affordance for discoverability when nothing is queued.
+        NavigationLink {
+          LogAnytimeView()
+        } label: {
+          Label("Log a scheduled dose", systemImage: "calendar.badge.clock")
+        }
       }
-      // Same path as the toolbar item, surfaced as a large empty-state
-      // affordance for discoverability when nothing is queued.
-      NavigationLink {
-        LogAnytimeView()
-      } label: {
-        Label("Log a scheduled dose", systemImage: "calendar.badge.clock")
-      }
+      .frame(maxWidth: .infinity)
+      .padding()
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .glassBackground()
   }
 }
